@@ -1,0 +1,22 @@
+{
+  "name": "shadernavigator",
+  "version": "0.1.0",
+  "description": "Oblique performer on gpu",
+  "main": "src/shadernavigator.js",
+  "moduleName": "SHAD",
+  "moduleFormat": "umd",
+  "moduleBuildDir": "build",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rollup -c",
+    "doc": "documentation build --name ShaderNavigator -o ./doc/ -f html"
+  },
+  "author": "Jonathan Lurie",
+  "license": "MIT",
+  "devDependencies": {
+    "documentation": "^4.0.0-beta11",
+    "gulp": "^3.9.1",
+    "gulp-rollup": "^2.5.1",
+    "rollup": "^0.36.3"
+  }
+}

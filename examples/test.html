@@ -1,0 +1,32 @@
+<html>
+<head>
+  <title>Test</title>
+  <meta charset="utf-8">
+</head>
+<body>
+
+  <script src="js/three.js"></script>
+
+  <!-- importing the automatically build module -->
+  <script src="../build/shadernavigator/shadernavigator.js"></script>
+
+  <script>
+
+    /*
+    // the foo object is part of our ES6MOD module
+    var foo = new SHAD.Foo(20, 30);
+
+    // do something with foo
+    foo.printAnAttribute();
+    foo.setAnAttribute(34)
+    foo.printAnAttribute();
+    */
+
+    console.log(SHAD);
+    var texChunk = new SHAD.TextureChunk(new THREE.Vector3(10, 150, 350), 20);
+    console.log(texChunk.file);
+
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+  <script src="https://cdn.rawgit.com/jonathanlurie/jpgjs/master/jpg.js"></script>
+  <script src="js/ImageData.js"></script>
+  <script src="js/JpegDistantReader.js"></script>
+
+</head>
+<body>
+  <script>
+
+  {
+    // distant or local image url
+    let url = "images/j1.jpg";
+
+    // Imade data container
+    let myImage = new ImageData();
+
+    // Things to do when the image is eventually loaded
+    myImage.isLoaded(function(img){
+      document.write("<p>Image width: " + img.getWidth() + " px</p>");
+      document.write("<p>Image heigth: " + img.getHeight() + " px</p>");
+      document.write("<p>Number of components per pixel: " + img.getComponents() + " bands</p>");
+      document.write("<p>The pixel value at [32, 156] is " + img.getValue(32, 156) + "</p>");
+      document.write("<img src=\"" + url + "\"/>");
+    });
+
+    // the jpeg reader over http
+    let jpgReader = new JpegDistantReader();
+
+    // reads the jpeg at url and store the necessary data into myImage
+    jpgReader.decodeImage(url, myImage);
+
+  }
+
+  </script>
+
+</body>
+</html>
