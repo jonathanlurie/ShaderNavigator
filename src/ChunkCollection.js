@@ -288,17 +288,28 @@ class ChunkCollection{
 
       // this texture data is valid
       if(aTextureData.valid){
-
+        validChunksTexture.push( aTextureData.texture );
+        validChunksOrigin.push( aTextureData.origin );
       }
       // is not valid
       else{
-
+        notValidChunksTexture.push( aTextureData.texture );
+        notValidChunksOrigin.push( aTextureData.origin );
       }
 
     });
 
+    validChunksCounter = validChunksTexture.length;
+
+    return {
+      validChunksTexture.concat( notValidChunksTexture ),
+      validChunksOrigin.concat( notValidChunksOrigin ),
+      validChunksCounter
+    }
+
   }
 
-}
+
+} /* END CLASS ChunkCollection */
 
 export { ChunkCollection };
