@@ -1,127 +1,10 @@
-(function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
-  typeof define === 'function' && define.amd ? define(['exports'], factory) :
-  (factory((global.SHAD = global.SHAD || {})));
-}(this, (function (exports) { 'use strict';
-
-/*
-
-  TODO: give the possibility to clean/remove the texture object, and with a flag,
-  getting to know if it's still loaded or not. It can be interesting to do it for
-  an entire zoom level to free some memory when we are currently using another
-  zoom level.
-
-*/
-
-/**
-* Represent a cubic chunk of texture. Should be part of a {@link ChunkCollection}.
-*/
-class TextureChunk{
-
-  /**
-  * Initialize a TextureChunk object, but still, buildFromIndex3D() or buildFromWorldPosition() needs to be called to properly position the chunk in world coord.
-  *
-  * @param {number} resolutionLevel - The level of resolution, the lower the level, the lower the resolution. Level n has a metric resolution per voxel twice lower/poorer than level n+1, as a result, level n has 8 time less chunks than level n+1, remember we are in 3D!.
-  *
-  */
-  constructor(resolutionLevel, voxelPerSide, sizeWC){
-
-    /** Number of voxel per side of the chunk (suposedly cube shaped). Used as a constant.*/
-    this._voxelPerSide = voxelPerSide;//64;
-
-    /**
-    * The level of resolution, the lower the level, the lower the resolution. Level n has a metric resolution per voxel twice lower/poorer than level n+1, as a result, level n has 8 time less chunks than level n+1 (remember we are in 3D!).
-    */
-    this._resolutionLevel = resolutionLevel;
-
-    /** Size of a chunk in 3D space (aka. in world coordinates) */
-    this._sizeWC = sizeWC; //this._chunkSizeLvlZero / Math.pow(2, this._resolutionLevel);
-
-    /** The actuall THREE.Texture */
-    this._threeJsTexture = null;
-
-    /** True only if totally build, with index and world coordinates origin */
-    this._isBuilt = false;
-  }
-
-
-  /**
-  * Has to be called explicitely just after the constructor (unless you call buildFromWorldPosition() instead). Finishes to build the chunk.
-  * @param {Array} index3D - The index position in the octree. Each members [x, y, z] are interger.
-  */
-  buildFromIndex3D(index3D){
-    /**
-    * The index position in the octree. Each members are interger.
-    */
-    this._index3D = index3D.slice();
-    this._findChunkOrigin();
-    this._buildFileName();
-    this._loadTexture();
-    this._isBuilt = true;
-  }
-
-
-  /**
-  * [PRIVATE] Finds a chunk origin using its _index3D and _sizeWC.
-  * the origin is used by the shader.
-  */
-  _findChunkOrigin(){
-    /**
-    * Origin of the chunk in world cooridnates. Is a [x, y, z] Array.
-    * Is computed from the sizeWC and the index3D
-    */
-    this._originWC =[
-      this._index3D[0] * this._sizeWC * (-1),
-      this._index3D[1] * this._sizeWC * (-1),
-      this._index3D[2] * this._sizeWC * (-1)
-    ];
-  }
-
-
-  /**
-  * [PRIVATE] Build the string of the chunk path to load.
-  */
-  _buildFileName(){
-
-    let sagitalRangeStart = this._index3D[0] * this._voxelPerSide;
-    let coronalRangeStart = this._index3D[1] * this._voxelPerSide;
-    let axialRangeStart   = this._index3D[2] * this._voxelPerSide;
-
-    /** Texture file, build from its index3D and resolutionLevel */
-    this._file =  this._resolutionLevel + "/" +
-                  sagitalRangeStart + "-" + (sagitalRangeStart + this._voxelPerSide) + "/" +
-                  coronalRangeStart + "-" + (coronalRangeStart + this._voxelPerSide) + "/" +
-                  axialRangeStart   + "-" + (axialRangeStart + this._voxelPerSide);
-  }
-
-
-  /**
-  * [PRIVATE] Loads the actual image file as a THREE js texture.
-  */
-  _loadTexture(){
-    this._threeJsTexture = new THREE.TextureLoader().load(this._file);
-  }
-
-
-  /**
-  * Returns an object contain the THREE.Texture, the origin as an array [x, y, z]
-  * and a boolean specifying the validity.
-  * @return {Object}
-  */
-  getChunkTextureData(){
-    return {
-      texture: this._threeJsTexture,
-      origin: this._originWC,
-      valid: true
-    }
-  }
-
-
-}
+'use strict';
 
 /*
   TODO: replace all var by let
 */
+
+import { TextureChunk } from './TextureChunk.js';
 
 /**
 * The Chunk Collection is the container for all the chunks at a given resolution level.
@@ -375,7 +258,7 @@ class ChunkCollection{
         closest[1],
         closest[2]
       ],
-    ];
+    ]
 
     return indexes3D;
   }
@@ -418,18 +301,4 @@ class ChunkCollection{
 
 }
 
-// if we wanted to use foo here:
-//import foo from './foo.js';
-
-
-// but we just want to make it accessible:
-//export { Foo } from './Foo.js';
-
-//export { ShaderImporter } from './ShaderImporter.js';
-
-exports.TextureChunk = TextureChunk;
-exports.ChunkCollection = ChunkCollection;
-
-Object.defineProperty(exports, '__esModule', { value: true });
-
-})));
+export { ChunkCollection };

@@ -3,6 +3,7 @@
 
 
 // but we just want to make it accessible:
-export { Foo } from './Foo.js';
+//export { Foo } from './Foo.js';
 export { TextureChunk } from './TextureChunk.js';
-//export { ShaderImporter } from './ShaderImporter.js'; 
+export { ChunkCollection } from './ChunkCollection.js';
+//export { ShaderImporter } from './ShaderImporter.js';
