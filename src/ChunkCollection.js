@@ -72,8 +72,6 @@ class ChunkCollection{
 
 
   /**
-  * @deprecated
-  *
   * Get a chunk at a given position, not necessary the origin
   */
   getTextureAtPosition(position){
@@ -96,13 +94,16 @@ class ChunkCollection{
       // fetch the chunk
       var chunk = this._getChunkIfInCollection(index3D);
 
-      // the chunk is already in collection
-      if(chunk){
-        texture = chunk.getChunkTextureData();
+      // if the chunk is not already in collection, we load it.
+      if(!chunk){
+        chunk = this._initChunkFromIndex3D(index3D);
       }
-      // the chunk is not already in collection, we create it
-      else{
-        texture = this._initChunkFromIndex3D(index3D).getChunkTextureData();
+
+      // if the texture was successfully loaded...
+      // most likely to be true the first time the texture is loaded due
+      // to the async loading of the texture file.
+      if(!chunk.loadingError()){
+        texture = chunk.getChunkTextureData();
       }
     }
 
@@ -143,7 +144,7 @@ class ChunkCollection{
   */
   isInCollection(index3D){
     var k = this.getKeyFromIndex3D(index3D);
-    return (k in this._chunk);
+    return (k in this._chunks);
   }
 
   /**
@@ -155,7 +156,7 @@ class ChunkCollection{
   _getChunkIfInCollection(index3D){
     var k = this.getKeyFromIndex3D(index3D);
     // return the chunk or return null/0 if not in the list
-    return (this._chunk[k] | null);
+    return (this._chunks[k] | null);
     // the | null is just because we prefere null then undefined
   }
 
@@ -216,10 +217,13 @@ class ChunkCollection{
 
     var localChunk = this.getIndex3DFromWorldPosition(position);
     var closest = [
-      localChunk[0] % 1 > 0.5 ? localChunk[0] +1 : localChunk[0],
-      localChunk[1] % 1 > 0.5 ? localChunk[1] +1 : localChunk[1],
-      localChunk[2] % 1 > 0.5 ? localChunk[2] +1 : localChunk[2],
+      position[0] % 1 > 0.5 ? localChunk[0] +1 : localChunk[0] -1,
+      position[1] % 1 > 0.5 ? localChunk[1] +1 : localChunk[1] -1,
+      position[2] % 1 > 0.5 ? localChunk[2] +1 : localChunk[2] -1,
     ];
+
+    console.log(localChunk);
+    console.log(closest);
 
     // build the chunk index of the 8 closest chunks from position
     var indexes3D = [
@@ -264,6 +268,8 @@ class ChunkCollection{
         closest[2]
       ],
     ]
+
+    console.log(indexes3D);
 
     return indexes3D;
   }

@@ -46,6 +46,9 @@ class TextureChunk{
 
     /** True only if totally build, with index and world coordinates origin */
     this._isBuilt = false;
+
+    /** in case the texture file was unable to load, this flag goes true */
+    this._textureLoadingError = false;
   }
 
 
@@ -74,6 +77,10 @@ class TextureChunk{
     * Origin of the chunk in world cooridnates. Is a [x, y, z] Array.
     * Is computed from the sizeWC and the index3D
     */
+
+
+
+
     this._originWC =[
       this._index3D[0] * this._sizeWC * (-1),
       this._index3D[1] * this._sizeWC * (-1),
@@ -92,10 +99,18 @@ class TextureChunk{
     let axialRangeStart   = this._index3D[2] * this._voxelPerSide;
 
     /** Texture file, build from its index3D and resolutionLevel */
-    this._file =  this._workingDir + "/" + this._resolutionLevel + "/" +
+    this._filepath =  this._workingDir + "/" + this._resolutionLevel + "/" +
                   sagitalRangeStart + "-" + (sagitalRangeStart + this._voxelPerSide) + "/" +
                   coronalRangeStart + "-" + (coronalRangeStart + this._voxelPerSide) + "/" +
                   axialRangeStart   + "-" + (axialRangeStart + this._voxelPerSide);
+
+    /*
+    console.log(this._filepath);
+    console.log("_index3D");
+    console.log(this._index3D);
+    console.log("_sizeWC");
+    console.log(this._sizeWC);
+    */
   }
 
 
@@ -103,7 +118,20 @@ class TextureChunk{
   * [PRIVATE] Loads the actual image file as a THREE js texture.
   */
   _loadTexture(){
-    this._threeJsTexture = new THREE.TextureLoader().load(this._file);
+    var that = this;
+
+    this._threeJsTexture = new THREE.TextureLoader().load(
+      this._filepath, // url
+      function(){}, // on load
+      function(){}, // on progress
+
+      function(){ // on error
+        //console.error("ERROR TEXTURE " + that._filepath);
+        that._threeJsTexture = null;
+        that._textureLoadingError = true;
+      }
+    );
+
   }
 
 
@@ -117,10 +145,25 @@ class TextureChunk{
     return {
       texture: this._threeJsTexture,
       origin: this._originWC,
-      valid: true
+      valid: !this._textureLoadingError
     }
   }
 
+
+  /**
+  * @return {String} the current texture filepath to load.
+  */
+  getTextureFilepath(){
+    return this._filepath;
+  }
+
+
+  /**
+  * Return true if the chunk was not able to load its texture.
+  */
+  loadingError(){
+    return this._textureLoadingError;
+  }
 
 }
 
@@ -194,8 +237,6 @@ class ChunkCollection{
 
 
   /**
-  * @deprecated
-  *
   * Get a chunk at a given position, not necessary the origin
   */
   getTextureAtPosition(position){
@@ -218,13 +259,16 @@ class ChunkCollection{
       // fetch the chunk
       var chunk = this._getChunkIfInCollection(index3D);
 
-      // the chunk is already in collection
-      if(chunk){
-        texture = chunk.getChunkTextureData();
+      // if the chunk is not already in collection, we load it.
+      if(!chunk){
+        chunk = this._initChunkFromIndex3D(index3D);
       }
-      // the chunk is not already in collection, we create it
-      else{
-        texture = this._initChunkFromIndex3D(index3D).getChunkTextureData();
+
+      // if the texture was successfully loaded...
+      // most likely to be true the first time the texture is loaded due
+      // to the async loading of the texture file.
+      if(!chunk.loadingError()){
+        texture = chunk.getChunkTextureData();
       }
     }
 
@@ -265,7 +309,7 @@ class ChunkCollection{
   */
   isInCollection(index3D){
     var k = this.getKeyFromIndex3D(index3D);
-    return (k in this._chunk);
+    return (k in this._chunks);
   }
 
   /**
@@ -277,7 +321,7 @@ class ChunkCollection{
   _getChunkIfInCollection(index3D){
     var k = this.getKeyFromIndex3D(index3D);
     // return the chunk or return null/0 if not in the list
-    return (this._chunk[k] | null);
+    return (this._chunks[k] | null);
     // the | null is just because we prefere null then undefined
   }
 
@@ -338,10 +382,13 @@ class ChunkCollection{
 
     var localChunk = this.getIndex3DFromWorldPosition(position);
     var closest = [
-      localChunk[0] % 1 > 0.5 ? localChunk[0] +1 : localChunk[0],
-      localChunk[1] % 1 > 0.5 ? localChunk[1] +1 : localChunk[1],
-      localChunk[2] % 1 > 0.5 ? localChunk[2] +1 : localChunk[2],
+      position[0] % 1 > 0.5 ? localChunk[0] +1 : localChunk[0] -1,
+      position[1] % 1 > 0.5 ? localChunk[1] +1 : localChunk[1] -1,
+      position[2] % 1 > 0.5 ? localChunk[2] +1 : localChunk[2] -1,
     ];
+
+    console.log(localChunk);
+    console.log(closest);
 
     // build the chunk index of the 8 closest chunks from position
     var indexes3D = [
@@ -386,6 +433,8 @@ class ChunkCollection{
         closest[2]
       ],
     ];
+
+    console.log(indexes3D);
 
     return indexes3D;
   }
@@ -450,6 +499,20 @@ class LevelManager{
 
     /** the directory containing the config file (JSON) and the resolution level folders */
     this._workingDir = "";
+
+    /** The level of resolution, defines which octree to dig into. Is a positive integer.  */
+    this._resolutionLevel = 0;
+
+    this.onReadyCallback = null;
+  }
+
+
+  /**
+  * For testing purpose, this is a callback that will be called when the config
+  * file will be loaded.
+  */
+  onReady(cb){
+    this.onReadyCallback = cb;
   }
 
 
@@ -508,6 +571,11 @@ class LevelManager{
     });
 
     console.log(this._chunkCollections);
+
+    if(this.onReadyCallback){
+      this.onReadyCallback();
+    }
+
   }
 
 
@@ -534,6 +602,32 @@ class LevelManager{
       this._workingDir));
   }
 
+
+  /**
+  * Change the level of resolution. Boundaries and "integrity" are checked.
+  * @param {Number}
+  */
+  setResolutionLevel(lvl){
+    // TODO: here, we may want to trigger some garbage collecting work over the
+    // chunks that belongs to the previous lvl.
+
+    // make sure we dont have a float here!
+    var intergerLvl = Math.round(lvl);
+
+    // boundaries to the level
+    if(intergerLvl >= 0 && intergerLvl < this._chunkCollections.length){
+      this._resolutionLevel = intergerLvl;
+    }
+
+  }
+
+
+  get8ClosestTextureData(position){
+    var the8ClosestTextureData = this._chunkCollections[this._resolutionLevel]
+              .get8ClosestTextureData(position);
+
+    console.log(the8ClosestTextureData);
+  }
 
 } /* END CLASS LevelManager */
 

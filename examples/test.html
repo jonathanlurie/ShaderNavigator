@@ -30,6 +30,14 @@
     var lvlMgr = new SHAD.LevelManager();
     lvlMgr.loadConfig("../data/info.json");
 
+
+    lvlMgr.onReady(function(){
+      lvlMgr.setResolutionLevel(6);
+      lvlMgr.get8ClosestTextureData( [1.1, 0.8, 1.] );
+      //lvlMgr.get8ClosestTextureData( [0.6, 1.7, 0.1] );
+    })
+
+
   </script>
 
 </body>

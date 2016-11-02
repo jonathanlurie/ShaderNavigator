@@ -19,6 +19,20 @@ class LevelManager{
 
     /** the directory containing the config file (JSON) and the resolution level folders */
     this._workingDir = "";
+
+    /** The level of resolution, defines which octree to dig into. Is a positive integer.  */
+    this._resolutionLevel = 0;
+
+    this.onReadyCallback = null;
+  }
+
+
+  /**
+  * For testing purpose, this is a callback that will be called when the config
+  * file will be loaded.
+  */
+  onReady(cb){
+    this.onReadyCallback = cb;
   }
 
 
@@ -77,6 +91,11 @@ class LevelManager{
     });
 
     console.log(this._chunkCollections);
+
+    if(this.onReadyCallback){
+      this.onReadyCallback();
+    }
+
   }
 
 
@@ -103,6 +122,32 @@ class LevelManager{
       this._workingDir));
   }
 
+
+  /**
+  * Change the level of resolution. Boundaries and "integrity" are checked.
+  * @param {Number}
+  */
+  setResolutionLevel(lvl){
+    // TODO: here, we may want to trigger some garbage collecting work over the
+    // chunks that belongs to the previous lvl.
+
+    // make sure we dont have a float here!
+    var intergerLvl = Math.round(lvl) ;
+
+    // boundaries to the level
+    if(intergerLvl >= 0 && intergerLvl < this._chunkCollections.length){
+      this._resolutionLevel = intergerLvl;
+    }
+
+  }
+
+
+  get8ClosestTextureData(position){
+    var the8ClosestTextureData = this._chunkCollections[this._resolutionLevel]
+              .get8ClosestTextureData(position);
+
+    console.log(the8ClosestTextureData);
+  }
 
 } /* END CLASS LevelManager */
 

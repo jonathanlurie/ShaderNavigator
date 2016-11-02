@@ -43,6 +43,9 @@ class TextureChunk{
 
     /** True only if totally build, with index and world coordinates origin */
     this._isBuilt = false;
+
+    /** in case the texture file was unable to load, this flag goes true */
+    this._textureLoadingError = false;
   }
 
 
@@ -71,6 +74,10 @@ class TextureChunk{
     * Origin of the chunk in world cooridnates. Is a [x, y, z] Array.
     * Is computed from the sizeWC and the index3D
     */
+
+
+
+
     this._originWC =[
       this._index3D[0] * this._sizeWC * (-1),
       this._index3D[1] * this._sizeWC * (-1),
@@ -89,10 +96,18 @@ class TextureChunk{
     let axialRangeStart   = this._index3D[2] * this._voxelPerSide;
 
     /** Texture file, build from its index3D and resolutionLevel */
-    this._file =  this._workingDir + "/" + this._resolutionLevel + "/" +
+    this._filepath =  this._workingDir + "/" + this._resolutionLevel + "/" +
                   sagitalRangeStart + "-" + (sagitalRangeStart + this._voxelPerSide) + "/" +
                   coronalRangeStart + "-" + (coronalRangeStart + this._voxelPerSide) + "/" +
                   axialRangeStart   + "-" + (axialRangeStart + this._voxelPerSide);
+
+    /*
+    console.log(this._filepath);
+    console.log("_index3D");
+    console.log(this._index3D);
+    console.log("_sizeWC");
+    console.log(this._sizeWC);
+    */
   }
 
 
@@ -100,7 +115,20 @@ class TextureChunk{
   * [PRIVATE] Loads the actual image file as a THREE js texture.
   */
   _loadTexture(){
-    this._threeJsTexture = new THREE.TextureLoader().load(this._file);
+    var that = this;
+
+    this._threeJsTexture = new THREE.TextureLoader().load(
+      this._filepath, // url
+      function(){}, // on load
+      function(){}, // on progress
+
+      function(){ // on error
+        //console.error("ERROR TEXTURE " + that._filepath);
+        that._threeJsTexture = null;
+        that._textureLoadingError = true;
+      }
+    );
+
   }
 
 
@@ -114,10 +142,25 @@ class TextureChunk{
     return {
       texture: this._threeJsTexture,
       origin: this._originWC,
-      valid: true
+      valid: !this._textureLoadingError
     }
   }
 
+
+  /**
+  * @return {String} the current texture filepath to load.
+  */
+  getTextureFilepath(){
+    return this._filepath;
+  }
+
+
+  /**
+  * Return true if the chunk was not able to load its texture.
+  */
+  loadingError(){
+    return this._textureLoadingError;
+  }
 
 }
 
