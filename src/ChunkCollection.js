@@ -9,7 +9,7 @@ import { TextureChunk } from './TextureChunk.js';
 /**
 * The Chunk Collection is the container for all the chunks at a given resolution level.
 * The resolutionLevel goes from 0 to 6, 0 being the poorer and 6 the sharper.
-*
+* ChunkCollection should not be asked anything directly, {@link LevelManager} should be the interface for that.
 */
 class ChunkCollection{
 
@@ -17,12 +17,16 @@ class ChunkCollection{
   * Constructor
   * @param {number} resolutionLevel - The level of resolution, the lower the level, the lower the resolution. Level n has a metric resolution per voxel twice lower/poorer than level n+1, as a result, level n has 8 time less chunks than level n+1, remember we are in 3D!.
   * @param {Array} matrix3DSize - Number of chunks in each dimension [x, y, z] that are supposedly available.
+  * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder
   */
-  constructor(resolutionLevel, matrix3DSize){
+  constructor(resolutionLevel, matrix3DSize, workingDir){
     /**
     * The chunks of the same level. A map is used instead of an array because the chunks are loaded as they need to display, so we prefer to use an key (string built from the index3D) rather than a 1D array index.
     */
     this._chunks = {};
+
+    /** The folder containing the config file (JSON) and the resolution level folder */
+    this._workingDir = workingDir;
 
     /** Number of chunks in each dimension [x, y, z] that are supposedly available. */
     this._matrix3DSize = matrix3DSize;
@@ -56,7 +60,8 @@ class ChunkCollection{
     this._chunks[k] = new TextureChunk(
       this._resolutionLevel,
       this._voxelPerSide,
-      this._sizeChunkWC
+      this._sizeChunkWC,
+      this._workingDir
     );
 
     // build it properly
@@ -271,19 +276,14 @@ class ChunkCollection{
   */
   get8ClosestTextureData(position){
     var the8closestIndexes = this._get8ClosestToPositions(position);
-
     var validChunksCounter = 0;
-
     var validChunksTexture = [];
     var notValidChunksTexture = [];
     var validChunksOrigin = [];
     var notValidChunksOrigin = [];
-
     var that = this;
 
-
     the8closestIndexes.forEach(function(elem){
-
       var aTextureData = that.getTextureAtIndex3D(elem);
 
       // this texture data is valid
@@ -302,11 +302,10 @@ class ChunkCollection{
     validChunksCounter = validChunksTexture.length;
 
     return {
-      validChunksTexture.concat( notValidChunksTexture ),
-      validChunksOrigin.concat( notValidChunksOrigin ),
-      validChunksCounter
-    }
-
+      textures: validChunksTexture.concat( notValidChunksTexture ),
+      origins: validChunksOrigin.concat( notValidChunksOrigin ),
+      nbValid: validChunksCounter
+    };
   }
 
 

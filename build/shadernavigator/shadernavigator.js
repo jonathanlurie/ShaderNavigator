@@ -14,7 +14,7 @@
 */
 
 /**
-* Represent a cubic chunk of texture. Should be part of a {@link ChunkCollection}.
+* Represent a cubic chunk of texture. Should be part of a {@link LevelManager}.
 */
 class TextureChunk{
 
@@ -22,12 +22,16 @@ class TextureChunk{
   * Initialize a TextureChunk object, but still, buildFromIndex3D() or buildFromWorldPosition() needs to be called to properly position the chunk in world coord.
   *
   * @param {number} resolutionLevel - The level of resolution, the lower the level, the lower the resolution. Level n has a metric resolution per voxel twice lower/poorer than level n+1, as a result, level n has 8 time less chunks than level n+1, remember we are in 3D!.
-  *
+  * @param {Number} voxelPerSide - Number of pixel/voxel per side of the chunk, most likely 64.
+  * @param {Number} sizeWC - Size of the chunk in world coordinates. Most likely 1/2^resolutionLevel.
+  * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder.
   */
-  constructor(resolutionLevel, voxelPerSide, sizeWC){
+  constructor(resolutionLevel, voxelPerSide, sizeWC, workingDir){
 
     /** Number of voxel per side of the chunk (suposedly cube shaped). Used as a constant.*/
     this._voxelPerSide = voxelPerSide;//64;
+
+    this._workingDir = workingDir;
 
     /**
     * The level of resolution, the lower the level, the lower the resolution. Level n has a metric resolution per voxel twice lower/poorer than level n+1, as a result, level n has 8 time less chunks than level n+1 (remember we are in 3D!).
@@ -88,7 +92,7 @@ class TextureChunk{
     let axialRangeStart   = this._index3D[2] * this._voxelPerSide;
 
     /** Texture file, build from its index3D and resolutionLevel */
-    this._file =  this._resolutionLevel + "/" +
+    this._file =  this._workingDir + "/" + this._resolutionLevel + "/" +
                   sagitalRangeStart + "-" + (sagitalRangeStart + this._voxelPerSide) + "/" +
                   coronalRangeStart + "-" + (coronalRangeStart + this._voxelPerSide) + "/" +
                   axialRangeStart   + "-" + (axialRangeStart + this._voxelPerSide);
@@ -101,6 +105,7 @@ class TextureChunk{
   _loadTexture(){
     this._threeJsTexture = new THREE.TextureLoader().load(this._file);
   }
+
 
 
   /**
@@ -126,7 +131,7 @@ class TextureChunk{
 /**
 * The Chunk Collection is the container for all the chunks at a given resolution level.
 * The resolutionLevel goes from 0 to 6, 0 being the poorer and 6 the sharper.
-*
+* ChunkCollection should not be asked anything directly, {@link LevelManager} should be the interface for that.
 */
 class ChunkCollection{
 
@@ -134,12 +139,16 @@ class ChunkCollection{
   * Constructor
   * @param {number} resolutionLevel - The level of resolution, the lower the level, the lower the resolution. Level n has a metric resolution per voxel twice lower/poorer than level n+1, as a result, level n has 8 time less chunks than level n+1, remember we are in 3D!.
   * @param {Array} matrix3DSize - Number of chunks in each dimension [x, y, z] that are supposedly available.
+  * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder
   */
-  constructor(resolutionLevel, matrix3DSize){
+  constructor(resolutionLevel, matrix3DSize, workingDir){
     /**
     * The chunks of the same level. A map is used instead of an array because the chunks are loaded as they need to display, so we prefer to use an key (string built from the index3D) rather than a 1D array index.
     */
     this._chunks = {};
+
+    /** The folder containing the config file (JSON) and the resolution level folder */
+    this._workingDir = workingDir;
 
     /** Number of chunks in each dimension [x, y, z] that are supposedly available. */
     this._matrix3DSize = matrix3DSize;
@@ -173,7 +182,8 @@ class ChunkCollection{
     this._chunks[k] = new TextureChunk(
       this._resolutionLevel,
       this._voxelPerSide,
-      this._sizeChunkWC
+      this._sizeChunkWC,
+      this._workingDir
     );
 
     // build it properly
@@ -388,35 +398,144 @@ class ChunkCollection{
   */
   get8ClosestTextureData(position){
     var the8closestIndexes = this._get8ClosestToPositions(position);
-
     var validChunksCounter = 0;
-
     var validChunksTexture = [];
     var notValidChunksTexture = [];
     var validChunksOrigin = [];
     var notValidChunksOrigin = [];
-
     var that = this;
 
-
     the8closestIndexes.forEach(function(elem){
-
       var aTextureData = that.getTextureAtIndex3D(elem);
 
       // this texture data is valid
       if(aTextureData.valid){
-
+        validChunksTexture.push( aTextureData.texture );
+        validChunksOrigin.push( aTextureData.origin );
       }
       // is not valid
       else{
-
+        notValidChunksTexture.push( aTextureData.texture );
+        notValidChunksOrigin.push( aTextureData.origin );
       }
 
     });
 
+    validChunksCounter = validChunksTexture.length;
+
+    return {
+      textures: validChunksTexture.concat( notValidChunksTexture ),
+      origins: validChunksOrigin.concat( notValidChunksOrigin ),
+      nbValid: validChunksCounter
+    };
   }
 
-}
+
+} /* END CLASS ChunkCollection */
+
+/**
+* The LevelManager is above the {@link ChunkCollection} and contain them all, one for each resolution level. LevelManager also acts like an interface to query chunk data.
+*/
+class LevelManager{
+
+  /**
+  *
+  */
+  constructor(){
+
+    /**
+    * The array of ChunkCollection instances, one per resolution level.
+    */
+    this._chunkCollections = [];
+
+    /** the directory containing the config file (JSON) and the resolution level folders */
+    this._workingDir = "";
+  }
+
+
+  /**
+  * Load the json config file with an XMLHttpRequest.
+  * @param {String} filepath - A valid path to a valid JSON config file.
+  */
+  loadConfig(filepath){
+    var that = this;
+
+    var xobj = new XMLHttpRequest();
+    xobj.overrideMimeType("application/json");
+    xobj.open('GET', filepath, true);
+    xobj.onreadystatechange = function () {
+      if (xobj.readyState == 4 && xobj.status == "200") {
+
+        // the directory of the config file is the working directory
+        that._workingDir = filepath.substring(0, Math.max(filepath.lastIndexOf("/"), filepath.lastIndexOf("\\")));
+
+        // Rading the config object
+        that._loadConfigDescription(JSON.parse(xobj.responseText));
+      }
+    };
+    xobj.send(null);
+
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Load the config description object, sort its multiple resolution levels
+  * so that the poorer goes first and the finer goes last. Then, for each level
+  * calls _addChunkCollectionLevel().
+  * @param {Object} description - parsed from the JSON decription file.
+  */
+  _loadConfigDescription(description){
+    var that = this;
+
+    var levels = description.scales;
+
+    // the description may contain more than one level (= multirez),
+    // if so, we sort by resolution so that 0 is the poorest and n is the finest
+    if(levels.length > 0){
+      levels.sort(function(a,b) {
+        if (a.resolution[0] > b.resolution[0]){
+          return -1;
+        }else {
+            return 1;
+        }
+      });
+    }
+
+    levels.forEach(function(elem, index){
+      that._addChunkCollectionLevel(index, elem.size);
+
+    });
+
+    console.log(this._chunkCollections);
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Adds a ChunkCollection instance to this._chunkCollections, corresponding to
+  * the resolution level in argument.
+  * @param {Number} resolutionLevel - positive integer (or zero)
+  * @param {Array} voxelSize - Entire number of voxel to form the whole 3D dataset at this level of resolution. This will be translated into the size of the 3D matrix of chunk (basically divided by 64 and rounded to ceil).
+  */
+  _addChunkCollectionLevel(resolutionLevel, voxelSize){
+    // translating voxelSize into matrix3DSize
+    // aka number of chunks (64x64x64) in each dimension
+    var matrix3DSize = [
+      Math.ceil( voxelSize[0] / 64 ),
+      Math.ceil( voxelSize[1] / 64 ),
+      Math.ceil( voxelSize[2] / 64 )
+    ];
+
+    // creating a new chunk collection for this specific level
+    this._chunkCollections.push( new ChunkCollection(
+      resolutionLevel,
+      matrix3DSize,
+      this._workingDir));
+  }
+
+
+} /* END CLASS LevelManager */
 
 // if we wanted to use foo here:
 //import foo from './foo.js';
@@ -425,10 +544,12 @@ class ChunkCollection{
 // but we just want to make it accessible:
 //export { Foo } from './Foo.js';
 
+
 //export { ShaderImporter } from './ShaderImporter.js';
 
 exports.TextureChunk = TextureChunk;
 exports.ChunkCollection = ChunkCollection;
+exports.LevelManager = LevelManager;
 
 Object.defineProperty(exports, '__esModule', { value: true });
 

@@ -239,9 +239,54 @@
                       </a></li>
                       
                       <li><a
-                        href='#ChunkCollection#_get8ClosestsToPosition'
+                        href='#ChunkCollection#_get8ClosestToPositions'
                         class='regular pre-open'>
-                        #_get8ClosestsToPosition
+                        #_get8ClosestToPositions
+                      </a></li>
+                      
+                      <li><a
+                        href='#ChunkCollection#get8ClosestTextureData'
+                        class='regular pre-open'>
+                        #get8ClosestTextureData
+                      </a></li>
+                      
+                    </ul>
+                  
+                  
+                </div>
+                
+                </li>
+              
+                
+                <li><a
+                  href='#levelmanager'
+                  class=" toggle-sibling">
+                  LevelManager
+                  <span class='icon'>▸</span>
+                </a>
+                
+                <div class='toggle-target display-none'>
+                  
+                  
+                    <ul class='list-reset py1-ul pl1'>
+                      <li class='h5'><span>Instance members</span></li>
+                      
+                      <li><a
+                        href='#LevelManager#constructor'
+                        class='regular pre-open'>
+                        #constructor
+                      </a></li>
+                      
+                      <li><a
+                        href='#LevelManager#_chunkCollections'
+                        class='regular pre-open'>
+                        #_chunkCollections
+                      </a></li>
+                      
+                      <li><a
+                        href='#LevelManager#loadConfig'
+                        class='regular pre-open'>
+                        #loadConfig
                       </a></li>
                       
                     </ul>
@@ -272,7 +317,7 @@
   </div>
   
 
-  <p>Represent a cubic chunk of texture. Should be part of a <a href="#chunkcollection">ChunkCollection</a>.</p>
+  <p>Represent a cubic chunk of texture. Should be part of a <a href="#levelmanager">LevelManager</a>.</p>
 
 
   <div class='pre p1 fill-light mt0'>new TextureChunk()</div>
@@ -1008,7 +1053,8 @@ and a boolean specifying the validity.</p>
   
 
   <p>The Chunk Collection is the container for all the chunks at a given resolution level.
-The resolutionLevel goes from 0 to 6, 0 being the poorer and 6 the sharper.</p>
+The resolutionLevel goes from 0 to 6, 0 being the poorer and 6 the sharper.
+ChunkCollection should not be asked anything directly, <a href="#levelmanager">LevelManager</a> should be the interface for that.</p>
 
 
   <div class='pre p1 fill-light mt0'>new ChunkCollection()</div>
@@ -1722,7 +1768,8 @@ x, y, z
 
   
 
-  <p>return the chunk at index3D if it was initialized. Return null if not yet created.</p>
+  <p>[PRIVATE]
+return the chunk at index3D if it was initialized. Return null if not yet created.</p>
 
 
   <div class='pre p1 fill-light mt0'>_getChunkIfInCollection(index3D: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></div>
@@ -1924,7 +1971,8 @@ x, y, z
 
   
 
-  <p>Creates a fake texture of size 1 to send to the shader in case we are
+  <p>[PRIVATE]
+Creates a fake texture of size 1 to send to the shader in case we are
 out of bound or to complete the Sampler2D array for the fragment shader.</p>
 
 
@@ -1958,11 +2006,11 @@ out of bound or to complete the Sampler2D array for the fragment shader.</p>
       </div>
     </div>
   
-    <div class='border-bottom' id='ChunkCollection#_get8ClosestsToPosition'>
+    <div class='border-bottom' id='ChunkCollection#_get8ClosestToPositions'>
       <div class="clearfix small pointer toggle-sibling">
         <div class="py1 contain">
             <a class='icon pin-right py1 dark-link caret-right'>▸</a>
-            <span class='code strong strong truncate'>_get8ClosestsToPosition(position)</span>
+            <span class='code strong strong truncate'>_get8ClosestToPositions(position)</span>
         </div>
       </div>
       <div class="clearfix display-none toggle-target">
@@ -1974,7 +2022,7 @@ out of bound or to complete the Sampler2D array for the fragment shader.</p>
 (because we send 8 Sampler2D to the fragment shader)</p>
 
 
-  <div class='pre p1 fill-light mt0'>_get8ClosestsToPosition(position: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a></div>
+  <div class='pre p1 fill-light mt0'>_get8ClosestToPositions(position: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a></div>
 
   
 
@@ -2013,6 +2061,268 @@ x, y, z
 
       
     
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='ChunkCollection#get8ClosestTextureData'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>get8ClosestTextureData(position)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>return the 8 texture data for the 8 closest chunks to the given position.
+The texture data are ordered so that if some are invalid (out of bound, fake texture) they will be placed in the end of the array.</p>
+
+
+  <div class='pre p1 fill-light mt0'>get8ClosestTextureData(position: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>): <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></div>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>position</span> <code class='quiet'>(<a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array">Array</a>)</code> An arbitrary position in world coordinates.
+
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
+  
+    
+      <div class='py1 quiet mt1 prose-big'>Returns</div>
+      <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object">object</a></code>:
+        the object contains 1 array of textures, one array of chunks origins and one integer to inform how many of these textures are valid. This may seem a strange data structure but it's the closest from what can take the fragment shader and will require no further work. Remember we are potentially speaking of thousands of chunks being loaded!
+
+      
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+</div>
+
+  
+
+  
+</section>
+
+          
+        
+          
+            <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+  <div class='clearfix'>
+    <h3 class='fl m0' id='levelmanager'>
+      LevelManager
+    </h3>
+    
+  </div>
+  
+
+  <p>The LevelManager is above the <a href="#chunkcollection">ChunkCollection</a> and contain them all, one for each resolution level. LevelManager also acts like an interface to query chunk data.</p>
+
+
+  <div class='pre p1 fill-light mt0'>new LevelManager()</div>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Instance Members</div>
+    <div class="clearfix">
+  
+    <div class='border-bottom' id='LevelManager#constructor'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>constructor()</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>constructor()</div>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='LevelManager#_chunkCollections'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>_chunkCollections</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  <p>The array of ChunkCollection instances, one per resolution level.</p>
+
+
+  <div class='pre p1 fill-light mt0'>_chunkCollections</div>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+</section>
+
+      </div>
+    </div>
+  
+    <div class='border-bottom' id='LevelManager#loadConfig'>
+      <div class="clearfix small pointer toggle-sibling">
+        <div class="py1 contain">
+            <a class='icon pin-right py1 dark-link caret-right'>▸</a>
+            <span class='code strong strong truncate'>loadConfig(filepath)</span>
+        </div>
+      </div>
+      <div class="clearfix display-none toggle-target">
+        <section class='p2 mb2 clearfix bg-white minishadow'>
+
+  
+
+  
+
+  <div class='pre p1 fill-light mt0'>loadConfig(filepath: any)</div>
+
+  
+
+  
+  
+  
+  
+  
+
+  
+    <div class='py1 quiet mt1 prose-big'>Parameters</div>
+    <div class='prose'>
+      
+        <div class='space-bottom0'>
+          <div>
+            <span class='code bold'>filepath</span> <code class='quiet'>(any)</code> 
+          </div>
+          
+        </div>
+      
+    </div>
+  
+
+  
+
   
 
   

@@ -6,4 +6,6 @@
 //export { Foo } from './Foo.js';
 export { TextureChunk } from './TextureChunk.js';
 export { ChunkCollection } from './ChunkCollection.js';
+export { LevelManager } from './LevelManager.js';
+
 //export { ShaderImporter } from './ShaderImporter.js';

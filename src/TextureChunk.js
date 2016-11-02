@@ -11,7 +11,7 @@
 */
 
 /**
-* Represent a cubic chunk of texture. Should be part of a {@link ChunkCollection}.
+* Represent a cubic chunk of texture. Should be part of a {@link LevelManager}.
 */
 class TextureChunk{
 
@@ -19,12 +19,16 @@ class TextureChunk{
   * Initialize a TextureChunk object, but still, buildFromIndex3D() or buildFromWorldPosition() needs to be called to properly position the chunk in world coord.
   *
   * @param {number} resolutionLevel - The level of resolution, the lower the level, the lower the resolution. Level n has a metric resolution per voxel twice lower/poorer than level n+1, as a result, level n has 8 time less chunks than level n+1, remember we are in 3D!.
-  *
+  * @param {Number} voxelPerSide - Number of pixel/voxel per side of the chunk, most likely 64.
+  * @param {Number} sizeWC - Size of the chunk in world coordinates. Most likely 1/2^resolutionLevel.
+  * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder.
   */
-  constructor(resolutionLevel, voxelPerSide, sizeWC){
+  constructor(resolutionLevel, voxelPerSide, sizeWC, workingDir){
 
     /** Number of voxel per side of the chunk (suposedly cube shaped). Used as a constant.*/
     this._voxelPerSide = voxelPerSide;//64;
+
+    this._workingDir = workingDir;
 
     /**
     * The level of resolution, the lower the level, the lower the resolution. Level n has a metric resolution per voxel twice lower/poorer than level n+1, as a result, level n has 8 time less chunks than level n+1 (remember we are in 3D!).
@@ -85,7 +89,7 @@ class TextureChunk{
     let axialRangeStart   = this._index3D[2] * this._voxelPerSide;
 
     /** Texture file, build from its index3D and resolutionLevel */
-    this._file =  this._resolutionLevel + "/" +
+    this._file =  this._workingDir + "/" + this._resolutionLevel + "/" +
                   sagitalRangeStart + "-" + (sagitalRangeStart + this._voxelPerSide) + "/" +
                   coronalRangeStart + "-" + (coronalRangeStart + this._voxelPerSide) + "/" +
                   axialRangeStart   + "-" + (axialRangeStart + this._voxelPerSide);
@@ -98,6 +102,7 @@ class TextureChunk{
   _loadTexture(){
     this._threeJsTexture = new THREE.TextureLoader().load(this._file);
   }
+
 
 
   /**
