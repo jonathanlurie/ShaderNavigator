@@ -46,12 +46,13 @@
 
 			var container, stats;
 
-			var views, scene, renderer, meshContainer;
+			var views, scene, renderer, planeContainer;
 
 			var mouseX = 0, mouseY = 0;
 
 			var windowWidth, windowHeight;
-
+      var orthographicCameraFovFactor = 500;
+      var orthographicCam = new THREE.OrthographicCamera( window.innerWidth / - orthographicCameraFovFactor, window.innerWidth / orthographicCameraFovFactor, window.innerHeight / orthographicCameraFovFactor, window.innerHeight / - orthographicCameraFovFactor, 0.1, 1000 );
 
       var guiVar = {
         posx: 0,
@@ -60,6 +61,7 @@
         rotx: 0,
         roty: 0,
         rotz: 0,
+        zoom: 1,
         debug: function(){
           var aPlane = masterPlane.children[0];
           console.log(aPlane);
@@ -77,6 +79,8 @@
       gui.add(guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01);
       gui.add(guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01);
       gui.add(guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01);
+
+      gui.add(guiVar, 'zoom', 0.1, 5).name("zoom").step(0.01);
 
 
       var cameraSpec = {
@@ -101,19 +105,14 @@
 					width: 0.5,
 					height: 0.5,
 					background: new THREE.Color().setRGB( 0.8, 0.8, 0.8 ),
-					eye: [ 1, 0, 0 ],
+					eye: [ 100, 0, 0 ],
 					up: [ 0, 1, 0 ],
 					fov: 1,
           control: null,
-          camera: new THREE.OrthographicCamera( window.innerWidth / - 200, window.innerWidth / 200, window.innerHeight / 200, window.innerHeight / - 200, 0.1, 1000 ),
+          camera: orthographicCam.clone(),
 
 					updateCamera: function ( camera, scene, mouseX, mouseY ) {
-            /*
-					  camera.position.x += mouseX * 0.001;
-					  camera.position.x = Math.max( Math.min( camera.position.x, 20 ), -20 );
-					  //camera.lookAt( scene.position );
-            camera.lookAt( new THREE.Vector3(0, 0, 0) );
-            */
+
 					}
 				},
         {             /* TOP RIGHT */
@@ -122,17 +121,14 @@
 					width: 0.5,
 					height: 0.5,
 					background: new THREE.Color().setRGB( 0.9, 0.9, 0.9 ),
-					eye: [ 14, 8, 14 ],
-					up: [ 0, 1, 0 ],
-					fov: 60,
+					eye: [ 0, 100, 0 ],
+					up: [ 0, -1, 0 ],
+					fov: 1,
           control: null,
-          camera: new THREE.PerspectiveCamera( cameraSpec.fov, cameraSpec.aspect, cameraSpec.near, cameraSpec.far ),
+          camera: orthographicCam.clone(),
+
 					updateCamera: function ( camera, scene, mouseX, mouseY ) {
-            /*
-					  camera.position.y -= mouseX * 0.001;
-					  camera.position.y = Math.max( Math.min( camera.position.y, 16 ), -16 );
-					  camera.lookAt( scene.position );
-            */
+
 					}
 				},
         {             /* BOTTOM LEFT */
@@ -141,17 +137,14 @@
           width: 0.5,
           height: 0.5,
           background: new THREE.Color().setRGB( 0.9, 0.9, 0.9 ),
-          eye: [ 2, 1.2, 2 ],
-          up: [ 0, 1, 0 ],
+          eye: [ 0, 0, 100 ],
+          up: [ 1, 0, 0 ],
           fov: 60,
           control: null,
-          camera: new THREE.PerspectiveCamera( cameraSpec.fov, cameraSpec.aspect, cameraSpec.near, cameraSpec.far ),
+          camera: orthographicCam.clone(),
+
           updateCamera: function ( camera, scene, mouseX, mouseY ) {
-            /*
-            camera.position.y -= mouseX * 0.001;
-            camera.position.y = Math.max( Math.min( camera.position.y, 16 ), -16 );
-            camera.lookAt( scene.position );
-            */
+
           }
         },
         {             /* BOTTOM RIGHT */
@@ -160,7 +153,7 @@
 					width: 0.5,
 					height: 0.5,
 					background: new THREE.Color().setRGB( 0.8, 0.8, 0.8 ),
-					eye: [ 0, 6, 0 ],
+					eye: [ 5, 5, 5 ],
 					up: [ 0, 0, 1 ],
 					fov: 45,
           control: null,
@@ -214,16 +207,19 @@
 					camera.lookAt( origin );
 				}
 
+        // creating the orbit control, linked to the BOTTOM-LEFT view
         views[3].control = new THREE.OrbitControls(views[3].camera);
-
 
         var axisHelper = new THREE.AxisHelper( 1 );
         scene.add( axisHelper );
 
-
         // container of the cube (will contain the mini planes one day)
-        meshContainer = new THREE.Object3D();
+        planeContainer = new THREE.Object3D();
 
+        // the cameras are embeded in the planeContainer
+        planeContainer.add(views[0].camera);
+        planeContainer.add(views[1].camera);
+        planeContainer.add(views[2].camera);
 
         // adding the wire cube
         var chunkSize = 1;
@@ -249,9 +245,9 @@
 
         //var cube = new THREE.BoxHelper( cubeMesh );
         //cube.material.color.set( 0x000000 );
-        meshContainer.add(cubeMesh);
+        planeContainer.add(cubeMesh);
 
-        scene.add(meshContainer);
+        scene.add(planeContainer);
 
 
 
@@ -297,12 +293,12 @@
 
 				updateSize();
 
-        meshContainer.position.x = guiVar.posx;
-        meshContainer.position.y = guiVar.posy;
-        meshContainer.position.z = guiVar.posz;
-        meshContainer.rotation.x = guiVar.rotx;
-        meshContainer.rotation.y = guiVar.roty;
-        meshContainer.rotation.z = guiVar.rotz;
+        planeContainer.position.x = guiVar.posx;
+        planeContainer.position.y = guiVar.posy;
+        planeContainer.position.z = guiVar.posz;
+        planeContainer.rotation.x = guiVar.rotx;
+        planeContainer.rotation.y = guiVar.roty;
+        planeContainer.rotation.z = guiVar.rotz;
 
 				for ( var ii = 0; ii < views.length; ++ii ) {
 
@@ -325,6 +321,8 @@
 					camera.updateProjectionMatrix();
 
 					renderer.render( scene, camera );
+
+          camera.zoom = guiVar.zoom;
 				}
 
 			}
