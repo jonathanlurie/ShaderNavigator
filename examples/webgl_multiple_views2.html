@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - multiple views</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #000;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+
+				background-color: #fff;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+			}
+
+			a {
+
+				color: #0080ff;
+			}
+
+		</style>
+	</head>
+	<body>
+
+		<div id="container"></div>
+		<div id="info"><a href="http://threejs.org" target="_blank">three.js</a> - multiple views - webgl</div>
+
+		<script src="js/three.js"></script>
+    <script src="js/OrbitControls.js"></script>
+		<script src="js/Detector.js"></script>
+		<script src="js/stats.min.js"></script>
+    <script src="js/dat.gui.js"></script>
+
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+
+			var views, scene, renderer, meshContainer;
+
+			var mouseX = 0, mouseY = 0;
+
+			var windowWidth, windowHeight;
+
+
+      var guiVar = {
+        posx: 0,
+        posy: 0,
+        posz: 0,
+        rotx: 0,
+        roty: 0,
+        rotz: 0,
+        debug: function(){
+          var aPlane = masterPlane.children[0];
+          console.log(aPlane);
+          //console.log(aPlane.getWorldPosition());
+          //console.log(aPlane.getWorldDirection());
+          //console.log(aPlane.getWorldScale());
+        }
+      }
+
+      var gui = new dat.GUI();
+      gui.add(guiVar, 'posx', -5, 5).name("position x").step(0.001);
+      gui.add(guiVar, 'posy', -5, 5).name("position y").step(0.001);
+      gui.add(guiVar, 'posz', -5, 5).name("position z").step(0.001);
+
+      gui.add(guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01);
+      gui.add(guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01);
+      gui.add(guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01);
+
+
+      var cameraSpec = {
+        aspect: window.innerWidth / window.innerHeight,
+        fov: 30,
+        near: 0.1,
+        far: 1000
+      }
+
+      var cameras = [
+
+        new THREE.PerspectiveCamera( cameraSpec.fov, cameraSpec.aspect, cameraSpec.near, cameraSpec.far ),
+        new THREE.PerspectiveCamera( cameraSpec.fov, cameraSpec.aspect, cameraSpec.near, cameraSpec.far ),
+        new THREE.PerspectiveCamera( cameraSpec.fov, cameraSpec.aspect, cameraSpec.near, cameraSpec.far )
+      ]
+
+
+			var views = [
+				{             /* TOP LEFT */
+					left: 0.0,
+					bottom: 0.5,
+					width: 0.5,
+					height: 0.5,
+					background: new THREE.Color().setRGB( 0.8, 0.8, 0.8 ),
+					eye: [ 1, 0, 0 ],
+					up: [ 0, 1, 0 ],
+					fov: 1,
+          control: null,
+          camera: new THREE.OrthographicCamera( window.innerWidth / - 200, window.innerWidth / 200, window.innerHeight / 200, window.innerHeight / - 200, 0.1, 1000 ),
+
+					updateCamera: function ( camera, scene, mouseX, mouseY ) {
+            /*
+					  camera.position.x += mouseX * 0.001;
+					  camera.position.x = Math.max( Math.min( camera.position.x, 20 ), -20 );
+					  //camera.lookAt( scene.position );
+            camera.lookAt( new THREE.Vector3(0, 0, 0) );
+            */
+					}
+				},
+        {             /* TOP RIGHT */
+					left: 0.5,
+					bottom: 0.5,
+					width: 0.5,
+					height: 0.5,
+					background: new THREE.Color().setRGB( 0.9, 0.9, 0.9 ),
+					eye: [ 14, 8, 14 ],
+					up: [ 0, 1, 0 ],
+					fov: 60,
+          control: null,
+          camera: new THREE.PerspectiveCamera( cameraSpec.fov, cameraSpec.aspect, cameraSpec.near, cameraSpec.far ),
+					updateCamera: function ( camera, scene, mouseX, mouseY ) {
+            /*
+					  camera.position.y -= mouseX * 0.001;
+					  camera.position.y = Math.max( Math.min( camera.position.y, 16 ), -16 );
+					  camera.lookAt( scene.position );
+            */
+					}
+				},
+        {             /* BOTTOM LEFT */
+          left: 0.0,
+          bottom: 0.0,
+          width: 0.5,
+          height: 0.5,
+          background: new THREE.Color().setRGB( 0.9, 0.9, 0.9 ),
+          eye: [ 2, 1.2, 2 ],
+          up: [ 0, 1, 0 ],
+          fov: 60,
+          control: null,
+          camera: new THREE.PerspectiveCamera( cameraSpec.fov, cameraSpec.aspect, cameraSpec.near, cameraSpec.far ),
+          updateCamera: function ( camera, scene, mouseX, mouseY ) {
+            /*
+            camera.position.y -= mouseX * 0.001;
+            camera.position.y = Math.max( Math.min( camera.position.y, 16 ), -16 );
+            camera.lookAt( scene.position );
+            */
+          }
+        },
+        {             /* BOTTOM RIGHT */
+					left: 0.5,
+					bottom: 0,
+					width: 0.5,
+					height: 0.5,
+					background: new THREE.Color().setRGB( 0.8, 0.8, 0.8 ),
+					eye: [ 0, 6, 0 ],
+					up: [ 0, 0, 1 ],
+					fov: 45,
+          control: null,
+          camera: new THREE.PerspectiveCamera( cameraSpec.fov, cameraSpec.aspect, cameraSpec.near, cameraSpec.far ),
+					updateCamera: function ( camera, scene, mouseX, mouseY ) {
+
+            if( mouseX >= this.left && mouseX <= (this.left + this.width) &&
+                mouseY >= this.bottom && mouseY <= (this.bottom + this.height)){
+              // just entered
+              if(! this.mouseIn){
+                this.mouseIn = true;
+                this.control.enabled = true;
+                console.log("ENTER");
+              }
+            }else{
+              // just left
+              if(this.mouseIn){
+                this.mouseIn = false;
+                this.control.enabled = false;
+                console.log("LEAVE");
+              }
+            }
+					} /* END updateCamera */
+
+				}
+			];
+
+			init();
+			animate();
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+        scene = new THREE.Scene();
+
+        var origin = new THREE.Vector3(0, 0, 0);
+
+				for (var ii = 0; ii < views.length; ++ii ) {
+
+					var view = views[ii];
+					camera = view.camera;
+          //camera = new THREE.OrthographicCamera(view.fov, window.innerWidth / window.innerHeight, 1, 10000  );
+          //view.control = new THREE.OrbitControls(camera);
+					camera.position.x = view.eye[ 0 ];
+					camera.position.y = view.eye[ 1 ];
+					camera.position.z = view.eye[ 2 ];
+					camera.up.x = view.up[ 0 ];
+					camera.up.y = view.up[ 1 ];
+					camera.up.z = view.up[ 2 ];
+          camera.fov = view.fov;
+					camera.lookAt( origin );
+				}
+
+        views[3].control = new THREE.OrbitControls(views[3].camera);
+
+
+        var axisHelper = new THREE.AxisHelper( 1 );
+        scene.add( axisHelper );
+
+
+        // container of the cube (will contain the mini planes one day)
+        meshContainer = new THREE.Object3D();
+
+
+        // adding the wire cube
+        var chunkSize = 1;
+        var cubeGeometry = new THREE.BoxGeometry( chunkSize, chunkSize, chunkSize );
+        var cubeMaterial = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          vertexColors: THREE.FaceColors
+          }
+        );
+        var cubeMesh = new THREE.Mesh( cubeGeometry, cubeMaterial );
+        cubeGeometry.faces[0].color.setHex( 0x000000 );
+        cubeGeometry.faces[1].color.setHex( 0x000000 );
+        cubeGeometry.faces[2].color.setHex( 0x0000ff );
+        cubeGeometry.faces[3].color.setHex( 0x0000ff );
+        cubeGeometry.faces[4].color.setHex( 0x00ff00 );
+        cubeGeometry.faces[5].color.setHex( 0x00ff00 );
+        cubeGeometry.faces[6].color.setHex( 0x00ffff );
+        cubeGeometry.faces[7].color.setHex( 0x00ffff );
+        cubeGeometry.faces[8].color.setHex( 0xff0000 );
+        cubeGeometry.faces[9].color.setHex( 0xff0000 );
+        cubeGeometry.faces[10].color.setHex( 0xff00ff );
+        cubeGeometry.faces[11].color.setHex( 0xff00ff );
+
+        //var cube = new THREE.BoxHelper( cubeMesh );
+        //cube.material.color.set( 0x000000 );
+        meshContainer.add(cubeMesh);
+
+        scene.add(meshContainer);
+
+
+
+
+
+
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+				stats = new Stats();
+				container.appendChild( stats.dom );
+				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+			}
+
+
+			function onDocumentMouseMove( event ) {
+        mouseX = (event.clientX / windowWidth);
+        mouseY = 1 - (event.clientY / windowHeight);
+			}
+
+
+			function updateSize() {
+				if ( windowWidth != window.innerWidth || windowHeight != window.innerHeight ) {
+					windowWidth  = window.innerWidth;
+					windowHeight = window.innerHeight;
+					renderer.setSize ( windowWidth, windowHeight );
+				}
+			}
+
+
+			function animate() {
+				render();
+				stats.update();
+				requestAnimationFrame( animate );
+			}
+
+
+			function render() {
+
+				updateSize();
+
+        meshContainer.position.x = guiVar.posx;
+        meshContainer.position.y = guiVar.posy;
+        meshContainer.position.z = guiVar.posz;
+        meshContainer.rotation.x = guiVar.rotx;
+        meshContainer.rotation.y = guiVar.roty;
+        meshContainer.rotation.z = guiVar.rotz;
+
+				for ( var ii = 0; ii < views.length; ++ii ) {
+
+					view = views[ii];
+					camera = view.camera;
+
+					view.updateCamera( camera, scene, mouseX, mouseY );
+
+					var left   = Math.floor( windowWidth  * view.left );
+					var bottom = Math.floor( windowHeight * view.bottom );
+					var width  = Math.floor( windowWidth  * view.width );
+					var height = Math.floor( windowHeight * view.height );
+
+					renderer.setViewport( left, bottom, width, height );
+					renderer.setScissor( left, bottom, width, height );
+					renderer.setScissorTest( true );
+					renderer.setClearColor( view.background );
+
+					camera.aspect = width / height;
+					camera.updateProjectionMatrix();
+
+					renderer.render( scene, camera );
+				}
+
+			}
+
+		</script>
+
+	</body>
+</html>

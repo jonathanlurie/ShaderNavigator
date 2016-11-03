@@ -227,6 +227,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	};
 
+
 	//
 	// internals
 	//
