@@ -7,5 +7,7 @@
 export { TextureChunk } from './TextureChunk.js';
 export { ChunkCollection } from './ChunkCollection.js';
 export { LevelManager } from './LevelManager.js';
+export { QuadScene } from './QuadScene.js';
+
 
 //export { ShaderImporter } from './ShaderImporter.js';

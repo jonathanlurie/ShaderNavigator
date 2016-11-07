@@ -23,7 +23,6 @@
 			}
 
 			a {
-
 				color: #0080ff;
 			}
 
@@ -51,6 +50,7 @@
 			var mouseX = 0, mouseY = 0;
 
 			var windowWidth, windowHeight;
+
       var orthographicCameraFovFactor = 500;
       var orthographicCam = new THREE.OrthographicCamera( window.innerWidth / - orthographicCameraFovFactor, window.innerWidth / orthographicCameraFovFactor, window.innerHeight / orthographicCameraFovFactor, window.innerHeight / - orthographicCameraFovFactor, 0.1, 1000 );
 
@@ -63,11 +63,7 @@
         rotz: 0,
         zoom: 1,
         debug: function(){
-          var aPlane = masterPlane.children[0];
-          console.log(aPlane);
-          //console.log(aPlane.getWorldPosition());
-          //console.log(aPlane.getWorldDirection());
-          //console.log(aPlane.getWorldScale());
+          console.log("DEBUG BUTTON");
         }
       }
 
@@ -75,27 +71,11 @@
       gui.add(guiVar, 'posx', -5, 5).name("position x").step(0.001);
       gui.add(guiVar, 'posy', -5, 5).name("position y").step(0.001);
       gui.add(guiVar, 'posz', -5, 5).name("position z").step(0.001);
-
       gui.add(guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01);
       gui.add(guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01);
       gui.add(guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01);
-
       gui.add(guiVar, 'zoom', 0.1, 5).name("zoom").step(0.01);
-
-
-      var cameraSpec = {
-        aspect: window.innerWidth / window.innerHeight,
-        fov: 30,
-        near: 0.1,
-        far: 1000
-      }
-
-      var cameras = [
-
-        new THREE.PerspectiveCamera( cameraSpec.fov, cameraSpec.aspect, cameraSpec.near, cameraSpec.far ),
-        new THREE.PerspectiveCamera( cameraSpec.fov, cameraSpec.aspect, cameraSpec.near, cameraSpec.far ),
-        new THREE.PerspectiveCamera( cameraSpec.fov, cameraSpec.aspect, cameraSpec.near, cameraSpec.far )
-      ]
+      gui.add(guiVar, 'debug');
 
 
 			var views = [
@@ -157,7 +137,12 @@
 					up: [ 0, 0, 1 ],
 					fov: 45,
           control: null,
-          camera: new THREE.PerspectiveCamera( cameraSpec.fov, cameraSpec.aspect, cameraSpec.near, cameraSpec.far ),
+          camera: new THREE.PerspectiveCamera(
+            30, // fov
+            window.innerWidth / window.innerHeight, // aspect
+            0.1, // near
+            1000 // far
+          ),
 					updateCamera: function ( camera, scene, mouseX, mouseY ) {
 
             if( mouseX >= this.left && mouseX <= (this.left + this.width) &&
