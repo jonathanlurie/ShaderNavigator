@@ -29,7 +29,7 @@ class QuadView{
     this._renderer = renderer;
     this._scene = scene;
 
-    // mouse coordinates, given by an higher object to preven recomputing for every view
+    // mouse coordinates, given by an higher object to prevent recomputing for every view
     this._mouse = {x:0, y:0};
 
     // keeps a track if the mouse pointer is within this view
@@ -44,6 +44,7 @@ class QuadView{
 
   /**
   * Define the point the camera is supposed to look at. By default, this is in world coordinates but if you place the current camera into an object, this will be in object-related coordinates.
+  * If unchanged, [0, 0, 0]
   * @param {Number} x - x from 3D world coordinates
   * @param {Number} y - y from 3D world coordinates
   * @param {Number} z - z from 3D world coordinates
@@ -99,7 +100,7 @@ class QuadView{
       up: [ 1, 0, 0 ]
     }
     this._viewName = "bottom_left";
-    this._backgroundColor = new THREE.Color().setRGB( 0.8, 0.8, 0.8 );
+    this._backgroundColor = new THREE.Color().setRGB( 0.9, 0.9, 0.9 );
   }
 
 
@@ -116,7 +117,7 @@ class QuadView{
       up: [ 0, 0, 1 ]
     }
     this._viewName = "bottom_right";
-    this._backgroundColor = new THREE.Color().setRGB( 0.9, 0.9, 0.9 );
+    this._backgroundColor = new THREE.Color().setRGB( 0.8, 0.8, 0.8 );
   }
 
 
@@ -134,6 +135,8 @@ class QuadView{
       this._near,
       this._far
     );
+
+    this._initCameraSettings();
   }
 
 
@@ -141,12 +144,14 @@ class QuadView{
   * Build a perspective camera for this view.
   */
   initPerspectiveCamera(){
-    this._camera = THREE.PerspectiveCamera(
+    this._camera = new THREE.PerspectiveCamera(
       this._defaultFov, // fov
       window.innerWidth / window.innerHeight, // aspect
       this._near, // near
       this._far // far
-    )
+    );
+
+    this._initCameraSettings();
   }
 
 
@@ -168,6 +173,7 @@ class QuadView{
 
   /**
   * Adds Orbit control on this view, but only if the pointer (mouse) is within the boundaries of this view.
+  * Should be called only after init a camera.
   */
   addOrbitControl(){
     this._control = new THREE.OrbitControls(this._camera);
@@ -200,7 +206,7 @@ class QuadView{
         // just entered
         if(! this._mouseInView){
           this._mouseInView = true;
-          this.control.enabled = true;
+          this._control.enabled = true;
           console.log("ENTER " + this._viewName);
         }
 
@@ -209,7 +215,7 @@ class QuadView{
         // just left
         if(this._mouseInView){
           this._mouseInView = false;
-          this.control.enabled = false;
+          this._control.enabled = false;
           console.log("LEAVE" + this._viewName);
         }
 
@@ -219,7 +225,7 @@ class QuadView{
 
 
   /*
-  * Change the background color for this view.
+  * Change the background color for this view. If unchanged, top_left and bottom_right are in a bit darker gray than the 2 others.
   * @param {THREE.Color} c - color
   */
   setBackgroundColor(c){
@@ -250,6 +256,17 @@ class QuadView{
 
     this._renderer.render( this._scene, this._camera );
   }
+
+
+  /**
+  *
+  */
+  useRelativeCoordinatesOf( object3D ){
+    // TODO: remove from an possibly existing parent first (if not scene)
+
+    object3D.add(this._camera);
+  }
+
 
 } /* END QuadView */
 

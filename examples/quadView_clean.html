@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - multiple views</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #000;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+
+				background-color: #fff;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+			}
+
+			a {
+				color: #0080ff;
+			}
+
+		</style>
+	</head>
+	<body>
+
+		<div id="container"></div>
+		<div id="info">A QuadScene test</div>
+
+		<script src="js/three.js"></script>
+    <script src="js/OrbitControls.js"></script>
+		<script src="js/Detector.js"></script>
+		<script src="js/stats.min.js"></script>
+    <script src="js/dat.gui.js"></script>
+
+    <!-- importing the automatically build module -->
+    <script src="../build/shadernavigator/shadernavigator.js"></script>
+
+		<script>
+    var quadScene = new SHAD.QuadScene( "container" );
+    quadScene.animate();
+    quadScene.addTestCube();
+
+		</script>
+
+	</body>
+</html>
