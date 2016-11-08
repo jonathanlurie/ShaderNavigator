@@ -113,8 +113,8 @@ class QuadView{
       bottom: 0,
       width: 0.5,
       height: 0.5,
-      position: [ this._objectSize, this._objectSize, this._objectSize ],
-      up: [ 0, 0, 1 ]
+      position: [ this._objectSize / -2, this._objectSize/2, this._objectSize ],
+      up: [ 0, 1, 0 ]
     }
     this._viewName = "bottom_right";
     this._backgroundColor = new THREE.Color().setRGB( 0.8, 0.8, 0.8 );

@@ -1,7 +1,7 @@
 (function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
-  typeof define === 'function' && define.amd ? define(['exports'], factory) :
-  (factory((global.SHAD = global.SHAD || {})));
+	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+	typeof define === 'function' && define.amd ? define(['exports'], factory) :
+	(factory((global.SHAD = global.SHAD || {})));
 }(this, (function (exports) { 'use strict';
 
 /*
@@ -200,7 +200,7 @@ class ChunkCollection{
     this._resolutionLevel = resolutionLevel;
 
     /** Word size of a chunk at level 0. Used as a constant. */
-    this._chunkSizeLvlZero = 1;
+    this._chunkSizeLvlZero = 1; // TODO: could also be 64 so that we kep the same dimensions in 3D than in 2D.
 
     /** Number of voxel per side of the chunk (suposedly cube shaped). Used as a constant.*/
     this._voxelPerSide = 64;
@@ -235,6 +235,13 @@ class ChunkCollection{
     return this._chunks[k];
   }
 
+
+  /**
+  * @return the size of chunks in world coord in this collection
+  */
+  getSizeChunkWc(){
+    return this._sizeChunkWC;
+  }
 
   /**
   * Get a chunk at a given position, not necessary the origin
@@ -280,6 +287,8 @@ class ChunkCollection{
   * Get the index3D from a arbitrary world position.
   * @param {Array} position - [x, y, z] arbitrary position.
   * @return {Array} the index3D, made of integer.
+  *
+  * TODO: if we add an offset, it's here!
   */
   getIndex3DFromWorldPosition(position){
     var index3D = [
@@ -387,8 +396,8 @@ class ChunkCollection{
       position[2] % 1 > 0.5 ? localChunk[2] +1 : localChunk[2] -1,
     ];
 
-    console.log(localChunk);
-    console.log(closest);
+    //console.log(localChunk);
+    //sconsole.log(closest);
 
     // build the chunk index of the 8 closest chunks from position
     var indexes3D = [
@@ -434,7 +443,7 @@ class ChunkCollection{
       ],
     ];
 
-    console.log(indexes3D);
+    //console.log(indexes3D);
 
     return indexes3D;
   }
@@ -477,6 +486,7 @@ class ChunkCollection{
       origins: validChunksOrigin.concat( notValidChunksOrigin ),
       nbValid: validChunksCounter
     };
+
   }
 
 
@@ -570,8 +580,6 @@ class LevelManager{
 
     });
 
-    console.log(this._chunkCollections);
-
     if(this.onReadyCallback){
       this.onReadyCallback();
     }
@@ -622,11 +630,31 @@ class LevelManager{
   }
 
 
+  /**
+  * @return the resolution level currently in use
+  */
+  getCurrentResolutionLevel(){
+    return this._resolutionLevel;
+  }
+
+
+  /**
+  * @return the size of the chunks currently in use, in world coord
+  */
+  getCurrentChunkSizeWc(){
+    return this._chunkCollections[ this._resolutionLevel ].getSizeChunkWc();
+  }
+
+
+  /**
+  * @param {Array} position - world coord position as an array [x, y, z]
+  * @return the texture data of the 8 chunks that are the closest to the position.
+  */
   get8ClosestTextureData(position){
-    var the8ClosestTextureData = this._chunkCollections[this._resolutionLevel]
+    var the8ClosestTextureData = this._chunkCollections[ this._resolutionLevel ]
               .get8ClosestTextureData(position);
 
-    console.log(the8ClosestTextureData);
+    return the8ClosestTextureData;
   }
 
 } /* END CLASS LevelManager */
@@ -743,8 +771,8 @@ class QuadView{
       bottom: 0,
       width: 0.5,
       height: 0.5,
-      position: [ this._objectSize, this._objectSize, this._objectSize ],
-      up: [ 0, 0, 1 ]
+      position: [ this._objectSize / -2, this._objectSize/2, this._objectSize ],
+      up: [ 0, 1, 0 ]
     };
     this._viewName = "bottom_right";
     this._backgroundColor = new THREE.Color().setRGB( 0.8, 0.8, 0.8 );
@@ -900,6 +928,171 @@ class QuadView{
 
 } /* END QuadView */
 
+var texture3d_frag = "const int maxNbChunks = 8;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform float chunkSize;\nvarying vec4 worldCoord;\nvarying vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||\n            chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||\n            chunkPosition.z<0.0 || chunkPosition.z>=1.0 );\n}\nvec4 getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){\n  float numberOfImagePerStripY = 64.0;\n  float numberOfPixelPerSide = 64.0;\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY;\n  float stripX = chunkPosition.x;\n  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  colorFromTexture = texture2D(texture, posWithinStrip);\n  return colorFromTexture;\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){\n  vec3 chunkSystemCoordinate = vec3((textureOrigin.x - world.x)*(-1.0)/chunkSize,\n                                    (textureOrigin.y - world.y)*(-1.0)/chunkSize,\n                                    (textureOrigin.z - world.z)*(-1.0)/chunkSize);\n  return chunkSystemCoordinate;\n}\nvoid main( void ) {\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(0.0, 1.0 , 1.0, 0.2);\n  vec3 chunkPosition;\n  if(nbChunks >= 1){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);\n    if( isInsideChunk(chunkPosition) ){\n      getColorFrom3DTexture(textures[0], chunkPosition, color);\n    }\n    if(nbChunks >= 2){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);\n      if( isInsideChunk(chunkPosition) ){\n        getColorFrom3DTexture(textures[1], chunkPosition, color);\n      }\n      if(nbChunks >= 3){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);\n        if( isInsideChunk(chunkPosition) ){\n          getColorFrom3DTexture(textures[2], chunkPosition, color);\n        }\n        if(nbChunks >= 4){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);\n          if( isInsideChunk(chunkPosition) ){\n            getColorFrom3DTexture(textures[3], chunkPosition, color);\n          }\n          if(nbChunks >= 5){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);\n            if( isInsideChunk(chunkPosition) ){\n              getColorFrom3DTexture(textures[4], chunkPosition, color);\n            }\n            if(nbChunks >= 6){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);\n              if( isInsideChunk(chunkPosition) ){\n                getColorFrom3DTexture(textures[5], chunkPosition, color);\n              }\n              if(nbChunks >= 7){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);\n                if( isInsideChunk(chunkPosition) ){\n                  getColorFrom3DTexture(textures[6], chunkPosition, color);\n                }\n                if(nbChunks == 8){\n                  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);\n                  if( isInsideChunk(chunkPosition) ){\n                    getColorFrom3DTexture(textures[7], chunkPosition, color);\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  gl_FragColor = color;\n}\n";
+
+var texture3d_vert = "uniform float chunkSize;\nvarying vec2 vUv;\nvarying vec4 worldCoord;\nvoid main()\n{\n  vUv = uv;\n  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );\n  gl_Position = projectionMatrix * mvPosition;\n  worldCoord = modelMatrix * vec4( position, 1.0 );\n}\n";
+
+var ShaderImporter = {
+	texture3d_frag: texture3d_frag,
+  texture3d_vert: texture3d_vert 
+};
+
+/**
+* A ProjectionPlane instance is a portion of a 3D plane, defined as a rectangular surface. It is subdivided in a certain amount of sub-planes that are square-shaped. Each sub-plane is the size of half a texture chunk of the current resolution level.
+* Example: if a texture chunk at level 3 is of size 1/8 x 1/8 x 1/8 in world coordinates, the csub-planes will be 1/16 x 1/16.
+* This ensure that we dont have to many texture (Sampler2D) to send the the fragment shader of each sub-planes because, even in critical cases, a sub-plane of this size wont intersect more than 8 texture chunks.
+*
+*/
+class ProjectionPlane{
+
+  /**
+  * @param {Number} chunkSize - The size of a texture chunk at the current level of resolution (in world coordinates)
+  *
+  */
+  constructor( chunkSize ){
+    this._plane = new THREE.Object3D();
+
+    this._subPlaneSize = chunkSize / 2;
+
+    // list of subplanes
+    this._subPlanes = [];
+
+    // one shader material per sub-plane
+    this._shaderMaterials = [];
+
+    // one uniform per shader
+    //this.uniforms = [];
+
+    // number of rows and cols of sub-planes to compose the _plane
+    this._subPlaneDim = {row: 15, col: 7};
+
+    this._buildSubPlanes();
+
+    // given by aggregation
+    this._levelManager = null;
+  }
+
+
+  /**
+  *
+  */
+  _buildSubPlanes(){
+
+    var subPlaneGeometry = new THREE.PlaneBufferGeometry( this._subPlaneSize, this._subPlaneSize, 1 );
+
+    /*
+    var subPlaneMaterial = new THREE.MeshBasicMaterial({
+        color: 0x666666,
+        wireframe: true
+    });
+    */
+
+    var subPlaneMaterial_original = new THREE.ShaderMaterial( {
+      //uniforms: /*uniforms*/,
+      vertexShader: ShaderImporter.texture3d_vert,
+      fragmentShader: ShaderImporter.texture3d_frag
+    });
+    subPlaneMaterial_original.side = THREE.DoubleSide;
+    subPlaneMaterial_original.transparent = true;
+
+
+    for(var j=0; j<this._subPlaneDim.row; j++){
+      for(var i=0; i<this._subPlaneDim.col; i++){
+
+        var subPlaneMaterial = subPlaneMaterial_original.clone();
+
+        var mesh = new THREE.Mesh( subPlaneGeometry, subPlaneMaterial );
+        mesh.position.set(-this._subPlaneDim.col*this._subPlaneSize/2 + i*this._subPlaneSize + this._subPlaneSize/2, -this._subPlaneDim.row*this._subPlaneSize/2 + j*this._subPlaneSize + this._subPlaneSize/2, 0.0);
+
+        this._plane.add( mesh );
+        this._subPlanes.push( mesh );
+        this._shaderMaterials.push( subPlaneMaterial );
+
+      }
+    }
+
+
+  }
+
+
+  /**
+  * Defines the level manager so that the texture chunks can be fetched for each sub-plane.
+  * @param {LevelManager} lm - the level manager
+  */
+  setLevelManager(lm){
+    this._levelManager = lm;
+  }
+
+
+  setMeshColor(c){
+    this._subPlanes[0].material.color = c;
+    //this._subPlanes[0].visible = false;
+  }
+
+
+  updateChunkSize(s){
+
+  }
+
+
+  /**
+  * fetch each texture info, build a uniform and
+  */
+  updateUniforms(){
+    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+
+    for(var i=0; i<nbSubPlanes; i++){
+      // center of the sub-plane in world coordinates
+      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
+      var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
+      var textureData = this._levelManager.get8ClosestTextureData( [center.x, center.y, center.z] );
+
+      if(textureData.nbValid)
+        console.log(textureData);
+
+      var uniforms = {
+        // the textures
+        nbChunks: {
+          type: "i",
+          value: textureData.nbValid
+        },
+        textures: {
+          type: "t",
+          value: textureData.textures
+        },
+        // the texture origins (in the same order)
+        textureOrigins: {
+          type: "v3v",
+          value: textureData.origins
+        },
+        chunkSize : {
+          type: "f",
+          value: chunkSizeWC
+        }
+      };
+
+      this._shaderMaterials[i].uniforms = uniforms;
+    }
+
+  }
+
+
+  getCornerInWorldCoordinate(){
+    //console.log(this._subPlanes[0].localToWorld(new THREE.Vector3(0, 0, 0)));
+  }
+
+
+  /**
+  * @return the main plane, containing all the sub-planes
+  */
+  getPlane(){
+    return this._plane;
+  }
+
+
+
+}
+
 // take some inspiration here:
 // https://threejs.org/examples/webgl_multiple_views.html
 
@@ -913,6 +1106,7 @@ class QuadView{
 class QuadScene{
 
   constructor(DomContainer){
+
     // the four QuadView instances, to be built (initViews)
     this._quadViews = [];
 
@@ -957,6 +1151,12 @@ class QuadScene{
 
     // some help!
     this._scene.add( new THREE.AxisHelper( 1 ) );
+
+    // all the planes to intersect the chunks. They will all lie into _mainObjectContainer
+    this._projectionPlanes = [];
+
+    this._levelManager = new SHAD.LevelManager();
+    this._initLevelManager();
   }
 
 
@@ -1061,6 +1261,8 @@ class QuadScene{
       view.renderView();
     });
 
+    this._projectionPlanes[0].getCornerInWorldCoordinate();
+
   }
 
 
@@ -1069,6 +1271,8 @@ class QuadScene{
   * Initialize the DAT.GUI component
   */
   _initUI(){
+    var that = this;
+
     this._guiVar = {
       posx: 0,
       posy: 0,
@@ -1077,6 +1281,8 @@ class QuadScene{
       roty: 0,
       rotz: 0,
       zoom: 1,
+      scale: 1,
+      resolutionLevel: 0,
       debug: function(){
         console.log("DEBUG BUTTON");
       }
@@ -1089,7 +1295,13 @@ class QuadScene{
     this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01);
     this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01);
     this._datGui.add(this._guiVar, 'zoom', 0.1, 5).name("zoom").step(0.01);
+    this._datGui.add(this._guiVar, 'scale', 1, 10).name("scale").step(0.1);
     this._datGui.add(this._guiVar, 'debug');
+    var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1);
+
+    levelController.onFinishChange(function(lvl) {
+      that._updateResolutionLevel(lvl);
+    });
 
   }
 
@@ -1100,12 +1312,21 @@ class QuadScene{
   * Called at each _render()
   */
   _updateMainObjectContainerFromUI(){
+    // position
     this._mainObjectContainer.position.x = this._guiVar.posx;
     this._mainObjectContainer.position.y = this._guiVar.posy;
     this._mainObjectContainer.position.z = this._guiVar.posz;
+
+    // rotation
     this._mainObjectContainer.rotation.x = this._guiVar.rotx;
     this._mainObjectContainer.rotation.y = this._guiVar.roty;
     this._mainObjectContainer.rotation.z = this._guiVar.rotz;
+
+    // scale
+    this._mainObjectContainer.scale.x = this._guiVar.scale;
+    this._mainObjectContainer.scale.y = this._guiVar.scale;
+    this._mainObjectContainer.scale.z = this._guiVar.scale;
+
   }
 
   /**
@@ -1141,6 +1362,73 @@ class QuadScene{
 
 
 
+  addProjectionPlane(){
+    var pn = new ProjectionPlane(1);
+    pn.setMeshColor(new THREE.Color(0x000099) );
+    this._projectionPlanes.push( pn );
+    this._mainObjectContainer.add( pn.getPlane() );
+
+    /*
+    var pu = new ProjectionPlane(1);
+    pu.setMeshColor(new THREE.Color(0x009900) );
+    this._projectionPlanes.push( pu );
+    pu.getPlane().rotateX( Math.PI / 2);
+    this._mainObjectContainer.add( pu.getPlane() );
+
+
+    var pv = new ProjectionPlane(1);
+    pv.setMeshColor(new THREE.Color(0x990000) );
+    this._projectionPlanes.push( pv );
+    pv.getPlane().rotateY( Math.PI / 2);
+    this._mainObjectContainer.add( pv.getPlane() );
+    //);
+    */
+
+  }
+
+
+  /**
+  * [PRIVATE]
+  *
+  */
+  _initLevelManager(){
+    var that = this;
+
+    this._levelManager.loadConfig("../data/info.json");
+
+    this._levelManager.onReady(function(){
+
+      that._projectionPlanes.forEach(function(plane){
+        plane.setLevelManager(that._levelManager);
+      });
+
+      that._levelManager.setResolutionLevel(1);
+      //lvlMgr.get8ClosestTextureData( [1.1, 0.8, 1.] );
+      //lvlMgr.get8ClosestTextureData( [0.6, 1.7, 0.1] );
+      //that._levelManager.get8ClosestTextureData( [1.1, 0.8, 1.] );
+      that._updateAllPlaneShaderUniforms();
+    });
+  }
+
+
+  /**
+  *
+  */
+  _updateResolutionLevel(lvl){
+    console.log("LVL " + lvl);
+    this._levelManager.setResolutionLevel(lvl);
+    this._updateAllPlaneShaderUniforms();
+  }
+
+
+  /**
+  *
+  */
+  _updateAllPlaneShaderUniforms(){
+    this._projectionPlanes.forEach( function(plane){
+      plane.updateUniforms();
+    });
+  }
 
 }
 

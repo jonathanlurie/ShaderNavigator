@@ -90,8 +90,6 @@ class LevelManager{
 
     });
 
-    console.log(this._chunkCollections);
-
     if(this.onReadyCallback){
       this.onReadyCallback();
     }
@@ -142,11 +140,31 @@ class LevelManager{
   }
 
 
+  /**
+  * @return the resolution level currently in use
+  */
+  getCurrentResolutionLevel(){
+    return this._resolutionLevel;
+  }
+
+
+  /**
+  * @return the size of the chunks currently in use, in world coord
+  */
+  getCurrentChunkSizeWc(){
+    return this._chunkCollections[ this._resolutionLevel ].getSizeChunkWc();
+  }
+
+
+  /**
+  * @param {Array} position - world coord position as an array [x, y, z]
+  * @return the texture data of the 8 chunks that are the closest to the position.
+  */
   get8ClosestTextureData(position){
-    var the8ClosestTextureData = this._chunkCollections[this._resolutionLevel]
+    var the8ClosestTextureData = this._chunkCollections[ this._resolutionLevel ]
               .get8ClosestTextureData(position);
 
-    console.log(the8ClosestTextureData);
+    return the8ClosestTextureData;
   }
 
 } /* END CLASS LevelManager */

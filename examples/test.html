@@ -33,7 +33,8 @@
 
     lvlMgr.onReady(function(){
       lvlMgr.setResolutionLevel(6);
-      lvlMgr.get8ClosestTextureData( [1.1, 0.8, 1.] );
+      var data = lvlMgr.get8ClosestTextureData( [1.1, 0.8, 1.] );
+      console.log(data);
       //lvlMgr.get8ClosestTextureData( [0.6, 1.7, 0.1] );
     })
 

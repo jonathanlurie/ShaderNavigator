@@ -35,7 +35,7 @@ class ChunkCollection{
     this._resolutionLevel = resolutionLevel;
 
     /** Word size of a chunk at level 0. Used as a constant. */
-    this._chunkSizeLvlZero = 1;
+    this._chunkSizeLvlZero = 1; // TODO: could also be 64 so that we kep the same dimensions in 3D than in 2D.
 
     /** Number of voxel per side of the chunk (suposedly cube shaped). Used as a constant.*/
     this._voxelPerSide = 64;
@@ -70,6 +70,13 @@ class ChunkCollection{
     return this._chunks[k];
   }
 
+
+  /**
+  * @return the size of chunks in world coord in this collection
+  */
+  getSizeChunkWc(){
+    return this._sizeChunkWC;
+  }
 
   /**
   * Get a chunk at a given position, not necessary the origin
@@ -115,6 +122,8 @@ class ChunkCollection{
   * Get the index3D from a arbitrary world position.
   * @param {Array} position - [x, y, z] arbitrary position.
   * @return {Array} the index3D, made of integer.
+  *
+  * TODO: if we add an offset, it's here!
   */
   getIndex3DFromWorldPosition(position){
     var index3D = [
@@ -222,8 +231,8 @@ class ChunkCollection{
       position[2] % 1 > 0.5 ? localChunk[2] +1 : localChunk[2] -1,
     ];
 
-    console.log(localChunk);
-    console.log(closest);
+    //console.log(localChunk);
+    //sconsole.log(closest);
 
     // build the chunk index of the 8 closest chunks from position
     var indexes3D = [
@@ -269,7 +278,7 @@ class ChunkCollection{
       ],
     ]
 
-    console.log(indexes3D);
+    //console.log(indexes3D);
 
     return indexes3D;
   }
@@ -312,6 +321,7 @@ class ChunkCollection{
       origins: validChunksOrigin.concat( notValidChunksOrigin ),
       nbValid: validChunksCounter
     };
+
   }
 
 

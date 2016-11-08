@@ -4,6 +4,8 @@
 'use strict';
 
 import { QuadView } from './QuadView.js';
+import { ProjectionPlane } from './ProjectionPlane.js';
+
 
 
 /**
@@ -16,6 +18,7 @@ import { QuadView } from './QuadView.js';
 class QuadScene{
 
   constructor(DomContainer){
+
     // the four QuadView instances, to be built (initViews)
     this._quadViews = [];
 
@@ -60,6 +63,12 @@ class QuadScene{
 
     // some help!
     this._scene.add( new THREE.AxisHelper( 1 ) );
+
+    // all the planes to intersect the chunks. They will all lie into _mainObjectContainer
+    this._projectionPlanes = [];
+
+    this._levelManager = new SHAD.LevelManager();
+    this._initLevelManager();
   }
 
 
@@ -164,6 +173,8 @@ class QuadScene{
       view.renderView();
     });
 
+    this._projectionPlanes[0].getCornerInWorldCoordinate();
+
   }
 
 
@@ -172,6 +183,8 @@ class QuadScene{
   * Initialize the DAT.GUI component
   */
   _initUI(){
+    var that = this;
+
     this._guiVar = {
       posx: 0,
       posy: 0,
@@ -180,6 +193,8 @@ class QuadScene{
       roty: 0,
       rotz: 0,
       zoom: 1,
+      scale: 1,
+      resolutionLevel: 0,
       debug: function(){
         console.log("DEBUG BUTTON");
       }
@@ -192,7 +207,13 @@ class QuadScene{
     this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01);
     this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01);
     this._datGui.add(this._guiVar, 'zoom', 0.1, 5).name("zoom").step(0.01);
+    this._datGui.add(this._guiVar, 'scale', 1, 10).name("scale").step(0.1);
     this._datGui.add(this._guiVar, 'debug');
+    var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1);
+
+    levelController.onFinishChange(function(lvl) {
+      that._updateResolutionLevel(lvl);
+    });
 
   }
 
@@ -203,12 +224,21 @@ class QuadScene{
   * Called at each _render()
   */
   _updateMainObjectContainerFromUI(){
+    // position
     this._mainObjectContainer.position.x = this._guiVar.posx;
     this._mainObjectContainer.position.y = this._guiVar.posy;
     this._mainObjectContainer.position.z = this._guiVar.posz;
+
+    // rotation
     this._mainObjectContainer.rotation.x = this._guiVar.rotx;
     this._mainObjectContainer.rotation.y = this._guiVar.roty;
     this._mainObjectContainer.rotation.z = this._guiVar.rotz;
+
+    // scale
+    this._mainObjectContainer.scale.x = this._guiVar.scale;
+    this._mainObjectContainer.scale.y = this._guiVar.scale;
+    this._mainObjectContainer.scale.z = this._guiVar.scale;
+
   }
 
   /**
@@ -244,6 +274,73 @@ class QuadScene{
 
 
 
+  addProjectionPlane(){
+    var pn = new ProjectionPlane(1);
+    pn.setMeshColor(new THREE.Color(0x000099) );
+    this._projectionPlanes.push( pn );
+    this._mainObjectContainer.add( pn.getPlane() );
+
+    /*
+    var pu = new ProjectionPlane(1);
+    pu.setMeshColor(new THREE.Color(0x009900) );
+    this._projectionPlanes.push( pu );
+    pu.getPlane().rotateX( Math.PI / 2);
+    this._mainObjectContainer.add( pu.getPlane() );
+
+
+    var pv = new ProjectionPlane(1);
+    pv.setMeshColor(new THREE.Color(0x990000) );
+    this._projectionPlanes.push( pv );
+    pv.getPlane().rotateY( Math.PI / 2);
+    this._mainObjectContainer.add( pv.getPlane() );
+    //);
+    */
+
+  }
+
+
+  /**
+  * [PRIVATE]
+  *
+  */
+  _initLevelManager(){
+    var that = this;
+
+    this._levelManager.loadConfig("../data/info.json");
+
+    this._levelManager.onReady(function(){
+
+      that._projectionPlanes.forEach(function(plane){
+        plane.setLevelManager(that._levelManager);
+      });
+
+      that._levelManager.setResolutionLevel(1);
+      //lvlMgr.get8ClosestTextureData( [1.1, 0.8, 1.] );
+      //lvlMgr.get8ClosestTextureData( [0.6, 1.7, 0.1] );
+      //that._levelManager.get8ClosestTextureData( [1.1, 0.8, 1.] );
+      that._updateAllPlaneShaderUniforms();
+    })
+  }
+
+
+  /**
+  *
+  */
+  _updateResolutionLevel(lvl){
+    console.log("LVL " + lvl);
+    this._levelManager.setResolutionLevel(lvl);
+    this._updateAllPlaneShaderUniforms();
+  }
+
+
+  /**
+  *
+  */
+  _updateAllPlaneShaderUniforms(){
+    this._projectionPlanes.forEach( function(plane){
+      plane.updateUniforms();
+    });
+  }
 
 }
 
