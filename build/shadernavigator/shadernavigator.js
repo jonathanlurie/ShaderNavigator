@@ -49,6 +49,7 @@ class TextureChunk{
 
     /** in case the texture file was unable to load, this flag goes true */
     this._textureLoadingError = false;
+    this._triedToLoad = false;
   }
 
 
@@ -63,7 +64,12 @@ class TextureChunk{
     this._index3D = index3D.slice();
     this._findChunkOrigin();
     this._buildFileName();
-    this._loadTexture();
+
+    // try to load only if never tried
+    if( !this._triedToLoad){
+      this._loadTexture();
+    }
+
     this._isBuilt = true;
   }
 
@@ -122,13 +128,19 @@ class TextureChunk{
 
     this._threeJsTexture = new THREE.TextureLoader().load(
       this._filepath, // url
-      function(){}, // on load
+      function(){
+        console.log('sucsess');
+        that._textureLoadingError = false;
+        that._triedToLoad = true;
+
+      }, // on load
       function(){}, // on progress
 
       function(){ // on error
         //console.error("ERROR TEXTURE " + that._filepath);
         that._threeJsTexture = null;
         that._textureLoadingError = true;
+        that._triedToLoad = true;
       }
     );
 
@@ -271,7 +283,12 @@ class ChunkCollection{
 
       // if the chunk is not already in collection, we load it.
       if(!chunk){
+        //console.log("LOAD " + this.getKeyFromIndex3D(index3D) );
+        //console.log( this._chunks );
+
         chunk = this._initChunkFromIndex3D(index3D);
+      }else{
+        console.log("ALREADY LOADED " + this.getKeyFromIndex3D(index3D) );
       }
 
       // if the texture was successfully loaded...
@@ -333,8 +350,17 @@ class ChunkCollection{
   _getChunkIfInCollection(index3D){
     var k = this.getKeyFromIndex3D(index3D);
     // return the chunk or return null/0 if not in the list
-    return (this._chunks[k] | null);
+    //return (this._chunks[k] | null);
     // the | null is just because we prefere null then undefined
+
+
+    if( k in this._chunks){
+      console.log(">>>>>>>>>>  ALREADY");
+      return this._chunks[k];
+    }else{
+      return null;
+    }
+
   }
 
 
@@ -393,11 +419,24 @@ class ChunkCollection{
   _get8ClosestToPositions(position){
 
     var localChunk = this.getIndex3DFromWorldPosition(position);
+    /*
     var closest = [
       position[0] % 1 > 0.5 ? localChunk[0] +1 : localChunk[0] -1,
       position[1] % 1 > 0.5 ? localChunk[1] +1 : localChunk[1] -1,
       position[2] % 1 > 0.5 ? localChunk[2] +1 : localChunk[2] -1,
     ];
+    */
+
+    var closest = [
+      position[0] % this._sizeChunkWC > this._sizeChunkWC / 2 ? localChunk[0] +1 : localChunk[0] -1,
+      position[1] % this._sizeChunkWC > this._sizeChunkWC / 2 ? localChunk[1] +1 : localChunk[1] -1,
+      position[2] % this._sizeChunkWC > this._sizeChunkWC / 2 ? localChunk[2] +1 : localChunk[2] -1,
+    ];
+
+    console.log("chunk size: " + this._sizeChunkWC);
+    console.log(position);
+    console.log(localChunk);
+    console.log(closest);
 
     //console.log(localChunk);
     //sconsole.log(closest);
@@ -967,7 +1006,7 @@ class ProjectionPlane{
     //this.uniforms = [];
 
     // number of rows and cols of sub-planes to compose the _plane
-    this._subPlaneDim = {row: 4, col: 4};
+    this._subPlaneDim = {row: 4, col: 1};
 
     this._buildSubPlanes();
 
@@ -1127,6 +1166,8 @@ class ProjectionPlane{
       */
 
       var threeVectorsOrigins = [];
+
+      console.log(textureData);
 
       textureData.origins.forEach(function(elem){
         threeVectorsOrigins.push( new THREE.Vector3(elem[0], elem[1], elem[2] ) );

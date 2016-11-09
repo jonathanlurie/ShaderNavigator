@@ -164,9 +164,13 @@ class ChunkCollection{
   */
   _getChunkIfInCollection(index3D){
     var k = this.getKeyFromIndex3D(index3D);
-    // return the chunk or return null/0 if not in the list
-    return (this._chunks[k] | null);
-    // the | null is just because we prefere null then undefined
+
+    if( k in this._chunks){
+      return this._chunks[k];
+    }else{
+      return null;
+    }
+
   }
 
 
@@ -225,11 +229,24 @@ class ChunkCollection{
   _get8ClosestToPositions(position){
 
     var localChunk = this.getIndex3DFromWorldPosition(position);
+    /*
     var closest = [
       position[0] % 1 > 0.5 ? localChunk[0] +1 : localChunk[0] -1,
       position[1] % 1 > 0.5 ? localChunk[1] +1 : localChunk[1] -1,
       position[2] % 1 > 0.5 ? localChunk[2] +1 : localChunk[2] -1,
     ];
+    */
+
+    var closest = [
+      position[0] % this._sizeChunkWC > this._sizeChunkWC / 2 ? localChunk[0] +1 : localChunk[0] -1,
+      position[1] % this._sizeChunkWC > this._sizeChunkWC / 2 ? localChunk[1] +1 : localChunk[1] -1,
+      position[2] % this._sizeChunkWC > this._sizeChunkWC / 2 ? localChunk[2] +1 : localChunk[2] -1,
+    ];
+
+    console.log("chunk size: " + this._sizeChunkWC);
+    console.log(position);
+    console.log(localChunk);
+    console.log(closest);
 
     //console.log(localChunk);
     //sconsole.log(closest);

@@ -46,6 +46,7 @@ class TextureChunk{
 
     /** in case the texture file was unable to load, this flag goes true */
     this._textureLoadingError = false;
+    this._triedToLoad = false;
   }
 
 
@@ -60,7 +61,12 @@ class TextureChunk{
     this._index3D = index3D.slice();
     this._findChunkOrigin();
     this._buildFileName();
-    this._loadTexture();
+
+    // try to load only if never tried
+    if( !this._triedToLoad){
+      this._loadTexture();
+    }
+
     this._isBuilt = true;
   }
 
@@ -119,13 +125,19 @@ class TextureChunk{
 
     this._threeJsTexture = new THREE.TextureLoader().load(
       this._filepath, // url
-      function(){}, // on load
+      function(){
+        console.log('sucsess');
+        that._textureLoadingError = false;
+        that._triedToLoad = true;
+
+      }, // on load
       function(){}, // on progress
 
       function(){ // on error
         //console.error("ERROR TEXTURE " + that._filepath);
         that._threeJsTexture = null;
         that._textureLoadingError = true;
+        that._triedToLoad = true;
       }
     );
 
