@@ -142,4 +142,7 @@ void main( void ) {
 
   gl_FragColor = color;
 
+  //gl_FragColor = vec4( float(nbChunks) / 8.0, 0.0 , 0.0, 1.0);
+
+
 }

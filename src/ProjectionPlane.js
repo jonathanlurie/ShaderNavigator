@@ -29,12 +29,14 @@ class ProjectionPlane{
     //this.uniforms = [];
 
     // number of rows and cols of sub-planes to compose the _plane
-    this._subPlaneDim = {row: 15, col: 7};
+    this._subPlaneDim = {row: 4, col: 4};
 
     this._buildSubPlanes();
 
     // given by aggregation
     this._levelManager = null;
+
+    this._resolutionLevel = 0;
   }
 
 
@@ -52,8 +54,43 @@ class ProjectionPlane{
     });
     */
 
+    var fakeTexture = new THREE.DataTexture(
+        new Uint8Array(1),
+        1,
+        1,
+        THREE.LuminanceFormat,  // format, luminance is for 1-band image
+        THREE.UnsignedByteType  // type for our Uint8Array
+      );
+
+    var fakeOrigin = new THREE.Vector3(0, 0, 0);
+
     var subPlaneMaterial_original = new THREE.ShaderMaterial( {
       //uniforms: /*uniforms*/,
+
+
+      uniforms: {
+        // the textures
+        nbChunks: {
+          type: "i",
+          value: 0
+        },
+        textures: {
+          type: "t",
+          value: [  fakeTexture, fakeTexture, fakeTexture, fakeTexture,
+                    fakeTexture, fakeTexture, fakeTexture, fakeTexture]
+        },
+        // the texture origins (in the same order)
+        textureOrigins: {
+          type: "v3v",
+          value: [  fakeOrigin, fakeOrigin, fakeOrigin, fakeOrigin,
+                    fakeOrigin, fakeOrigin, fakeOrigin, fakeOrigin]
+        },
+        chunkSize : {
+          type: "f",
+          value: 1
+        }
+      }
+      ,
       vertexShader: ShaderImporter.texture3d_vert,
       fragmentShader: ShaderImporter.texture3d_frag
     });
@@ -112,10 +149,63 @@ class ProjectionPlane{
       var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
       var textureData = this._levelManager.get8ClosestTextureData( [center.x, center.y, center.z] );
 
-      if(textureData.nbValid)
-        console.log(textureData);
+      //if(textureData.nbValid)
+      //  console.log(textureData);
 
-      var uniforms = {
+      //console.log(this._shaderMaterials[i]);
+
+      var uniforms = this._shaderMaterials[i].uniforms;
+
+      /*
+      // first time we add these info
+      if(typeof this._shaderMaterials[i].uniforms.nbChunks === 'undefined'){
+
+        uniforms.nbChunks = {
+            type: "i",
+            value: textureData.nbValid
+          };
+
+        uniforms.textures = {
+          type: "t",
+          value: textureData.textures
+        }
+
+        uniforms.textureOrigins = {
+          type: "v3v",
+          value: textureData.origins
+        }
+
+        uniforms.chunkSize = {
+          type: "f",
+          value: chunkSizeWC
+        }
+
+      }else{
+        uniforms.nbChunks.value = textureData.nbValid;
+        uniforms.textures.value = textureData.textures;
+        uniforms.textureOrigins.value = textureData.origins;
+        uniforms.chunkSize.value = chunkSizeWC;
+      }
+      */
+
+      var threeVectorsOrigins = [];
+
+      textureData.origins.forEach(function(elem){
+        threeVectorsOrigins.push( new THREE.Vector3(elem[0], elem[1], elem[2] ) );
+      });
+
+
+      //console.log(threeVectorsOrigins);
+
+      uniforms.nbChunks.value = textureData.nbValid;
+      uniforms.textures.value = textureData.textures;
+      uniforms.textureOrigins.value = threeVectorsOrigins; //textureData.origins;
+      uniforms.chunkSize.value = chunkSizeWC;
+
+
+
+      /*
+      uniforms = {
         // the textures
         nbChunks: {
           type: "i",
@@ -135,8 +225,9 @@ class ProjectionPlane{
           value: chunkSizeWC
         }
       };
+      */
 
-      this._shaderMaterials[i].uniforms = uniforms;
+      //this._shaderMaterials[i].uniforms = uniforms;
     }
 
   }
@@ -152,6 +243,20 @@ class ProjectionPlane{
   */
   getPlane(){
     return this._plane;
+  }
+
+
+  /**
+  * Update the internal resolution level and scale the plane accordingly.
+  * @param {Number} lvl - zoom level, most likely in [0, 6] (integer)
+  */
+  updateScaleFromRezLvl( lvl ){
+    this._resolutionLevel = lvl;
+    var scale = 1 / Math.pow( 2, this._resolutionLevel );
+
+    this._plane.scale.x = scale;
+    this._plane.scale.y = scale;
+    this._plane.scale.z = scale;
   }
 
 

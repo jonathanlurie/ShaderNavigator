@@ -44,6 +44,8 @@ class QuadScene{
     this._mainObjectContainer = new THREE.Object3D();
     this._scene.add(this._mainObjectContainer );
 
+    this._resolutionLevel = 0;
+
     // TODO: to be
     this._cameraDistance = 10;
 
@@ -200,12 +202,12 @@ class QuadScene{
       }
     }
 
-    this._datGui.add(this._guiVar, 'posx', -5, 5).name("position x").step(0.001);
-    this._datGui.add(this._guiVar, 'posy', -5, 5).name("position y").step(0.001);
-    this._datGui.add(this._guiVar, 'posz', -5, 5).name("position z").step(0.001);
-    this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01);
-    this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01);
-    this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01);
+    var controllerPosX = this._datGui.add(this._guiVar, 'posx', -1, 1).name("position x").step(0.001);
+    var controllerPosY = this._datGui.add(this._guiVar, 'posy', -1, 1).name("position y").step(0.001);
+    var controllerPosZ = this._datGui.add(this._guiVar, 'posz', -1, 1).name("position z").step(0.001);
+    var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01);
+    var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01);
+    var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01);
     this._datGui.add(this._guiVar, 'zoom', 0.1, 5).name("zoom").step(0.01);
     this._datGui.add(this._guiVar, 'scale', 1, 10).name("scale").step(0.1);
     this._datGui.add(this._guiVar, 'debug');
@@ -213,6 +215,31 @@ class QuadScene{
 
     levelController.onFinishChange(function(lvl) {
       that._updateResolutionLevel(lvl);
+    });
+
+
+    controllerPosX.onChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+    });
+
+    controllerPosY.onChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+    });
+
+    controllerPosZ.onChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+    });
+
+    controllerRotX.onChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+    });
+
+    controllerRotY.onChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+    });
+
+    controllerRotZ.onChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
     });
 
   }
@@ -235,9 +262,9 @@ class QuadScene{
     this._mainObjectContainer.rotation.z = this._guiVar.rotz;
 
     // scale
-    this._mainObjectContainer.scale.x = this._guiVar.scale;
-    this._mainObjectContainer.scale.y = this._guiVar.scale;
-    this._mainObjectContainer.scale.z = this._guiVar.scale;
+    //this._mainObjectContainer.scale.x = this._guiVar.scale;
+    //this._mainObjectContainer.scale.y = this._guiVar.scale;
+    //this._mainObjectContainer.scale.z = this._guiVar.scale;
 
   }
 
@@ -280,6 +307,7 @@ class QuadScene{
     this._projectionPlanes.push( pn );
     this._mainObjectContainer.add( pn.getPlane() );
 
+
     /*
     var pu = new ProjectionPlane(1);
     pu.setMeshColor(new THREE.Color(0x009900) );
@@ -314,11 +342,12 @@ class QuadScene{
         plane.setLevelManager(that._levelManager);
       });
 
-      that._levelManager.setResolutionLevel(1);
+      that._levelManager.setResolutionLevel( that._resolutionLevel ); // most likely 0 at the init
+
       //lvlMgr.get8ClosestTextureData( [1.1, 0.8, 1.] );
       //lvlMgr.get8ClosestTextureData( [0.6, 1.7, 0.1] );
       //that._levelManager.get8ClosestTextureData( [1.1, 0.8, 1.] );
-      that._updateAllPlaneShaderUniforms();
+      that._updateAllPlanesShaderUniforms();
     })
   }
 
@@ -327,16 +356,30 @@ class QuadScene{
   *
   */
   _updateResolutionLevel(lvl){
+    this._resolutionLevel = lvl;
     console.log("LVL " + lvl);
-    this._levelManager.setResolutionLevel(lvl);
-    this._updateAllPlaneShaderUniforms();
+    this._levelManager.setResolutionLevel( this._resolutionLevel );
+    this._updateAllPlanesScaleFromRezLvl();
+    this._updateAllPlanesShaderUniforms();
+  }
+
+
+  /**
+  * When the resolution level is changing, the scale of each plane has to change accordingly before the texture chunks are fetched ( = before _updateAllPlanesShaderUniforms is called).
+  */
+  _updateAllPlanesScaleFromRezLvl(){
+    var that = this;
+
+    this._projectionPlanes.forEach( function(plane){
+      plane.updateScaleFromRezLvl( that._resolutionLevel );
+    });
   }
 
 
   /**
   *
   */
-  _updateAllPlaneShaderUniforms(){
+  _updateAllPlanesShaderUniforms(){
     this._projectionPlanes.forEach( function(plane){
       plane.updateUniforms();
     });

@@ -79,9 +79,9 @@ class TextureChunk{
 
 
     this._originWC =[
-      this._index3D[0] * this._sizeWC * (-1),
-      this._index3D[1] * this._sizeWC * (-1),
-      this._index3D[2] * this._sizeWC * (-1)
+      this._index3D[0] * this._sizeWC * (1),
+      this._index3D[1] * this._sizeWC * (1),
+      this._index3D[2] * this._sizeWC * (1)
     ];
   }
 
@@ -128,6 +128,9 @@ class TextureChunk{
         that._textureLoadingError = true;
       }
     );
+
+    this._threeJsTexture.magFilter = THREE.NearestFilter;
+    this._threeJsTexture.minFilter = THREE.NearestFilter;
 
   }
 
