@@ -29,7 +29,7 @@ class ProjectionPlane{
     //this.uniforms = [];
 
     // number of rows and cols of sub-planes to compose the _plane
-    this._subPlaneDim = {row: 4, col: 1};
+    this._subPlaneDim = {row: 10, col: 10};
 
     this._buildSubPlanes();
 
@@ -190,7 +190,7 @@ class ProjectionPlane{
 
       var threeVectorsOrigins = [];
 
-      console.log(textureData);
+      //console.log(textureData);
 
       textureData.origins.forEach(function(elem){
         threeVectorsOrigins.push( new THREE.Vector3(elem[0], elem[1], elem[2] ) );

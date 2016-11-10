@@ -102,18 +102,30 @@ class TextureChunk{
     let axialRangeStart   = this._index3D[2] * this._voxelPerSide;
 
     /** Texture file, build from its index3D and resolutionLevel */
+
+/*
+    // former
+    this._filepath =  this._workingDir + "/" + this._resolutionLevel + "/" +
+                  sagitalRangeStart + "-" + (sagitalRangeStart + this._voxelPerSide) + "/" +
+                  coronalRangeStart + "-" + (coronalRangeStart + this._voxelPerSide) + "/" +
+                  axialRangeStart   + "-" + (axialRangeStart + this._voxelPerSide);
+    */
+
     this._filepath =  this._workingDir + "/" + this._resolutionLevel + "/" +
                   sagitalRangeStart + "-" + (sagitalRangeStart + this._voxelPerSide) + "/" +
                   coronalRangeStart + "-" + (coronalRangeStart + this._voxelPerSide) + "/" +
                   axialRangeStart   + "-" + (axialRangeStart + this._voxelPerSide);
 
-    /*
+    console.log("---------------------------------");
+    console.log("_filepath:");
     console.log(this._filepath);
-    console.log("_index3D");
+    console.log("_index3D:");
     console.log(this._index3D);
-    console.log("_sizeWC");
+    console.log("_sizeWC:");
     console.log(this._sizeWC);
-    */
+    console.log("_originWC:");
+    console.log(this._originWC);
+
   }
 
 

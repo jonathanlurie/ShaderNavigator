@@ -356,8 +356,8 @@ class QuadScene{
   *
   */
   _updateResolutionLevel(lvl){
+    console.log("--------- LVL " + lvl + " ---------------");
     this._resolutionLevel = lvl;
-    console.log("LVL " + lvl);
     this._levelManager.setResolutionLevel( this._resolutionLevel );
     this._updateAllPlanesScaleFromRezLvl();
     this._updateAllPlanesShaderUniforms();
