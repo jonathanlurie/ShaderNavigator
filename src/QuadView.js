@@ -97,7 +97,7 @@ class QuadView{
       width: 0.5,
       height: 0.5,
       position: [ 0, 0, this._objectSize ],
-      up: [ 1, 0, 0 ]
+      up: [ 0, 1, 0 ]
     }
     this._viewName = "bottom_left";
     this._backgroundColor = new THREE.Color().setRGB( 0.9, 0.9, 0.9 );
@@ -125,7 +125,7 @@ class QuadView{
   * Build an orthographic camera for this view.
   */
   initOrthoCamera(){
-    let orthographicCameraFovFactor = 500;
+    let orthographicCameraFovFactor = 350;
 
     this._camera = new THREE.OrthographicCamera(
       window.innerWidth / - orthographicCameraFovFactor,
@@ -135,6 +135,13 @@ class QuadView{
       this._near,
       this._far
     );
+
+    this._camera.left_orig = window.innerWidth / - orthographicCameraFovFactor;
+    this._camera.right_orig = window.innerWidth / orthographicCameraFovFactor;
+    this._camera.top_orig = window.innerHeight / orthographicCameraFovFactor;
+    this._camera.bottom_orig = window.innerHeight / - orthographicCameraFovFactor;
+
+    console.log(this._camera);
 
     this._initCameraSettings();
   }
@@ -265,6 +272,33 @@ class QuadView{
     // TODO: remove from an possibly existing parent first (if not scene)
 
     object3D.add(this._camera);
+  }
+
+
+  /**
+  * Updates the camera frustrum for ortho cam, in order to change the width and heigh of its projection and keep a relativelly constant image no matter what zoom level we are using.
+  * @param {Number} ff -
+  */
+  updateOrthoCamFrustrum(ff){
+    this._camera.left = this._camera.left_orig * ff;
+    this._camera.right = this._camera.right_orig * ff;
+    this._camera.top = this._camera.top_orig * ff;
+    this._camera.bottom = this._camera.bottom_orig * ff;
+    //this._camera.updateProjectionMatrix();
+  }
+
+
+  /**
+  * Used for perspective cameras. If the Orbit Control is enabled, the center of rotatation (target) will also be set.
+  * @param {THREE.Vector3} pos - 3D position to look at and to turn around.
+  */
+  updateLookAt(pos){
+    this._camera.lookAt( pos.clone() );
+
+    if(this._control){
+      this._control.target = pos.clone();
+    }
+
   }
 
 

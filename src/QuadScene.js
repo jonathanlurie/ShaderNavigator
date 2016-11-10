@@ -112,6 +112,7 @@ class QuadScene{
   */
   initStat(){
     this._stats = new Stats();
+    this._domContainer.appendChild( this._stats.dom );
   }
 
 
@@ -194,12 +195,15 @@ class QuadScene{
       rotx: 0,
       roty: 0,
       rotz: 0,
-      zoom: 1,
-      scale: 1,
+      frustrum: 1,
       resolutionLevel: 0,
-      debug: function(){
+
+      refresh: function(){
         console.log("DEBUG BUTTON");
+        that._updateAllPlanesShaderUniforms();
+
       }
+
     }
 
     var controllerPosX = this._datGui.add(this._guiVar, 'posx', -1, 1).name("position x").step(0.001);
@@ -208,26 +212,30 @@ class QuadScene{
     var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01);
     var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01);
     var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01);
-    this._datGui.add(this._guiVar, 'zoom', 0.1, 5).name("zoom").step(0.01);
-    this._datGui.add(this._guiVar, 'scale', 1, 10).name("scale").step(0.1);
-    this._datGui.add(this._guiVar, 'debug');
+    var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 2).name("frustrum").step(0.01);
     var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1);
+
+    this._datGui.add(this._guiVar, 'refresh');
 
     levelController.onFinishChange(function(lvl) {
       that._updateResolutionLevel(lvl);
+      that._updateOthoCamFrustrum();
     });
 
 
     controllerPosX.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
+      that._updatePerspectiveCameraLookAt();
     });
 
     controllerPosY.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
+      that._updatePerspectiveCameraLookAt();
     });
 
     controllerPosZ.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
+      that._updatePerspectiveCameraLookAt();
     });
 
     controllerRotX.onChange(function(value) {
@@ -240,6 +248,12 @@ class QuadScene{
 
     controllerRotZ.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
+    });
+
+    controllerFrustrum.onChange(function(value){
+      that._quadViews[0].updateOrthoCamFrustrum(value);
+      that._quadViews[1].updateOrthoCamFrustrum(value);
+      that._quadViews[2].updateOrthoCamFrustrum(value);
     });
 
   }
@@ -260,11 +274,6 @@ class QuadScene{
     this._mainObjectContainer.rotation.x = this._guiVar.rotx;
     this._mainObjectContainer.rotation.y = this._guiVar.roty;
     this._mainObjectContainer.rotation.z = this._guiVar.rotz;
-
-    // scale
-    //this._mainObjectContainer.scale.x = this._guiVar.scale;
-    //this._mainObjectContainer.scale.y = this._guiVar.scale;
-    //this._mainObjectContainer.scale.z = this._guiVar.scale;
 
   }
 
@@ -307,23 +316,17 @@ class QuadScene{
     this._projectionPlanes.push( pn );
     this._mainObjectContainer.add( pn.getPlane() );
 
-
-    /*
     var pu = new ProjectionPlane(1);
     pu.setMeshColor(new THREE.Color(0x009900) );
     this._projectionPlanes.push( pu );
     pu.getPlane().rotateX( Math.PI / 2);
     this._mainObjectContainer.add( pu.getPlane() );
 
-
     var pv = new ProjectionPlane(1);
     pv.setMeshColor(new THREE.Color(0x990000) );
     this._projectionPlanes.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
     this._mainObjectContainer.add( pv.getPlane() );
-    //);
-    */
-
   }
 
 
@@ -344,9 +347,6 @@ class QuadScene{
 
       that._levelManager.setResolutionLevel( that._resolutionLevel ); // most likely 0 at the init
 
-      //lvlMgr.get8ClosestTextureData( [1.1, 0.8, 1.] );
-      //lvlMgr.get8ClosestTextureData( [0.6, 1.7, 0.1] );
-      //that._levelManager.get8ClosestTextureData( [1.1, 0.8, 1.] );
       that._updateAllPlanesShaderUniforms();
     })
   }
@@ -377,12 +377,31 @@ class QuadScene{
 
 
   /**
-  *
+  * Updates the uniforms to send to the shader of the plane. Will trigger chunk loading for those which are not already in memory.
   */
   _updateAllPlanesShaderUniforms(){
     this._projectionPlanes.forEach( function(plane){
       plane.updateUniforms();
     });
+  }
+
+
+  /**
+  * So that the perspective cam targets the object container center
+  */
+  _updatePerspectiveCameraLookAt(){
+    this._quadViews[3].updateLookAt( this._mainObjectContainer.position );
+  }
+
+
+  /**
+  * Updates the frustrum of the 3 ortho cam by adjusting a factor relative to the level of resolution. This ensure we keep the same image ratio.
+  */
+  _updateOthoCamFrustrum(){
+    var frustrumFactor = 1 / Math.pow(2, this._resolutionLevel);
+    this._quadViews[0].updateOrthoCamFrustrum( frustrumFactor );
+    this._quadViews[1].updateOrthoCamFrustrum( frustrumFactor );
+    this._quadViews[2].updateOrthoCamFrustrum( frustrumFactor );
   }
 
 }

@@ -29,7 +29,7 @@ class ProjectionPlane{
     //this.uniforms = [];
 
     // number of rows and cols of sub-planes to compose the _plane
-    this._subPlaneDim = {row: 10, col: 10};
+    this._subPlaneDim = {row: 10, col: 20};
 
     this._buildSubPlanes();
 
@@ -149,87 +149,13 @@ class ProjectionPlane{
       var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
       var textureData = this._levelManager.get8ClosestTextureData( [center.x, center.y, center.z] );
 
-      //if(textureData.nbValid)
-      //  console.log(textureData);
-
-      //console.log(this._shaderMaterials[i]);
-
       var uniforms = this._shaderMaterials[i].uniforms;
-
-      /*
-      // first time we add these info
-      if(typeof this._shaderMaterials[i].uniforms.nbChunks === 'undefined'){
-
-        uniforms.nbChunks = {
-            type: "i",
-            value: textureData.nbValid
-          };
-
-        uniforms.textures = {
-          type: "t",
-          value: textureData.textures
-        }
-
-        uniforms.textureOrigins = {
-          type: "v3v",
-          value: textureData.origins
-        }
-
-        uniforms.chunkSize = {
-          type: "f",
-          value: chunkSizeWC
-        }
-
-      }else{
-        uniforms.nbChunks.value = textureData.nbValid;
-        uniforms.textures.value = textureData.textures;
-        uniforms.textureOrigins.value = textureData.origins;
-        uniforms.chunkSize.value = chunkSizeWC;
-      }
-      */
-
-      var threeVectorsOrigins = [];
-
-      //console.log(textureData);
-
-      textureData.origins.forEach(function(elem){
-        threeVectorsOrigins.push( new THREE.Vector3(elem[0], elem[1], elem[2] ) );
-      });
-
-
-      //console.log(threeVectorsOrigins);
 
       uniforms.nbChunks.value = textureData.nbValid;
       uniforms.textures.value = textureData.textures;
-      uniforms.textureOrigins.value = threeVectorsOrigins; //textureData.origins;
+      uniforms.textureOrigins.value = textureData.origins;
       uniforms.chunkSize.value = chunkSizeWC;
 
-
-
-      /*
-      uniforms = {
-        // the textures
-        nbChunks: {
-          type: "i",
-          value: textureData.nbValid
-        },
-        textures: {
-          type: "t",
-          value: textureData.textures
-        },
-        // the texture origins (in the same order)
-        textureOrigins: {
-          type: "v3v",
-          value: textureData.origins
-        },
-        chunkSize : {
-          type: "f",
-          value: chunkSizeWC
-        }
-      };
-      */
-
-      //this._shaderMaterials[i].uniforms = uniforms;
     }
 
   }

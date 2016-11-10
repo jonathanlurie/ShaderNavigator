@@ -81,14 +81,12 @@ class TextureChunk{
     * Is computed from the sizeWC and the index3D
     */
 
+    this._originWC = new THREE.Vector3(
+      this._index3D[0] * this._sizeWC,
+      this._index3D[1] * this._sizeWC,
+      this._index3D[2] * this._sizeWC
+    );
 
-
-
-    this._originWC =[
-      this._index3D[0] * this._sizeWC * (1),
-      this._index3D[1] * this._sizeWC * (1),
-      this._index3D[2] * this._sizeWC * (1)
-    ];
   }
 
 
@@ -103,19 +101,14 @@ class TextureChunk{
 
     /** Texture file, build from its index3D and resolutionLevel */
 
-/*
     // former
     this._filepath =  this._workingDir + "/" + this._resolutionLevel + "/" +
                   sagitalRangeStart + "-" + (sagitalRangeStart + this._voxelPerSide) + "/" +
                   coronalRangeStart + "-" + (coronalRangeStart + this._voxelPerSide) + "/" +
                   axialRangeStart   + "-" + (axialRangeStart + this._voxelPerSide);
-    */
 
-    this._filepath =  this._workingDir + "/" + this._resolutionLevel + "/" +
-                  sagitalRangeStart + "-" + (sagitalRangeStart + this._voxelPerSide) + "/" +
-                  coronalRangeStart + "-" + (coronalRangeStart + this._voxelPerSide) + "/" +
-                  axialRangeStart   + "-" + (axialRangeStart + this._voxelPerSide);
 
+    /*
     console.log("---------------------------------");
     console.log("_filepath:");
     console.log(this._filepath);
@@ -125,7 +118,7 @@ class TextureChunk{
     console.log(this._sizeWC);
     console.log("_originWC:");
     console.log(this._originWC);
-
+    */
   }
 
 

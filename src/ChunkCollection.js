@@ -104,6 +104,9 @@ class ChunkCollection{
       // if the chunk is not already in collection, we load it.
       if(!chunk){
         chunk = this._initChunkFromIndex3D(index3D);
+        console.log("TO BE LOADED");
+      }else{
+
       }
 
       // if the texture was successfully loaded...
@@ -213,7 +216,7 @@ class ChunkCollection{
           THREE.LuminanceFormat,  // format, luminance is for 1-band image
           THREE.UnsignedByteType  // type for our Uint8Array
         ),
-      origin: [0, 0, 0],
+      origin: new THREE.Vector3(0, 0, 0),
       validity: false
     };
 

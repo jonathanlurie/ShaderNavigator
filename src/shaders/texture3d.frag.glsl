@@ -34,7 +34,7 @@ bool isInsideChunk(in vec3 chunkPosition){
     z = depth (image number within the strip)
     texture = the texture strip (to simulate a 3D tex)
 */
-vec4 getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){
+void getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){
 
   // number of image that compose the strip
   float numberOfImagePerStripY = 64.0;
@@ -51,7 +51,8 @@ vec4 getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4
   vec2 posWithinStrip = vec2(stripX, stripY);
   colorFromTexture = texture2D(texture, posWithinStrip);
 
-  return colorFromTexture;
+  //colorFromTexture = vec4(colorFromTexture.r, colorFromTexture.g, colorFromTexture.b, 0.5);
+
 }
 
 
