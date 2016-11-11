@@ -126,14 +126,12 @@ class ProjectionPlane{
   }
 
 
+  /**
+  * Debugging. Chanfe the color of the mesh of the plane, bit first, the plane material has to be set as a mesh. 
+  */
   setMeshColor(c){
     this._subPlanes[0].material.color = c;
     //this._subPlanes[0].visible = false;
-  }
-
-
-  updateChunkSize(s){
-
   }
 
 
@@ -142,12 +140,13 @@ class ProjectionPlane{
   */
   updateUniforms(){
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+    var textureData = 0;
 
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
       var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0))
       var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
-      var textureData = this._levelManager.get8ClosestTextureData( [center.x, center.y, center.z] );
+      textureData = this._levelManager.get8ClosestTextureData( [center.x, center.y, center.z] );
 
       var uniforms = this._shaderMaterials[i].uniforms;
 
@@ -159,6 +158,8 @@ class ProjectionPlane{
       this._shaderMaterials[i].needsUpdate = true;
 
     }
+
+    console.log(textureData);
 
   }
 

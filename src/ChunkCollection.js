@@ -53,6 +53,8 @@ class ChunkCollection{
       failled: 0
     }
 
+    this._onChunksLoadedCallback = null;
+
   }
 
 
@@ -352,7 +354,8 @@ class ChunkCollection{
 
 
   /**
-  * Called when a chunk is loaded or failed to load. When to total number number of toLoad Vs. Loaded+failed is equivalent, a callback may be called.
+  * [PRIVATE]
+  * Called when a chunk is loaded or failed to load. When to total number number of toLoad Vs. Loaded+failed is equivalent, a callback may be called (with no argument) if defined by onChunkLoaded().
   * @param {String} chunkID - the id to identify the chunk within the collection
   * @param {Boolean} success - must be true if loaded with success, or false if failed to load.
   */
@@ -365,7 +368,23 @@ class ChunkCollection{
     // all the required chunks are OR loaded OR failled = they all tried to load.
     if( (this._chunkCounter.loaded + this._chunkCounter.failled) == this._chunkCounter.toBeLoaded ){
       console.log(">> All required chunks are loaded");
+
+      // call a callback if defined
+      if( this._onChunksLoadedCallback ){
+        this._onChunksLoadedCallback();
+      }
+
     }
+  }
+
+
+  /**
+  * Defines a callback for when all the requested chunks are loaded.
+  * This will be called every time we ask for a certain number of chunks and they eventually all have a loading status (success or fail)
+  * @param {callback function} cb - function to call
+  */
+  onChunkLoaded(cb){
+    this._onChunksLoadedCallback = cb;
   }
 
 

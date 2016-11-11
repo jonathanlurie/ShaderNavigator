@@ -267,13 +267,17 @@ class ChunkCollection{
     /** Size of a chunk in 3D space (aka. in world coordinates) */
     this._sizeChunkWC = this._chunkSizeLvlZero / Math.pow(2, this._resolutionLevel);
 
+    /** Creates a fake texture and fake texture data to be sent to the shader in case it's not possible to fetch a real data (out of bound, unable to load texture file) */
     this._createFakeTexture();
 
+    /** Keeps a track of how many textures are supposed to be loaded, how many failed to load and how many eventually loaded successfully */
     this._chunkCounter = {
       toBeLoaded: 0,
       loaded: 0,
       failled: 0
     };
+
+    this._onChunksLoadedCallback = null;
 
   }
 
@@ -574,7 +578,8 @@ class ChunkCollection{
 
 
   /**
-  * Called when a chunk is loaded or failed to load. When to total number number of toLoad Vs. Loaded+failed is equivalent, a callback may be called.
+  * [PRIVATE]
+  * Called when a chunk is loaded or failed to load. When to total number number of toLoad Vs. Loaded+failed is equivalent, a callback may be called (with no argument) if defined by onChunkLoaded().
   * @param {String} chunkID - the id to identify the chunk within the collection
   * @param {Boolean} success - must be true if loaded with success, or false if failed to load.
   */
@@ -587,7 +592,23 @@ class ChunkCollection{
     // all the required chunks are OR loaded OR failled = they all tried to load.
     if( (this._chunkCounter.loaded + this._chunkCounter.failled) == this._chunkCounter.toBeLoaded ){
       console.log(">> All required chunks are loaded");
+
+      // call a callback if defined
+      if( this._onChunksLoadedCallback ){
+        this._onChunksLoadedCallback();
+      }
+
     }
+  }
+
+
+  /**
+  * Defines a callback for when all the requested chunks are loaded.
+  * This will be called every time we ask for a certain number of chunks and they eventually all have a loading status (success or fail)
+  * @param {callback function} cb - function to call
+  */
+  onChunkLoaded(cb){
+    this._onChunksLoadedCallback = cb;
   }
 
 
@@ -1212,12 +1233,13 @@ class ProjectionPlane{
   */
   updateUniforms(){
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+    var textureData = 0;
 
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
       var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
       var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
-      var textureData = this._levelManager.get8ClosestTextureData( [center.x, center.y, center.z] );
+      textureData = this._levelManager.get8ClosestTextureData( [center.x, center.y, center.z] );
 
       var uniforms = this._shaderMaterials[i].uniforms;
 
@@ -1229,6 +1251,8 @@ class ProjectionPlane{
       this._shaderMaterials[i].needsUpdate = true;
 
     }
+
+    console.log(textureData);
 
   }
 
