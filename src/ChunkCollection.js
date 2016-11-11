@@ -43,7 +43,16 @@ class ChunkCollection{
     /** Size of a chunk in 3D space (aka. in world coordinates) */
     this._sizeChunkWC = this._chunkSizeLvlZero / Math.pow(2, this._resolutionLevel);
 
+    /** Creates a fake texture and fake texture data to be sent to the shader in case it's not possible to fetch a real data (out of bound, unable to load texture file) */
     this._createFakeTexture();
+
+    /** Keeps a track of how many textures are supposed to be loaded, how many failed to load and how many eventually loaded successfully */
+    this._chunkCounter = {
+      toBeLoaded: 0,
+      loaded: 0,
+      failled: 0
+    }
+
   }
 
 
@@ -54,6 +63,7 @@ class ChunkCollection{
   * @return {TextureChunk} the newly created texture chunk.
   */
   _initChunkFromIndex3D(index3D){
+    var that = this;
     var k = this.getKeyFromIndex3D(index3D);
 
     // add a chunk
@@ -61,11 +71,25 @@ class ChunkCollection{
       this._resolutionLevel,
       this._voxelPerSide,
       this._sizeChunkWC,
-      this._workingDir
+      this._workingDir,
+      k
     );
+
+    // callback on the texture when succesfully loaded
+    this._chunks[k].onTextureLoaded(function(chunkID){
+      that._countChunks( chunkID, true );
+    });
+
+    // callback on the texture when failed to load
+    this._chunks[k].onTextureLoadError(function(chunkID){
+      that._countChunks( chunkID, false );
+    });
 
     // build it properly
     this._chunks[k].buildFromIndex3D(index3D);
+
+    // increment the counter
+    this._chunkCounter.toBeLoaded ++;
 
     return this._chunks[k];
   }
@@ -104,12 +128,9 @@ class ChunkCollection{
       // if the chunk is not already in collection, we load it.
       if(!chunk){
         chunk = this._initChunkFromIndex3D(index3D);
-        console.log("TO BE LOADED");
-      }else{
-
       }
 
-      // if the texture was successfully loaded...
+      // if the texture was successfully loaded.
       // most likely to be true the first time the texture is loaded due
       // to the async loading of the texture file.
       if(!chunk.loadingError()){
@@ -136,16 +157,6 @@ class ChunkCollection{
     ];
 
     return index3D;
-  }
-
-
-
-  getOriginFromIndex3D(){
-
-  }
-
-  getOriginFromWorldPosition(position){
-
   }
 
 
@@ -232,13 +243,6 @@ class ChunkCollection{
   _get8ClosestToPositions(position){
 
     var localChunk = this.getIndex3DFromWorldPosition(position);
-    /*
-    var closest = [
-      position[0] % 1 > 0.5 ? localChunk[0] +1 : localChunk[0] -1,
-      position[1] % 1 > 0.5 ? localChunk[1] +1 : localChunk[1] -1,
-      position[2] % 1 > 0.5 ? localChunk[2] +1 : localChunk[2] -1,
-    ];
-    */
 
     var closest = [
       position[0] % this._sizeChunkWC > this._sizeChunkWC / 2 ? localChunk[0] +1 : localChunk[0] -1,
@@ -344,6 +348,24 @@ class ChunkCollection{
       nbValid: validChunksCounter
     };
 
+  }
+
+
+  /**
+  * Called when a chunk is loaded or failed to load. When to total number number of toLoad Vs. Loaded+failed is equivalent, a callback may be called.
+  * @param {String} chunkID - the id to identify the chunk within the collection
+  * @param {Boolean} success - must be true if loaded with success, or false if failed to load.
+  */
+  _countChunks(chunkID, success){
+    this._chunkCounter.loaded += (+ success);
+    this._chunkCounter.failled += (+ (!success));
+
+    //console.log(this._chunkCounter);
+
+    // all the required chunks are OR loaded OR failled = they all tried to load.
+    if( (this._chunkCounter.loaded + this._chunkCounter.failled) == this._chunkCounter.toBeLoaded ){
+      console.log(">> All required chunks are loaded");
+    }
   }
 
 

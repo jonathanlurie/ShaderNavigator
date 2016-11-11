@@ -25,8 +25,11 @@ class TextureChunk{
   * @param {Number} voxelPerSide - Number of pixel/voxel per side of the chunk, most likely 64.
   * @param {Number} sizeWC - Size of the chunk in world coordinates. Most likely 1/2^resolutionLevel.
   * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder.
+  * @param {String} chunkID - the string ID this chunk has within the ChunkCollection. This is used by the callbacks when succeding or failing to load the texture file.
   */
-  constructor(resolutionLevel, voxelPerSide, sizeWC, workingDir){
+  constructor(resolutionLevel, voxelPerSide, sizeWC, workingDir, chunkID){
+    /** the string ID this chunk has within the ChunkCollection. This is used by the callbacks when succeding or failing to load the texture file */
+    this._chunkID = chunkID;
 
     /** Number of voxel per side of the chunk (suposedly cube shaped). Used as a constant.*/
     this._voxelPerSide = voxelPerSide;//64;
@@ -50,6 +53,12 @@ class TextureChunk{
     /** in case the texture file was unable to load, this flag goes true */
     this._textureLoadingError = false;
     this._triedToLoad = false;
+
+    /** callback when a texture is successfully load. Defined using onTextureLoaded( ... ) */
+    this._onTextureLoadedCallback = null;
+
+    /** callback when a texture failled to be loaded. Defined using onTextureLoadError( ... ) */
+    this._onTextureLoadErrorCallback = null;
   }
 
 
@@ -131,21 +140,34 @@ class TextureChunk{
   _loadTexture(){
     var that = this;
 
+    //console.log("LOADING " + this._filepath + " ...");
+
     this._threeJsTexture = new THREE.TextureLoader().load(
       this._filepath, // url
       function(){
-        console.log('sucsess');
+        //console.log('SUCCESS LOAD: ' + that._filepath );
         that._textureLoadingError = false;
         that._triedToLoad = true;
+
+        // calling the success callback if defined
+        if( that._onTextureLoadedCallback ){
+          that._onTextureLoadedCallback( that._chunkID );
+        }
 
       }, // on load
       function(){}, // on progress
 
       function(){ // on error
-        //console.error("ERROR TEXTURE " + that._filepath);
+        //console.log('ERROR LOAD: ' + that._filepath );
         that._threeJsTexture = null;
         that._textureLoadingError = true;
         that._triedToLoad = true;
+
+        // call the fallure callback if exists
+        if( that._onTextureLoadErrorCallback ){
+          that._onTextureLoadErrorCallback( that._chunkID );
+        }
+
       }
     );
 
@@ -185,7 +207,24 @@ class TextureChunk{
     return this._textureLoadingError;
   }
 
-}
+
+  /**
+  * @param {callback function} cb - Callback to be called when the texture file corresponding to the chunk is successfully loaded.
+  */
+  onTextureLoaded(cb){
+    this._onTextureLoadedCallback = cb;
+  }
+
+
+  /**
+  * @param {callback function} cb - Callback to be called when the texture file corresponding to the chunk fails to be loaded.
+  */
+  onTextureLoadError(cb){
+    this._onTextureLoadErrorCallback = cb;
+  }
+
+
+} /* END CLASS TextureChunk */
 
 /*
   TODO: replace all var by let
@@ -229,6 +268,13 @@ class ChunkCollection{
     this._sizeChunkWC = this._chunkSizeLvlZero / Math.pow(2, this._resolutionLevel);
 
     this._createFakeTexture();
+
+    this._chunkCounter = {
+      toBeLoaded: 0,
+      loaded: 0,
+      failled: 0
+    };
+
   }
 
 
@@ -239,6 +285,7 @@ class ChunkCollection{
   * @return {TextureChunk} the newly created texture chunk.
   */
   _initChunkFromIndex3D(index3D){
+    var that = this;
     var k = this.getKeyFromIndex3D(index3D);
 
     // add a chunk
@@ -246,11 +293,25 @@ class ChunkCollection{
       this._resolutionLevel,
       this._voxelPerSide,
       this._sizeChunkWC,
-      this._workingDir
+      this._workingDir,
+      k
     );
+
+    // callback on the texture when succesfully loaded
+    this._chunks[k].onTextureLoaded(function(chunkID){
+      that._countChunks( chunkID, true );
+    });
+
+    // callback on the texture when failed to load
+    this._chunks[k].onTextureLoadError(function(chunkID){
+      that._countChunks( chunkID, false );
+    });
 
     // build it properly
     this._chunks[k].buildFromIndex3D(index3D);
+
+    // increment the counter
+    this._chunkCounter.toBeLoaded ++;
 
     return this._chunks[k];
   }
@@ -289,12 +350,9 @@ class ChunkCollection{
       // if the chunk is not already in collection, we load it.
       if(!chunk){
         chunk = this._initChunkFromIndex3D(index3D);
-        console.log("TO BE LOADED");
-      }else{
-
       }
 
-      // if the texture was successfully loaded...
+      // if the texture was successfully loaded.
       // most likely to be true the first time the texture is loaded due
       // to the async loading of the texture file.
       if(!chunk.loadingError()){
@@ -321,16 +379,6 @@ class ChunkCollection{
     ];
 
     return index3D;
-  }
-
-
-
-  getOriginFromIndex3D(){
-
-  }
-
-  getOriginFromWorldPosition(position){
-
   }
 
 
@@ -417,13 +465,6 @@ class ChunkCollection{
   _get8ClosestToPositions(position){
 
     var localChunk = this.getIndex3DFromWorldPosition(position);
-    /*
-    var closest = [
-      position[0] % 1 > 0.5 ? localChunk[0] +1 : localChunk[0] -1,
-      position[1] % 1 > 0.5 ? localChunk[1] +1 : localChunk[1] -1,
-      position[2] % 1 > 0.5 ? localChunk[2] +1 : localChunk[2] -1,
-    ];
-    */
 
     var closest = [
       position[0] % this._sizeChunkWC > this._sizeChunkWC / 2 ? localChunk[0] +1 : localChunk[0] -1,
@@ -529,6 +570,24 @@ class ChunkCollection{
       nbValid: validChunksCounter
     };
 
+  }
+
+
+  /**
+  * Called when a chunk is loaded or failed to load. When to total number number of toLoad Vs. Loaded+failed is equivalent, a callback may be called.
+  * @param {String} chunkID - the id to identify the chunk within the collection
+  * @param {Boolean} success - must be true if loaded with success, or false if failed to load.
+  */
+  _countChunks(chunkID, success){
+    this._chunkCounter.loaded += (+ success);
+    this._chunkCounter.failled += (+ (!success));
+
+    //console.log(this._chunkCounter);
+
+    // all the required chunks are OR loaded OR failled = they all tried to load.
+    if( (this._chunkCounter.loaded + this._chunkCounter.failled) == this._chunkCounter.toBeLoaded ){
+      console.log(">> All required chunks are loaded");
+    }
   }
 
 
@@ -1167,13 +1226,10 @@ class ProjectionPlane{
       uniforms.textureOrigins.value = textureData.origins;
       uniforms.chunkSize.value = chunkSizeWC;
 
+      this._shaderMaterials[i].needsUpdate = true;
+
     }
 
-  }
-
-
-  getCornerInWorldCoordinate(){
-    //console.log(this._subPlanes[0].localToWorld(new THREE.Vector3(0, 0, 0)));
   }
 
 
@@ -1373,8 +1429,6 @@ class QuadScene{
       view.renderView();
     });
 
-    this._projectionPlanes[0].getCornerInWorldCoordinate();
-
   }
 
 
@@ -1397,8 +1451,8 @@ class QuadScene{
 
       refresh: function(){
         console.log("DEBUG BUTTON");
-        //that._updateAllPlanesShaderUniforms();
-        that._render();
+        that._updateAllPlanesShaderUniforms();
+
       }
 
     };

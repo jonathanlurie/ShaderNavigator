@@ -176,8 +176,6 @@ class QuadScene{
       view.renderView();
     });
 
-    this._projectionPlanes[0].getCornerInWorldCoordinate();
-
   }
 
 

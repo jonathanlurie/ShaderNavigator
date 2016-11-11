@@ -156,13 +156,10 @@ class ProjectionPlane{
       uniforms.textureOrigins.value = textureData.origins;
       uniforms.chunkSize.value = chunkSizeWC;
 
+      this._shaderMaterials[i].needsUpdate = true;
+
     }
 
-  }
-
-
-  getCornerInWorldCoordinate(){
-    //console.log(this._subPlanes[0].localToWorld(new THREE.Vector3(0, 0, 0)));
   }
 
 
