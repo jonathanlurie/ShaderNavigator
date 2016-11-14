@@ -35,7 +35,7 @@ class ChunkCollection{
     this._resolutionLevel = resolutionLevel;
 
     /** Word size of a chunk at level 0. Used as a constant. */
-    this._chunkSizeLvlZero = 1; // TODO: could also be 64 so that we kep the same dimensions in 3D than in 2D.
+    this._chunkSizeLvlZero = 1;
 
     /** Number of voxel per side of the chunk (suposedly cube shaped). Used as a constant.*/
     this._voxelPerSide = 64;
@@ -363,7 +363,7 @@ class ChunkCollection{
     this._chunkCounter.loaded += (+ success);
     this._chunkCounter.failled += (+ (!success));
 
-    //console.log(this._chunkCounter);
+    console.log(this._chunkCounter);
 
     // all the required chunks are OR loaded OR failled = they all tried to load.
     if( (this._chunkCounter.loaded + this._chunkCounter.failled) == this._chunkCounter.toBeLoaded ){

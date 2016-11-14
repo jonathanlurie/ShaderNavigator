@@ -141,8 +141,6 @@ class QuadView{
     this._camera.top_orig = window.innerHeight / orthographicCameraFovFactor;
     this._camera.bottom_orig = window.innerHeight / - orthographicCameraFovFactor;
 
-    console.log(this._camera);
-
     this._initCameraSettings();
   }
 

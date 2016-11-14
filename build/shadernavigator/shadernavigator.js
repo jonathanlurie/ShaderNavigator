@@ -259,7 +259,7 @@ class ChunkCollection{
     this._resolutionLevel = resolutionLevel;
 
     /** Word size of a chunk at level 0. Used as a constant. */
-    this._chunkSizeLvlZero = 1; // TODO: could also be 64 so that we kep the same dimensions in 3D than in 2D.
+    this._chunkSizeLvlZero = 1;
 
     /** Number of voxel per side of the chunk (suposedly cube shaped). Used as a constant.*/
     this._voxelPerSide = 64;
@@ -587,7 +587,7 @@ class ChunkCollection{
     this._chunkCounter.loaded += (+ success);
     this._chunkCounter.failled += (+ (!success));
 
-    //console.log(this._chunkCounter);
+    console.log(this._chunkCounter);
 
     // all the required chunks are OR loaded OR failled = they all tried to load.
     if( (this._chunkCounter.loaded + this._chunkCounter.failled) == this._chunkCounter.toBeLoaded ){
@@ -779,6 +779,8 @@ class LevelManager{
     return the8ClosestTextureData;
   }
 
+
+
 } /* END CLASS LevelManager */
 
 /**
@@ -920,8 +922,6 @@ class QuadView{
     this._camera.right_orig = window.innerWidth / orthographicCameraFovFactor;
     this._camera.top_orig = window.innerHeight / orthographicCameraFovFactor;
     this._camera.bottom_orig = window.innerHeight / - orthographicCameraFovFactor;
-
-    console.log(this._camera);
 
     this._initCameraSettings();
   }
@@ -1132,7 +1132,7 @@ class ProjectionPlane{
 
 
   /**
-  *
+  * Build all the subplanes with fake textures and fake origins. The purpose is just to create a compatible data structure able to receive relevant texture data when time comes.
   */
   _buildSubPlanes(){
 
@@ -1145,6 +1145,8 @@ class ProjectionPlane{
     });
     */
 
+    // a fake texture is a texture used instead of a real one, just because
+    // we have to send something to the shader even if we dont have data
     var fakeTexture = new THREE.DataTexture(
         new Uint8Array(1),
         1,
@@ -1156,9 +1158,6 @@ class ProjectionPlane{
     var fakeOrigin = new THREE.Vector3(0, 0, 0);
 
     var subPlaneMaterial_original = new THREE.ShaderMaterial( {
-      //uniforms: /*uniforms*/,
-
-
       uniforms: {
         // the textures
         nbChunks: {
@@ -1204,7 +1203,6 @@ class ProjectionPlane{
       }
     }
 
-
   }
 
 
@@ -1217,14 +1215,12 @@ class ProjectionPlane{
   }
 
 
+  /**
+  * Debugging. Chanfe the color of the mesh of the plane, bit first, the plane material has to be set as a mesh.
+  */
   setMeshColor(c){
     this._subPlanes[0].material.color = c;
     //this._subPlanes[0].visible = false;
-  }
-
-
-  updateChunkSize(s){
-
   }
 
 
@@ -1235,25 +1231,44 @@ class ProjectionPlane{
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     var textureData = 0;
 
+    let timer = 0;
+
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
       var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
       var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
-      textureData = this._levelManager.get8ClosestTextureData( [center.x, center.y, center.z] );
 
-      var uniforms = this._shaderMaterials[i].uniforms;
+      var t0 = performance.now();
+      textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
 
-      uniforms.nbChunks.value = textureData.nbValid;
-      uniforms.textures.value = textureData.textures;
-      uniforms.textureOrigins.value = textureData.origins;
-      uniforms.chunkSize.value = chunkSizeWC;
+      var t1 = performance.now();
+      timer += (t1 - t0);
 
-      this._shaderMaterials[i].needsUpdate = true;
-
+      this.updateSubPlaneUniform(i, textureData);
     }
 
-    console.log(textureData);
+    timer /= nbSubPlanes;
+    console.log("Time: " + timer + " milliseconds.");
 
+
+    //console.log(textureData);
+
+  }
+
+
+  /**
+  * Update the uniform of a specific sub-plane using the texture data. This will automatically update the related fragment shader.
+  * @param {Number} i - index of the subplane to update.
+  * @textureData {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
+  */
+  updateSubPlaneUniform(i, textureData){
+    var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
+    var uniforms = this._shaderMaterials[i].uniforms;
+    uniforms.nbChunks.value = textureData.nbValid;
+    uniforms.textures.value = textureData.textures;
+    uniforms.textureOrigins.value = textureData.origins;
+    uniforms.chunkSize.value = chunkSizeWC;
+    this._shaderMaterials[i].needsUpdate = true;  // apparently useless
   }
 
 
@@ -1474,25 +1489,33 @@ class QuadScene{
       resolutionLevel: 0,
 
       refresh: function(){
-        console.log("DEBUG BUTTON");
         that._updateAllPlanesShaderUniforms();
+      },
 
-      }
+      debug: function(){
+        that._guiVar.posx += 0.1;
+      },
 
     };
 
-    var controllerPosX = this._datGui.add(this._guiVar, 'posx', -1, 1).name("position x").step(0.001);
-    var controllerPosY = this._datGui.add(this._guiVar, 'posy', -1, 1).name("position y").step(0.001);
-    var controllerPosZ = this._datGui.add(this._guiVar, 'posz', -1, 1).name("position z").step(0.001);
-    var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01);
-    var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01);
-    var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01);
-    var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 2).name("frustrum").step(0.01);
-    var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1);
+    var controllerPosX = this._datGui.add(this._guiVar, 'posx', 0, 1).name("position x").step(0.001).listen();
+    var controllerPosY = this._datGui.add(this._guiVar, 'posy', 0, 1).name("position y").step(0.001).listen();
+    var controllerPosZ = this._datGui.add(this._guiVar, 'posz', 0, 1).name("position z").step(0.001).listen();
+    var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01).listen();
+    var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01).listen();
+    var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01).listen();
+    var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 2).name("frustrum").step(0.01).listen();
+    var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1).listen();
 
     this._datGui.add(this._guiVar, 'refresh');
+    this._datGui.add(this._guiVar, 'debug');
+
 
     levelController.onFinishChange(function(lvl) {
+      that._updateResolutionLevel(lvl);
+      that._updateOthoCamFrustrum();
+    });
+    levelController.onChange(function(lvl) {
       that._updateResolutionLevel(lvl);
       that._updateOthoCamFrustrum();
     });
@@ -1502,8 +1525,16 @@ class QuadScene{
       that._updateAllPlanesShaderUniforms();
       that._updatePerspectiveCameraLookAt();
     });
+    controllerPosX.onFinishChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+      that._updatePerspectiveCameraLookAt();
+    });
 
     controllerPosY.onChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+      that._updatePerspectiveCameraLookAt();
+    });
+    controllerPosY.onFinishChange(function(value) {
       that._updateAllPlanesShaderUniforms();
       that._updatePerspectiveCameraLookAt();
     });
@@ -1512,18 +1543,33 @@ class QuadScene{
       that._updateAllPlanesShaderUniforms();
       that._updatePerspectiveCameraLookAt();
     });
+    controllerPosZ.onFinishChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+      that._updatePerspectiveCameraLookAt();
+    });
 
     controllerRotX.onChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+    });
+    controllerRotX.onFinishChange(function(value) {
       that._updateAllPlanesShaderUniforms();
     });
 
     controllerRotY.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
     });
+    controllerRotY.onFinishChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+    });
 
     controllerRotZ.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
     });
+    controllerRotZ.onFinishChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+    });
+
+
 
     controllerFrustrum.onChange(function(value){
       that._quadViews[0].updateOrthoCamFrustrum(value);
@@ -1549,6 +1595,11 @@ class QuadScene{
     this._mainObjectContainer.rotation.x = this._guiVar.rotx;
     this._mainObjectContainer.rotation.y = this._guiVar.roty;
     this._mainObjectContainer.rotation.z = this._guiVar.rotz;
+
+    //this._projectionPlanes.rotation.x = this._guiVar.rotx;
+    //this._projectionPlanes.rotation.y = this._guiVar.roty;
+    //this._projectionPlanes.rotation.z = this._guiVar.rotz;
+
 
   }
 

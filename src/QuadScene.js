@@ -197,25 +197,33 @@ class QuadScene{
       resolutionLevel: 0,
 
       refresh: function(){
-        console.log("DEBUG BUTTON");
         that._updateAllPlanesShaderUniforms();
+      },
 
-      }
+      debug: function(){
+        that._guiVar.posx += 0.1;
+      },
 
     }
 
-    var controllerPosX = this._datGui.add(this._guiVar, 'posx', -1, 1).name("position x").step(0.001);
-    var controllerPosY = this._datGui.add(this._guiVar, 'posy', -1, 1).name("position y").step(0.001);
-    var controllerPosZ = this._datGui.add(this._guiVar, 'posz', -1, 1).name("position z").step(0.001);
-    var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01);
-    var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01);
-    var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01);
-    var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 2).name("frustrum").step(0.01);
-    var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1);
+    var controllerPosX = this._datGui.add(this._guiVar, 'posx', 0, 1).name("position x").step(0.001).listen();
+    var controllerPosY = this._datGui.add(this._guiVar, 'posy', 0, 1).name("position y").step(0.001).listen();
+    var controllerPosZ = this._datGui.add(this._guiVar, 'posz', 0, 1).name("position z").step(0.001).listen();
+    var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01).listen();
+    var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01).listen();
+    var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01).listen();
+    var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 2).name("frustrum").step(0.01).listen();
+    var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1).listen();
 
     this._datGui.add(this._guiVar, 'refresh');
+    this._datGui.add(this._guiVar, 'debug');
+
 
     levelController.onFinishChange(function(lvl) {
+      that._updateResolutionLevel(lvl);
+      that._updateOthoCamFrustrum();
+    });
+    levelController.onChange(function(lvl) {
       that._updateResolutionLevel(lvl);
       that._updateOthoCamFrustrum();
     });
@@ -225,8 +233,16 @@ class QuadScene{
       that._updateAllPlanesShaderUniforms();
       that._updatePerspectiveCameraLookAt();
     });
+    controllerPosX.onFinishChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+      that._updatePerspectiveCameraLookAt();
+    });
 
     controllerPosY.onChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+      that._updatePerspectiveCameraLookAt();
+    });
+    controllerPosY.onFinishChange(function(value) {
       that._updateAllPlanesShaderUniforms();
       that._updatePerspectiveCameraLookAt();
     });
@@ -235,18 +251,33 @@ class QuadScene{
       that._updateAllPlanesShaderUniforms();
       that._updatePerspectiveCameraLookAt();
     });
+    controllerPosZ.onFinishChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+      that._updatePerspectiveCameraLookAt();
+    });
 
     controllerRotX.onChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+    });
+    controllerRotX.onFinishChange(function(value) {
       that._updateAllPlanesShaderUniforms();
     });
 
     controllerRotY.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
     });
+    controllerRotY.onFinishChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+    });
 
     controllerRotZ.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
     });
+    controllerRotZ.onFinishChange(function(value) {
+      that._updateAllPlanesShaderUniforms();
+    });
+
+
 
     controllerFrustrum.onChange(function(value){
       that._quadViews[0].updateOrthoCamFrustrum(value);
@@ -272,6 +303,11 @@ class QuadScene{
     this._mainObjectContainer.rotation.x = this._guiVar.rotx;
     this._mainObjectContainer.rotation.y = this._guiVar.roty;
     this._mainObjectContainer.rotation.z = this._guiVar.rotz;
+
+    //this._projectionPlanes.rotation.x = this._guiVar.rotx;
+    //this._projectionPlanes.rotation.y = this._guiVar.roty;
+    //this._projectionPlanes.rotation.z = this._guiVar.rotz;
+
 
   }
 

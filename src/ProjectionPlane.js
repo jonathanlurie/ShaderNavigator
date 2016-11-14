@@ -41,7 +41,7 @@ class ProjectionPlane{
 
 
   /**
-  *
+  * Build all the subplanes with fake textures and fake origins. The purpose is just to create a compatible data structure able to receive relevant texture data when time comes.
   */
   _buildSubPlanes(){
 
@@ -54,6 +54,8 @@ class ProjectionPlane{
     });
     */
 
+    // a fake texture is a texture used instead of a real one, just because
+    // we have to send something to the shader even if we dont have data
     var fakeTexture = new THREE.DataTexture(
         new Uint8Array(1),
         1,
@@ -65,9 +67,6 @@ class ProjectionPlane{
     var fakeOrigin = new THREE.Vector3(0, 0, 0);
 
     var subPlaneMaterial_original = new THREE.ShaderMaterial( {
-      //uniforms: /*uniforms*/,
-
-
       uniforms: {
         // the textures
         nbChunks: {
@@ -113,7 +112,6 @@ class ProjectionPlane{
       }
     }
 
-
   }
 
 
@@ -127,7 +125,7 @@ class ProjectionPlane{
 
 
   /**
-  * Debugging. Chanfe the color of the mesh of the plane, bit first, the plane material has to be set as a mesh. 
+  * Debugging. Chanfe the color of the mesh of the plane, bit first, the plane material has to be set as a mesh.
   */
   setMeshColor(c){
     this._subPlanes[0].material.color = c;
@@ -142,25 +140,44 @@ class ProjectionPlane{
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     var textureData = 0;
 
+    let timer = 0;
+
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
       var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0))
       var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
-      textureData = this._levelManager.get8ClosestTextureData( [center.x, center.y, center.z] );
 
-      var uniforms = this._shaderMaterials[i].uniforms;
+      var t0 = performance.now();
+      textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
 
-      uniforms.nbChunks.value = textureData.nbValid;
-      uniforms.textures.value = textureData.textures;
-      uniforms.textureOrigins.value = textureData.origins;
-      uniforms.chunkSize.value = chunkSizeWC;
+      var t1 = performance.now();
+      timer += (t1 - t0);
 
-      this._shaderMaterials[i].needsUpdate = true;
-
+      this.updateSubPlaneUniform(i, textureData);
     }
 
-    console.log(textureData);
+    timer /= nbSubPlanes;
+    console.log("Time: " + timer + " milliseconds.")
 
+
+    //console.log(textureData);
+
+  }
+
+
+  /**
+  * Update the uniform of a specific sub-plane using the texture data. This will automatically update the related fragment shader.
+  * @param {Number} i - index of the subplane to update.
+  * @textureData {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
+  */
+  updateSubPlaneUniform(i, textureData){
+    var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
+    var uniforms = this._shaderMaterials[i].uniforms;
+    uniforms.nbChunks.value = textureData.nbValid;
+    uniforms.textures.value = textureData.textures;
+    uniforms.textureOrigins.value = textureData.origins;
+    uniforms.chunkSize.value = chunkSizeWC;
+    this._shaderMaterials[i].needsUpdate = true;  // apparently useless
   }
 
 
