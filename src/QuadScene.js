@@ -299,10 +299,22 @@ class QuadScene{
     this._mainObjectContainer.position.y = this._guiVar.posy;
     this._mainObjectContainer.position.z = this._guiVar.posz;
 
-    // rotation
+    // rotationsinge
     this._mainObjectContainer.rotation.x = this._guiVar.rotx;
     this._mainObjectContainer.rotation.y = this._guiVar.roty;
     this._mainObjectContainer.rotation.z = this._guiVar.rotz;
+
+    //var xAxis = this._mainObjectContainer.localToWorld(new THREE.Vector3(1, 0, 0)).normalize();
+    //this._mainObjectContainer.rotateOnAxis( xAxis, this._guiVar.rotx );
+
+    //console.log(xAxis);
+
+
+    //var yAxis = this._mainObjectContainer.localToWorld(new THREE.Vector3(0, 1, 0));
+    //this._mainObjectContainer.rotateOnAxis( yAxis, this._guiVar.roty );
+
+    //var zAxis = this._mainObjectContainer.localToWorld(new THREE.Vector3(0, 0, 1));
+    //this._mainObjectContainer.rotateOnAxis( zAxis, this._guiVar.rotz );
 
     //this._projectionPlanes.rotation.x = this._guiVar.rotx;
     //this._projectionPlanes.rotation.y = this._guiVar.roty;
