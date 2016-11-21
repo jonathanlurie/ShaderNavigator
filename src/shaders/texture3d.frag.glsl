@@ -63,10 +63,17 @@ void getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4
   Return a vec3 with xyz in [0.0, 1.0]
 */
 vec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){
+
   vec3 chunkSystemCoordinate = vec3( (textureOrigin.x - world.x)*(-1.0)/chunkSize,
                                     1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize,
                                     1.0 - (textureOrigin.z - world.z)*(-1.0)/chunkSize);
 
+
+  /*
+  vec3 chunkSystemCoordinate = vec3( (textureOrigin.x - world.x)*(-1.0)/chunkSize,
+                                    1.0 - (textureOrigin.z - world.z)*(1.0)/chunkSize,
+                                    1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize);
+  */
   return chunkSystemCoordinate;
 }
 
@@ -78,7 +85,7 @@ void main( void ) {
   vec2 shaderPos = vUv;
 
   // default color when out
-  vec4 color = vec4(0.0, 1.0 , 1.0, 0.2);
+  vec4 color = vec4(0.0, 1.0 , 1.0, 0.0);
 
   vec3 chunkPosition;
 
@@ -139,7 +146,13 @@ void main( void ) {
     }
   }
 
-
+  /*
+  // make the white transparent
+  float transparentThreshold = 0.95;
+  if(color.r > transparentThreshold && color.g > transparentThreshold && color.b > transparentThreshold){
+    color.a = 0.0;
+  }
+  */
 
   gl_FragColor = color;
 

@@ -117,7 +117,7 @@ class QuadView{
       up: [ 0, 1, 0 ]
     }
     this._viewName = "bottom_right";
-    this._backgroundColor = new THREE.Color().setRGB( 0.8, 0.8, 0.8 );
+    this._backgroundColor = new THREE.Color().setRGB( 0.97, 0.97, 0.97 );
   }
 
 
@@ -182,6 +182,32 @@ class QuadView{
   */
   addOrbitControl(){
     this._control = new THREE.OrbitControls(this._camera);
+  }
+
+
+  /**
+  *
+  */
+  addTrackballControl(renderFunction, toBind){
+    this._control = new THREE.TrackballControls( this._camera );
+
+
+    this._control.rotateSpeed = 5.0;
+    this._control.staticMoving = true;
+    this._control.zoomSpeed = 0.3;
+		this._control.panSpeed = 1;
+
+    /*
+    this._control.zoomSpeed = 1.2;
+		this._control.panSpeed = 0.8;
+		this._control.noZoom = false;
+		this._control.noPan = false;
+		this._control.staticMoving = true;
+		this._control.dynamicDampingFactor = 0.3;
+		this._control.keys = [ 65, 83, 68 ];
+    */
+
+    this._control.addEventListener( 'change', this.renderView.bind(this) );
   }
 
 

@@ -140,24 +140,24 @@ class ProjectionPlane{
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     var textureData = 0;
 
-    let timer = 0;
+    //let timer = 0;
 
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
       var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0))
       var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
 
-      var t0 = performance.now();
+      //var t0 = performance.now();
       textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
 
-      var t1 = performance.now();
-      timer += (t1 - t0);
+      //var t1 = performance.now();
+      //timer += (t1 - t0);
 
       this.updateSubPlaneUniform(i, textureData);
     }
 
-    timer /= nbSubPlanes;
-    console.log("Time: " + timer + " milliseconds.")
+    //timer /= nbSubPlanes;
+    //console.log("Time: " + timer + " milliseconds.")
 
 
     //console.log(textureData);

@@ -96,6 +96,8 @@ class TextureChunk{
       this._index3D[2] * this._sizeWC
     );
 
+    //console.log(this._index3D[1]);
+
   }
 
 

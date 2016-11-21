@@ -23,7 +23,14 @@ class LevelManager{
     /** The level of resolution, defines which octree to dig into. Is a positive integer.  */
     this._resolutionLevel = 0;
 
+
     this.onReadyCallback = null;
+
+    /** Size of the hull that wraps the entire dataset */
+    this._cubeHull = null;
+
+    /** size of a chunk, considering it's always cubic */
+    this._chunkSize = 64; // will be overwritten using the config file, but it will be 64 anyway.
   }
 
 
@@ -85,9 +92,14 @@ class LevelManager{
       });
     }
 
+    this._determineChunkSize(levels);
+
+    // Compute the cube hull, that will give some sense of boundaries to the dataset
+    this._computeCubeHull(levels);
+
+    // add a chunk collection for each level
     levels.forEach(function(elem, index){
       that._addChunkCollectionLevel(index, elem.size);
-
     });
 
     if(this.onReadyCallback){
@@ -108,9 +120,9 @@ class LevelManager{
     // translating voxelSize into matrix3DSize
     // aka number of chunks (64x64x64) in each dimension
     var matrix3DSize = [
-      Math.ceil( voxelSize[0] / 64 ),
-      Math.ceil( voxelSize[1] / 64 ),
-      Math.ceil( voxelSize[2] / 64 )
+      Math.ceil( voxelSize[0] / this._chunkSize ),
+      Math.ceil( voxelSize[1] / this._chunkSize ),
+      Math.ceil( voxelSize[2] / this._chunkSize )
     ];
 
     // creating a new chunk collection for this specific level
@@ -167,6 +179,36 @@ class LevelManager{
     return the8ClosestTextureData;
   }
 
+
+  /**
+  * Reads the chunk size from the config data. No matter the level, the chunk size should be the same, this is why we just take the first one.
+  * @param {Object} levels - config data
+  */
+  _determineChunkSize(levels){
+    this._chunkSize = levels[0].chunk_sizes[0];
+  }
+
+
+  /**
+  * The cube hull may be used for different things, like checking inside/outside or simply to show a cube hull with a box.
+  * The size data is available at every resolution level, we'll just take the info from the first level (0) since the size remains consistant all along.
+  * @param {Object} levels - config data
+  */
+  _computeCubeHull(levels){
+    this._cubeHull = [
+      levels[0].size[0] / 64.0,
+      levels[0].size[1] / 64.0,
+      levels[0].size[2] / 64.0
+    ];
+  }
+
+
+  /**
+  * @returns {Array} a copy of the cubeHull size as [xSize, ySize, zSize]
+  */
+  getCubeHull(){
+    return this._cubeHull.slice();
+  }
 
 
 } /* END CLASS LevelManager */

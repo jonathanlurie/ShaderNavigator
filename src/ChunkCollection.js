@@ -363,7 +363,7 @@ class ChunkCollection{
     this._chunkCounter.loaded += (+ success);
     this._chunkCounter.failled += (+ (!success));
 
-    console.log(this._chunkCounter);
+    //console.log(this._chunkCounter);
 
     // all the required chunks are OR loaded OR failled = they all tried to load.
     if( (this._chunkCounter.loaded + this._chunkCounter.failled) == this._chunkCounter.toBeLoaded ){

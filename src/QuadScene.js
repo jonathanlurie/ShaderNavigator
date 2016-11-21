@@ -70,6 +70,12 @@ class QuadScene{
     this._projectionPlanes = [];
 
     this._levelManager = new SHAD.LevelManager();
+
+    this._cubeHull3D = null;
+
+    // size of the dataset in world coords
+    this._cubeHullSize = [0, 0, 0];
+
     this._initLevelManager();
   }
 
@@ -97,7 +103,8 @@ class QuadScene{
     var bottomRight = new QuadView(this._scene, this._renderer, this._cameraDistance);
     bottomRight.initBottomRight();
     bottomRight.initPerspectiveCamera();
-    bottomRight.addOrbitControl();
+    //bottomRight.addOrbitControl();
+    bottomRight.addTrackballControl(this._render, this);
 
     // adding the views
     this._quadViews.push(topLeftView);
@@ -153,6 +160,9 @@ class QuadScene{
 
     // call a built-in webGL method for annimation
     requestAnimationFrame( this.animate.bind(this) );
+
+    // TODO
+    this._quadViews[3]._control.update();
   }
 
 
@@ -206,9 +216,9 @@ class QuadScene{
 
     }
 
-    var controllerPosX = this._datGui.add(this._guiVar, 'posx', 0, 1).name("position x").step(0.001).listen();
-    var controllerPosY = this._datGui.add(this._guiVar, 'posy', 0, 1).name("position y").step(0.001).listen();
-    var controllerPosZ = this._datGui.add(this._guiVar, 'posz', 0, 1).name("position z").step(0.001).listen();
+    this._datGui.add(this._guiVar, 'posx', 0, 2).name("position x").step(0.001).listen();
+    this._datGui.add(this._guiVar, 'posy', 0, 2).name("position y").step(0.001).listen();
+    this._datGui.add(this._guiVar, 'posz', 0, 2).name("position z").step(0.001).listen();
     var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01).listen();
     var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01).listen();
     var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01).listen();
@@ -228,33 +238,6 @@ class QuadScene{
       that._updateOthoCamFrustrum();
     });
 
-
-    controllerPosX.onChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-      that._updatePerspectiveCameraLookAt();
-    });
-    controllerPosX.onFinishChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-      that._updatePerspectiveCameraLookAt();
-    });
-
-    controllerPosY.onChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-      that._updatePerspectiveCameraLookAt();
-    });
-    controllerPosY.onFinishChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-      that._updatePerspectiveCameraLookAt();
-    });
-
-    controllerPosZ.onChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-      that._updatePerspectiveCameraLookAt();
-    });
-    controllerPosZ.onFinishChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-      that._updatePerspectiveCameraLookAt();
-    });
 
     controllerRotX.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
@@ -289,39 +272,73 @@ class QuadScene{
 
 
   /**
+  * Set the position of the center of the main object (where the center of the planes are).
+  * @param {Number} x - x position in world coordinates
+  * @param {Number} y - y position in world coordinates
+  * @param {Number} z - z position in world coordinates
+  */
+  setMainObjectPosition(x, y, z){
+    if(x>0 && x<this._cubeHullSize[0] &&
+       y>0 && y<this._cubeHullSize[1] &&
+       z>0 && z<this._cubeHullSize[2]
+    ){
+      this._mainObjectContainer.position.x = x;
+      this._mainObjectContainer.position.y = y;
+      this._mainObjectContainer.position.z = z;
+
+      // already done if called by the renderer and using DAT.gui
+      this._guiVar.posx = x;
+      this._guiVar.posy = y;
+      this._guiVar.posz = z;
+
+      this._updateAllPlanesShaderUniforms();
+      this._updatePerspectiveCameraLookAt();
+    }
+  }
+
+
+  /**
+  * Set the Euler angles of MainObject (that contains the planes)
+  * @param {Number} x - x rotation in radian
+  * @param {Number} y - y rotation in radian
+  * @param {Number} z - z rotation in radian
+  */
+  setMainObjectRotation(x, y, z){
+    this._mainObjectContainer.rotation.x = x;
+    this._mainObjectContainer.rotation.y = y;
+    this._mainObjectContainer.rotation.z = z;
+
+    // already done if called by the renderer and using DAT.gui
+    this._guiVar.rotx = x;
+    this._guiVar.roty = y;
+    this._guiVar.rotz = z;
+  }
+
+
+  /**
   * [PRIVATE]
   * Update the position and rotation of _mainObjectContainer from what is tuned in the dat.gui widget.
   * Called at each _render()
   */
   _updateMainObjectContainerFromUI(){
     // position
-    this._mainObjectContainer.position.x = this._guiVar.posx;
-    this._mainObjectContainer.position.y = this._guiVar.posy;
-    this._mainObjectContainer.position.z = this._guiVar.posz;
+    this.setMainObjectPosition(
+      this._guiVar.posx,
+      this._guiVar.posy,
+      this._guiVar.posz
+    );
 
-    // rotationsinge
+    // rotation
+    this.setMainObjectRotation(
+      this._guiVar.rotx,
+      this._guiVar.roty,
+      this._guiVar.rotz
+    );
     this._mainObjectContainer.rotation.x = this._guiVar.rotx;
     this._mainObjectContainer.rotation.y = this._guiVar.roty;
     this._mainObjectContainer.rotation.z = this._guiVar.rotz;
-
-    //var xAxis = this._mainObjectContainer.localToWorld(new THREE.Vector3(1, 0, 0)).normalize();
-    //this._mainObjectContainer.rotateOnAxis( xAxis, this._guiVar.rotx );
-
-    //console.log(xAxis);
-
-
-    //var yAxis = this._mainObjectContainer.localToWorld(new THREE.Vector3(0, 1, 0));
-    //this._mainObjectContainer.rotateOnAxis( yAxis, this._guiVar.roty );
-
-    //var zAxis = this._mainObjectContainer.localToWorld(new THREE.Vector3(0, 0, 1));
-    //this._mainObjectContainer.rotateOnAxis( zAxis, this._guiVar.rotz );
-
-    //this._projectionPlanes.rotation.x = this._guiVar.rotx;
-    //this._projectionPlanes.rotation.y = this._guiVar.roty;
-    //this._projectionPlanes.rotation.z = this._guiVar.rotz;
-
-
   }
+  
 
   /**
   * Adds a cube to the _mainObjectContainer to see it
@@ -394,8 +411,17 @@ class QuadScene{
       that._levelManager.setResolutionLevel( that._resolutionLevel ); // most likely 0 at the init
 
       that._updateAllPlanesShaderUniforms();
+      that._buildCubeHull();
+
+      that.setMainObjectPosition(
+        that._cubeHullSize[0] / 2,
+        that._cubeHullSize[1] / 2,
+        that._cubeHullSize[2] / 2
+      );
     })
   }
+
+
 
 
   /**
@@ -448,6 +474,76 @@ class QuadScene{
     this._quadViews[0].updateOrthoCamFrustrum( frustrumFactor );
     this._quadViews[1].updateOrthoCamFrustrum( frustrumFactor );
     this._quadViews[2].updateOrthoCamFrustrum( frustrumFactor );
+  }
+
+
+  /**
+  * Make the cube hull visible. Builds it if not already built.
+  */
+  showCubeHull(){
+    if(!this._cubeHull3D){
+      this._buildCubeHull();
+    }else{
+      this._cubeHull3D.visible = true;
+    }
+  }
+
+
+  /**
+  * Make the cube hull invisible.
+  */
+  hideCubeHull(){
+    if(this._cubeHull3D){
+      this._cubeHull3D.visible = false;
+    }
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Build the cube hull, in other word, the box that adds some notion of boundaries to the dataset.
+  */
+  _buildCubeHull(){
+    if(this._cubeHull3D)
+      return;
+
+    this._cubeHullSize = this._levelManager.getCubeHull();
+
+    var cubeHullMaterial = new THREE.MeshBasicMaterial( {
+      transparent: true,
+      opacity: 0.8,
+      color: 0xffffff,
+      vertexColors: THREE.FaceColors,
+      side: THREE.BackSide
+    } );
+
+    var cubeHullGeometry = new THREE.BoxGeometry(
+      this._cubeHullSize[0],
+      this._cubeHullSize[1],
+      this._cubeHullSize[2]
+    );
+
+    cubeHullGeometry.faces[0].color.setHex( 0xe1ceff ); // Sagittal
+    cubeHullGeometry.faces[1].color.setHex( 0xe1ceff );
+    cubeHullGeometry.faces[2].color.setHex( 0xA882E0 );
+    cubeHullGeometry.faces[3].color.setHex( 0xA882E0 );
+    cubeHullGeometry.faces[4].color.setHex( 0xbafcfb ); // Coronal
+    cubeHullGeometry.faces[5].color.setHex( 0xbafcfb );
+    cubeHullGeometry.faces[6].color.setHex( 0x54B8B6 );
+    cubeHullGeometry.faces[7].color.setHex( 0x54B8B6 );
+    cubeHullGeometry.faces[8].color.setHex( 0xFFEDB3 ); // Axial
+    cubeHullGeometry.faces[9].color.setHex( 0xFFEDB3 );
+    cubeHullGeometry.faces[10].color.setHex( 0xDBAA09 );
+    cubeHullGeometry.faces[11].color.setHex( 0xDBAA09 );
+
+    // mesh
+    var cubeHullPlainMesh = new THREE.Mesh( cubeHullGeometry, cubeHullMaterial );
+    this._cubeHull3D = new THREE.Object3D();
+    this._cubeHull3D.add( cubeHullPlainMesh );
+    this._cubeHull3D.position.x = this._cubeHullSize[0] / 2;
+    this._cubeHull3D.position.y = this._cubeHullSize[1] / 2;
+    this._cubeHull3D.position.z = this._cubeHullSize[2] / 2;
+    this._scene.add( this._cubeHull3D );
   }
 
 }
