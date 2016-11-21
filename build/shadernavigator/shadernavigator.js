@@ -1696,45 +1696,13 @@ class QuadScene{
       this._guiVar.roty,
       this._guiVar.rotz
     );
-    this._mainObjectContainer.rotation.x = this._guiVar.rotx;
-    this._mainObjectContainer.rotation.y = this._guiVar.roty;
-    this._mainObjectContainer.rotation.z = this._guiVar.rotz;
+
   }
-  
+
 
   /**
-  * Adds a cube to the _mainObjectContainer to see it
+  *
   */
-  addTestCube(){
-    // adding the wire cube
-    var chunkSize = 1;
-    var cubeGeometry = new THREE.BoxGeometry( chunkSize, chunkSize, chunkSize );
-    var cubeMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      vertexColors: THREE.FaceColors
-      }
-    );
-    var cubeMesh = new THREE.Mesh( cubeGeometry, cubeMaterial );
-    cubeGeometry.faces[0].color.setHex( 0x000000 );
-    cubeGeometry.faces[1].color.setHex( 0x000000 );
-    cubeGeometry.faces[2].color.setHex( 0x0000ff );
-    cubeGeometry.faces[3].color.setHex( 0x0000ff );
-    cubeGeometry.faces[4].color.setHex( 0x00ff00 );
-    cubeGeometry.faces[5].color.setHex( 0x00ff00 );
-    cubeGeometry.faces[6].color.setHex( 0x00ffff );
-    cubeGeometry.faces[7].color.setHex( 0x00ffff );
-    cubeGeometry.faces[8].color.setHex( 0xff0000 );
-    cubeGeometry.faces[9].color.setHex( 0xff0000 );
-    cubeGeometry.faces[10].color.setHex( 0xff00ff );
-    cubeGeometry.faces[11].color.setHex( 0xff00ff );
-
-    //var cube = new THREE.BoxHelper( cubeMesh );
-    //cube.material.color.set( 0x000000 );
-    this._mainObjectContainer.add(cubeMesh);
-  }
-
-
-
   addProjectionPlane(){
     var pn = new ProjectionPlane(1);
     pn.setMeshColor(new THREE.Color(0x000099) );
