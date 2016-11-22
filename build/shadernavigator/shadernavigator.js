@@ -1186,24 +1186,15 @@ class ProjectionPlane{
     // one shader material per sub-plane
     this._shaderMaterials = [];
 
-    // one uniform per shader
-    //this.uniforms = [];
-
     // number of rows and cols of sub-planes to compose the _plane
-    this._subPlaneDim = {row: 10, col: 20};
-
-
+    this._subPlaneDim = {row: 12, col: 22};
 
     // given by aggregation
     this._levelManager = null;
 
     this._resolutionLevel = 0;
 
-    this._debugPlane = null;
-
     this._buildSubPlanes();
-
-    //this._addDebugPlaneMesh();
   }
 
 
@@ -1211,15 +1202,7 @@ class ProjectionPlane{
   * Build all the subplanes with fake textures and fake origins. The purpose is just to create a compatible data structure able to receive relevant texture data when time comes.
   */
   _buildSubPlanes(){
-
     var subPlaneGeometry = new THREE.PlaneBufferGeometry( this._subPlaneSize, this._subPlaneSize, 1 );
-
-    /*
-    var subPlaneMaterial = new THREE.MeshBasicMaterial({
-        color: 0x666666,
-        wireframe: true
-    });
-    */
 
     // a fake texture is a texture used instead of a real one, just because
     // we have to send something to the shader even if we dont have data
@@ -1263,19 +1246,16 @@ class ProjectionPlane{
     subPlaneMaterial_original.side = THREE.DoubleSide;
     subPlaneMaterial_original.transparent = true;
 
-
     for(var j=0; j<this._subPlaneDim.row; j++){
       for(var i=0; i<this._subPlaneDim.col; i++){
-
         var subPlaneMaterial = subPlaneMaterial_original.clone();
-
         var mesh = new THREE.Mesh( subPlaneGeometry, subPlaneMaterial );
+
         mesh.position.set(-this._subPlaneDim.col*this._subPlaneSize/2 + i*this._subPlaneSize + this._subPlaneSize/2, -this._subPlaneDim.row*this._subPlaneSize/2 + j*this._subPlaneSize + this._subPlaneSize/2, 0.0);
 
         this._plane.add( mesh );
         this._subPlanes.push( mesh );
         this._shaderMaterials.push( subPlaneMaterial );
-
       }
     }
 
@@ -1296,7 +1276,6 @@ class ProjectionPlane{
   */
   setMeshColor(c){
     this._subPlanes[0].material.color = c;
-    //this._subPlanes[0].visible = false;
   }
 
 
@@ -1307,27 +1286,14 @@ class ProjectionPlane{
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     var textureData = 0;
 
-    //let timer = 0;
-
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
       var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
       var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
 
-      //var t0 = performance.now();
       textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
-
-      //var t1 = performance.now();
-      //timer += (t1 - t0);
-
       this.updateSubPlaneUniform(i, textureData);
     }
-
-    //timer /= nbSubPlanes;
-    //console.log("Time: " + timer + " milliseconds.")
-
-
-    //console.log(textureData);
 
   }
 
@@ -1371,18 +1337,10 @@ class ProjectionPlane{
 
 
   /**
-  * Compute and return the normal vector of this plane in world coordinates.
+  * Compute and return the normal vector of this plane in world coordinates using the local quaternion.
   * @returns {THREE.Vector3} a normalized vector.
   */
   getWorldNormal(){
-
-    /*
-    var worldOrigin = this._plane.localToWorld(new THREE.Vector3(0, 0, 0));
-    var worldZ1 = this._plane.localToWorld(new THREE.Vector3(0, 0, 1));
-    var worldNormal = new THREE.Vector3().subVectors( worldZ1, worldOrigin ).normalize();
-    return worldNormal;
-    */
-
     var ParentQuaternion = new THREE.Quaternion().copy(this._plane.quaternion);
     var normalVector = new THREE.Vector3(0, 0, 1);
     normalVector.applyQuaternion(ParentQuaternion).normalize();
@@ -1390,16 +1348,110 @@ class ProjectionPlane{
   }
 
 
-  _addDebugPlaneMesh(){
-    /*
-    var geometry = new THREE.PlaneGeometry( 5, 20, 32 );
-    var material = new THREE.MeshBasicMaterial( {color: 0xf00fff, side: THREE.DoubleSide} );
-    this._debugPlane = new THREE.Mesh( geometry, material );
-    this._plane.add( this._debugPlane );
-    */
+  getWorldDiagonal(){
+    //console.log('hello');
+    var diago = Math.sqrt( Math.pow(this._subPlaneDim.row, 2) + Math.pow(this._subPlaneDim.col, 2) ) * this._plane.scale.x;
+
+    return diago;
   }
 
+
+
 } /* END class ProjectionPlane */
+
+/**
+* A OrientationHelper is a sphere surrounding the orthogonal planes that will show the direction of left/right, posterior/anterior and inferior/superior.
+*
+*/
+class OrientationHelper{
+
+  /**
+  *
+  */
+  constructor( initRadius ){
+    this._sphere = new THREE.Object3D();
+
+    var xColor = 0xff3333;
+    var yColor = 0x00ff55;
+    var zColor = 0x0088ff;
+
+    var geometryX = new THREE.CircleGeometry( initRadius, 64 );
+    var geometryY = new THREE.CircleGeometry( initRadius, 64 );
+    var geometryZ = new THREE.CircleGeometry( initRadius, 64 );
+    var materialX = new THREE.LineBasicMaterial( { color: xColor, linewidth:1.5 } );
+    var materialY = new THREE.LineBasicMaterial( { color: yColor, linewidth:1.5 } );
+    var materialZ = new THREE.LineBasicMaterial( { color: zColor, linewidth:1.5 } );
+
+    // X circle
+    var circleX = new THREE.Line( geometryX, materialX );
+    circleX.name = "xCircle";
+    geometryX.rotateY(Math.PI / 2);
+    // Y circle
+    var circleY = new THREE.Line( geometryY, materialY );
+    circleY.name = "yCircle";
+    geometryY.rotateX(-Math.PI / 2);
+    // Z circle
+    var circleZ = new THREE.Line( geometryZ, materialZ );
+    circleZ.name = "zCircle";
+
+    this._sphere = new THREE.Object3D();
+    this._sphere.add(circleX);
+    this._sphere.add(circleY);
+    this._sphere.add(circleZ);
+  }
+
+
+  /**
+  * Add the local helper mesh to obj.
+  * @param {THREE.Object3D} obj - container object to add the local helper.
+  */
+  addTo( obj ){
+    obj.add( this._sphere );
+    console.log("ADDED");
+  }
+
+
+  /**
+  * Rescale the helper with a given factor.
+  * @param {Number} f - a scaling factor, most likely within [0, 1]
+  */
+  rescale( f ){
+    this._sphere.scale.x = f;
+    this._sphere.scale.y = f;
+    this._sphere.scale.z = f;
+
+
+  }
+
+
+  /**
+  *
+  */
+  rescaleFromResolutionLvl( lvl ){
+    var scale = 1 / Math.pow( 2, lvl );
+
+    this._sphere.scale.x = scale;
+    this._sphere.scale.y = scale;
+    this._sphere.scale.z = scale;
+
+    console.log(scale);
+  }
+
+  /**
+  * Set the position of the orientation helper.
+  * @param {THREE.Vector3} vPos - The position as a vector to clone.
+  */
+  setPosition( vPos ){
+    console.log(vPos);
+    //this._sphere.position.clone(vPos);
+
+    this._sphere.position.x = vPos.x;
+    this._sphere.position.y = vPos.y;
+    this._sphere.position.z = vPos.z;
+  }
+
+
+} /* END class OrientationHelper */
 
 // take some inspiration here:
 // https://threejs.org/examples/webgl_multiple_views.html
@@ -1414,6 +1466,8 @@ class ProjectionPlane{
 class QuadScene{
 
   constructor(DomContainer){
+    this._ready = false;
+    this._counterRefresh = 0;
 
     // the four QuadView instances, to be built (initViews)
     this._quadViews = [];
@@ -1431,7 +1485,7 @@ class QuadScene{
     this._scene = new THREE.Scene();
 
     // renderer construction and setting
-    this._renderer = new THREE.WebGLRenderer( /*{ antialias: true }*/ );
+    this._renderer = new THREE.WebGLRenderer( { antialias: true } );
     this._renderer.setPixelRatio( window.devicePixelRatio );
     this._renderer.setSize( window.innerWidth, window.innerHeight );
     this._domContainer.appendChild( this._renderer.domElement );
@@ -1471,6 +1525,8 @@ class QuadScene{
 
     // size of the dataset in world coords
     this._cubeHullSize = [0, 0, 0];
+
+    this._orientationHelper = null;
 
     this._initLevelManager();
   }
@@ -1571,6 +1627,14 @@ class QuadScene{
     // when the gui is used
     this._updateMainObjectContainerFromUI();
 
+    // TODO: make somethink better for refresh once per sec!
+    if(this._ready){
+      if(this._counterRefresh % 30 == 0){
+        this._updateAllPlanesShaderUniforms();
+      }
+      this._counterRefresh ++;
+    }
+
     // in case the window was resized
     this._updateSize();
 
@@ -1607,37 +1671,27 @@ class QuadScene{
       },
 
       debug: function(){
-        console.log(that._mainObjectContainer);
-        /*
-        console.log("---------");
-        console.log(that._projectionPlanes[0].getWorldNormal());
-        console.log(that._projectionPlanes[1].getWorldNormal());
-        console.log(that._projectionPlanes[2].getWorldNormal());
-        console.log("---------");
-        */
+        //console.log( that._projectionPlanes[0].getWorldDiagonal() );
+        console.log( that._projectionPlanes[0].getWorldDiagonal() );
       },
 
-
       rotateX: function(){
-        var normalPlane = that._projectionPlanes[2].getWorldNormal();
-        that._mainObjectContainer.rotateOnAxis ( normalPlane, Math.PI/10 );
+        that.rotateNativePlaneX( this.rotx );
       },
 
       rotateY: function(){
-        var normalPlane = that._projectionPlanes[1].getWorldNormal();
-        that._mainObjectContainer.rotateOnAxis ( normalPlane, Math.PI/10 );
+        that.rotateNativePlaneY( this.roty );
       },
 
       rotateZ: function(){
-        var normalPlane = that._projectionPlanes[0].getWorldNormal();
-        that._mainObjectContainer.rotateOnAxis ( normalPlane, Math.PI/10 );
+        that.rotateNativePlaneZ( this.rotz );
       },
 
     };
 
-    this._datGui.add(this._guiVar, 'posx', 0, 2).name("position x").step(0.001).listen();
-    this._datGui.add(this._guiVar, 'posy', 0, 2).name("position y").step(0.001).listen();
-    this._datGui.add(this._guiVar, 'posz', 0, 2).name("position z").step(0.001).listen();
+    var controllerPosX = this._datGui.add(this._guiVar, 'posx', 0, 2).name("position x").step(0.001).listen();
+    var controllerPosY = this._datGui.add(this._guiVar, 'posy', 0, 2).name("position y").step(0.001).listen();
+    var controllerPosZ = this._datGui.add(this._guiVar, 'posz', 0, 2).name("position z").step(0.001).listen();
     var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01).listen();
     var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01).listen();
     var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01).listen();
@@ -1652,6 +1706,30 @@ class QuadScene{
     this._datGui.add(this._guiVar, 'rotateZ');
 
 
+    controllerPosX.onFinishChange(function(xpos) {
+      that.setMainObjectPositionX(xpos);
+    });
+    controllerPosX.onChange(function(xpos) {
+      that.setMainObjectPositionX(xpos);
+    });
+
+    controllerPosY.onFinishChange(function(ypos) {
+      that.setMainObjectPositionY(ypos);
+    });
+    controllerPosY.onChange(function(ypos) {
+      that.setMainObjectPositionY(ypos);
+    });
+
+    controllerPosZ.onFinishChange(function(zpos) {
+      that.setMainObjectPositionZ(zpos);
+      console.log("posZ changed");
+    });
+    controllerPosZ.onChange(function(zpos) {
+      that.setMainObjectPositionZ(zpos);
+      console.log("posZ on change");
+    });
+
+
     levelController.onFinishChange(function(lvl) {
       that._updateResolutionLevel(lvl);
       that._updateOthoCamFrustrum();
@@ -1660,7 +1738,6 @@ class QuadScene{
       that._updateResolutionLevel(lvl);
       that._updateOthoCamFrustrum();
     });
-
 
     controllerRotX.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
@@ -1682,8 +1759,6 @@ class QuadScene{
     controllerRotZ.onFinishChange(function(value) {
       that._updateAllPlanesShaderUniforms();
     });
-
-
 
     controllerFrustrum.onChange(function(value){
       that._quadViews[0].updateOrthoCamFrustrum(value);
@@ -1716,6 +1791,47 @@ class QuadScene{
 
       this._updateAllPlanesShaderUniforms();
       this._updatePerspectiveCameraLookAt();
+
+      this._syncOrientationHelperPosition();
+    }
+  }
+
+  setMainObjectPositionX(x){
+    if(x>0 && x<this._cubeHullSize[0]){
+      this._mainObjectContainer.position.x = x;
+      this._updateAllPlanesShaderUniforms();
+      this._updatePerspectiveCameraLookAt();
+
+      // already done if called by the renderer and using DAT.gui
+      this._guiVar.posx = x;
+
+      this._syncOrientationHelperPosition();
+    }
+  }
+
+  setMainObjectPositionY(y){
+    if(y>0 && y<this._cubeHullSize[1]){
+      this._mainObjectContainer.position.y = y;
+      this._updateAllPlanesShaderUniforms();
+      this._updatePerspectiveCameraLookAt();
+
+      // already done if called by the renderer and using DAT.gui
+      this._guiVar.posy = y;
+
+      this._syncOrientationHelperPosition();
+    }
+  }
+
+  setMainObjectPositionZ(z){
+    if(z>0 && z<this._cubeHullSize[2]){
+      this._mainObjectContainer.position.z = z;
+      this._updateAllPlanesShaderUniforms();
+      this._updatePerspectiveCameraLookAt();
+
+      // already done if called by the renderer and using DAT.gui
+      this._guiVar.posz = z;
+
+      this._syncOrientationHelperPosition();
     }
   }
 
@@ -1748,12 +1864,15 @@ class QuadScene{
   * Called at each _render()
   */
   _updateMainObjectContainerFromUI(){
+
+    /*
     // position
     this.setMainObjectPosition(
       this._guiVar.posx,
       this._guiVar.posy,
       this._guiVar.posz
     );
+    */
 
     /*
     // rotation
@@ -1815,6 +1934,11 @@ class QuadScene{
         that._cubeHullSize[1] / 2,
         that._cubeHullSize[2] / 2
       );
+
+      that._initOrientationHelper();
+
+      that._ready = true;
+
     });
   }
 
@@ -1830,6 +1954,7 @@ class QuadScene{
     this._levelManager.setResolutionLevel( this._resolutionLevel );
     this._updateAllPlanesScaleFromRezLvl();
     this._updateAllPlanesShaderUniforms();
+    this._syncOrientationHelperScale();
   }
 
 
@@ -1849,6 +1974,7 @@ class QuadScene{
   * Updates the uniforms to send to the shader of the plane. Will trigger chunk loading for those which are not already in memory.
   */
   _updateAllPlanesShaderUniforms(){
+    //console.log(">> updating uniforms");
     this._projectionPlanes.forEach( function(plane){
       plane.updateUniforms();
     });
@@ -1942,6 +2068,76 @@ class QuadScene{
     this._cubeHull3D.position.z = this._cubeHullSize[2] / 2;
     this._scene.add( this._cubeHull3D );
   }
+
+
+  /**
+  * Initialize the orientation helper and adds it to the scene (and not to the main object, because it is not supposed to rotate)
+  */
+  _initOrientationHelper(){
+    this._orientationHelper = new OrientationHelper(
+      //this._projectionPlanes[0].getWorldDiagonal() / 2
+      1.5
+    );
+
+    this._orientationHelper.addTo( this._scene );
+    this._syncOrientationHelperPosition();
+  }
+
+
+  /**
+  * Synchronize the orientation helper position based on the main object position.
+  */
+  _syncOrientationHelperPosition(){
+    if(this._orientationHelper){
+      this._orientationHelper.setPosition( this._mainObjectContainer.position );
+    }
+  }
+
+
+  _syncOrientationHelperScale(){
+    this._orientationHelper.rescaleFromResolutionLvl( this._resolutionLevel );
+  }
+
+
+  /**
+  * Rotate the main object container on its native X axis. This X axis is relative to inside the object.
+  * @param {Number} rad - angle in radian
+  */
+  rotateNativePlaneX( rad ){
+    this._rotateNativePlane(2, rad);
+  }
+
+
+  /**
+  * Rotate the main object container on its native Y axis. This Y axis is relative to inside the object.
+  * @param {Number} rad - angle in radian
+  */
+  rotateNativePlaneY( rad ){
+    this._rotateNativePlane(1, rad);
+  }
+
+
+  /**
+  * Rotate the main object container on its native Z axis. This Z axis is relative to inside the object.
+  * @param {Number} rad - angle in radian
+  */
+  rotateNativePlaneZ( rad ){
+    this._rotateNativePlane(0, rad);
+  }
+
+
+  /**
+  * Rotate the main object container on one of its native axis. This axis is relative to inside the object.
+  * @param {Number} planeIndex - Index of the plane (0:Z, 1:Y, 2:X)
+  * @param {Number} rad - angle in radian
+  */
+  _rotateNativePlane(planeIndex, rad){
+    var normalPlane = this._projectionPlanes[planeIndex].getWorldNormal();
+    this._mainObjectContainer.rotateOnAxis ( normalPlane, rad );
+    this._updateAllPlanesShaderUniforms();
+  }
+
+
 
 }
 

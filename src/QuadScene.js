@@ -5,6 +5,8 @@
 
 import { QuadView } from './QuadView.js';
 import { ProjectionPlane } from './ProjectionPlane.js';
+import { OrientationHelper } from './OrientationHelper.js';
+
 
 
 
@@ -18,6 +20,8 @@ import { ProjectionPlane } from './ProjectionPlane.js';
 class QuadScene{
 
   constructor(DomContainer){
+    this._ready = false;
+    this._counterRefresh = 0;
 
     // the four QuadView instances, to be built (initViews)
     this._quadViews = [];
@@ -35,7 +39,7 @@ class QuadScene{
     this._scene = new THREE.Scene();
 
     // renderer construction and setting
-    this._renderer = new THREE.WebGLRenderer( /*{ antialias: true }*/ );
+    this._renderer = new THREE.WebGLRenderer( { antialias: true } );
     this._renderer.setPixelRatio( window.devicePixelRatio );
     this._renderer.setSize( window.innerWidth, window.innerHeight );
     this._domContainer.appendChild( this._renderer.domElement );
@@ -75,6 +79,8 @@ class QuadScene{
 
     // size of the dataset in world coords
     this._cubeHullSize = [0, 0, 0];
+
+    this._orientationHelper = null;
 
     this._initLevelManager();
   }
@@ -175,6 +181,14 @@ class QuadScene{
     // when the gui is used
     this._updateMainObjectContainerFromUI();
 
+    // TODO: make somethink better for refresh once per sec!
+    if(this._ready){
+      if(this._counterRefresh % 30 == 0){
+        this._updateAllPlanesShaderUniforms();
+      }
+      this._counterRefresh ++;
+    }
+
     // in case the window was resized
     this._updateSize();
 
@@ -211,37 +225,27 @@ class QuadScene{
       },
 
       debug: function(){
-        console.log(that._mainObjectContainer);
-        /*
-        console.log("---------");
-        console.log(that._projectionPlanes[0].getWorldNormal());
-        console.log(that._projectionPlanes[1].getWorldNormal());
-        console.log(that._projectionPlanes[2].getWorldNormal());
-        console.log("---------");
-        */
+        //console.log( that._projectionPlanes[0].getWorldDiagonal() );
+        console.log( that._projectionPlanes[0].getWorldDiagonal() );
       },
 
-
       rotateX: function(){
-        var normalPlane = that._projectionPlanes[2].getWorldNormal();
-        that._mainObjectContainer.rotateOnAxis ( normalPlane, Math.PI/10 );
+        that.rotateNativePlaneX( this.rotx );
       },
 
       rotateY: function(){
-        var normalPlane = that._projectionPlanes[1].getWorldNormal();
-        that._mainObjectContainer.rotateOnAxis ( normalPlane, Math.PI/10 );
+        that.rotateNativePlaneY( this.roty );
       },
 
       rotateZ: function(){
-        var normalPlane = that._projectionPlanes[0].getWorldNormal();
-        that._mainObjectContainer.rotateOnAxis ( normalPlane, Math.PI/10 );
+        that.rotateNativePlaneZ( this.rotz );
       },
 
     }
 
-    this._datGui.add(this._guiVar, 'posx', 0, 2).name("position x").step(0.001).listen();
-    this._datGui.add(this._guiVar, 'posy', 0, 2).name("position y").step(0.001).listen();
-    this._datGui.add(this._guiVar, 'posz', 0, 2).name("position z").step(0.001).listen();
+    var controllerPosX = this._datGui.add(this._guiVar, 'posx', 0, 2).name("position x").step(0.001).listen();
+    var controllerPosY = this._datGui.add(this._guiVar, 'posy', 0, 2).name("position y").step(0.001).listen();
+    var controllerPosZ = this._datGui.add(this._guiVar, 'posz', 0, 2).name("position z").step(0.001).listen();
     var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01).listen();
     var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01).listen();
     var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01).listen();
@@ -256,6 +260,30 @@ class QuadScene{
     this._datGui.add(this._guiVar, 'rotateZ');
 
 
+    controllerPosX.onFinishChange(function(xpos) {
+      that.setMainObjectPositionX(xpos);
+    });
+    controllerPosX.onChange(function(xpos) {
+      that.setMainObjectPositionX(xpos);
+    });
+
+    controllerPosY.onFinishChange(function(ypos) {
+      that.setMainObjectPositionY(ypos);
+    });
+    controllerPosY.onChange(function(ypos) {
+      that.setMainObjectPositionY(ypos);
+    });
+
+    controllerPosZ.onFinishChange(function(zpos) {
+      that.setMainObjectPositionZ(zpos);
+      console.log("posZ changed");
+    });
+    controllerPosZ.onChange(function(zpos) {
+      that.setMainObjectPositionZ(zpos);
+      console.log("posZ on change");
+    });
+
+
     levelController.onFinishChange(function(lvl) {
       that._updateResolutionLevel(lvl);
       that._updateOthoCamFrustrum();
@@ -264,7 +292,6 @@ class QuadScene{
       that._updateResolutionLevel(lvl);
       that._updateOthoCamFrustrum();
     });
-
 
     controllerRotX.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
@@ -286,8 +313,6 @@ class QuadScene{
     controllerRotZ.onFinishChange(function(value) {
       that._updateAllPlanesShaderUniforms();
     });
-
-
 
     controllerFrustrum.onChange(function(value){
       that._quadViews[0].updateOrthoCamFrustrum(value);
@@ -320,6 +345,47 @@ class QuadScene{
 
       this._updateAllPlanesShaderUniforms();
       this._updatePerspectiveCameraLookAt();
+
+      this._syncOrientationHelperPosition();
+    }
+  }
+
+  setMainObjectPositionX(x){
+    if(x>0 && x<this._cubeHullSize[0]){
+      this._mainObjectContainer.position.x = x;
+      this._updateAllPlanesShaderUniforms();
+      this._updatePerspectiveCameraLookAt();
+
+      // already done if called by the renderer and using DAT.gui
+      this._guiVar.posx = x;
+
+      this._syncOrientationHelperPosition();
+    }
+  }
+
+  setMainObjectPositionY(y){
+    if(y>0 && y<this._cubeHullSize[1]){
+      this._mainObjectContainer.position.y = y;
+      this._updateAllPlanesShaderUniforms();
+      this._updatePerspectiveCameraLookAt();
+
+      // already done if called by the renderer and using DAT.gui
+      this._guiVar.posy = y;
+
+      this._syncOrientationHelperPosition();
+    }
+  }
+
+  setMainObjectPositionZ(z){
+    if(z>0 && z<this._cubeHullSize[2]){
+      this._mainObjectContainer.position.z = z;
+      this._updateAllPlanesShaderUniforms();
+      this._updatePerspectiveCameraLookAt();
+
+      // already done if called by the renderer and using DAT.gui
+      this._guiVar.posz = z;
+
+      this._syncOrientationHelperPosition();
     }
   }
 
@@ -352,12 +418,15 @@ class QuadScene{
   * Called at each _render()
   */
   _updateMainObjectContainerFromUI(){
+
+    /*
     // position
     this.setMainObjectPosition(
       this._guiVar.posx,
       this._guiVar.posy,
       this._guiVar.posz
     );
+    */
 
     /*
     // rotation
@@ -419,6 +488,11 @@ class QuadScene{
         that._cubeHullSize[1] / 2,
         that._cubeHullSize[2] / 2
       );
+
+      that._initOrientationHelper();
+
+      that._ready = true;
+
     })
   }
 
@@ -434,6 +508,7 @@ class QuadScene{
     this._levelManager.setResolutionLevel( this._resolutionLevel );
     this._updateAllPlanesScaleFromRezLvl();
     this._updateAllPlanesShaderUniforms();
+    this._syncOrientationHelperScale();
   }
 
 
@@ -453,6 +528,7 @@ class QuadScene{
   * Updates the uniforms to send to the shader of the plane. Will trigger chunk loading for those which are not already in memory.
   */
   _updateAllPlanesShaderUniforms(){
+    //console.log(">> updating uniforms");
     this._projectionPlanes.forEach( function(plane){
       plane.updateUniforms();
     });
@@ -546,6 +622,76 @@ class QuadScene{
     this._cubeHull3D.position.z = this._cubeHullSize[2] / 2;
     this._scene.add( this._cubeHull3D );
   }
+
+
+  /**
+  * Initialize the orientation helper and adds it to the scene (and not to the main object, because it is not supposed to rotate)
+  */
+  _initOrientationHelper(){
+    this._orientationHelper = new OrientationHelper(
+      //this._projectionPlanes[0].getWorldDiagonal() / 2
+      1.5
+    );
+
+    this._orientationHelper.addTo( this._scene );
+    this._syncOrientationHelperPosition();
+  }
+
+
+  /**
+  * Synchronize the orientation helper position based on the main object position.
+  */
+  _syncOrientationHelperPosition(){
+    if(this._orientationHelper){
+      this._orientationHelper.setPosition( this._mainObjectContainer.position );
+    }
+  }
+
+
+  _syncOrientationHelperScale(){
+    this._orientationHelper.rescaleFromResolutionLvl( this._resolutionLevel );
+  }
+
+
+  /**
+  * Rotate the main object container on its native X axis. This X axis is relative to inside the object.
+  * @param {Number} rad - angle in radian
+  */
+  rotateNativePlaneX( rad ){
+    this._rotateNativePlane(2, rad);
+  }
+
+
+  /**
+  * Rotate the main object container on its native Y axis. This Y axis is relative to inside the object.
+  * @param {Number} rad - angle in radian
+  */
+  rotateNativePlaneY( rad ){
+    this._rotateNativePlane(1, rad);
+  }
+
+
+  /**
+  * Rotate the main object container on its native Z axis. This Z axis is relative to inside the object.
+  * @param {Number} rad - angle in radian
+  */
+  rotateNativePlaneZ( rad ){
+    this._rotateNativePlane(0, rad);
+  }
+
+
+  /**
+  * Rotate the main object container on one of its native axis. This axis is relative to inside the object.
+  * @param {Number} planeIndex - Index of the plane (0:Z, 1:Y, 2:X)
+  * @param {Number} rad - angle in radian
+  */
+  _rotateNativePlane(planeIndex, rad){
+    var normalPlane = this._projectionPlanes[planeIndex].getWorldNormal();
+    this._mainObjectContainer.rotateOnAxis ( normalPlane, rad );
+    this._updateAllPlanesShaderUniforms();
+  }
+
+
 
 }
 

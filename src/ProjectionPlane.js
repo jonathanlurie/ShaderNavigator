@@ -26,7 +26,7 @@ class ProjectionPlane{
     this._shaderMaterials = [];
 
     // number of rows and cols of sub-planes to compose the _plane
-    this._subPlaneDim = {row: 10, col: 20};
+    this._subPlaneDim = {row: 12, col: 22};
 
     // given by aggregation
     this._levelManager = null;
@@ -185,6 +185,15 @@ class ProjectionPlane{
     normalVector.applyQuaternion(ParentQuaternion).normalize();
     return normalVector;
   }
+
+
+  getWorldDiagonal(){
+    //console.log('hello');
+    var diago = Math.sqrt( Math.pow(this._subPlaneDim.row, 2) + Math.pow(this._subPlaneDim.col, 2) ) * this._plane.scale.x;
+
+    return diago;
+  }
+
 
 
 } /* END class ProjectionPlane */
