@@ -25,18 +25,15 @@ class ProjectionPlane{
     // one shader material per sub-plane
     this._shaderMaterials = [];
 
-    // one uniform per shader
-    //this.uniforms = [];
-
     // number of rows and cols of sub-planes to compose the _plane
     this._subPlaneDim = {row: 10, col: 20};
-
-    this._buildSubPlanes();
 
     // given by aggregation
     this._levelManager = null;
 
     this._resolutionLevel = 0;
+
+    this._buildSubPlanes();
   }
 
 
@@ -44,15 +41,7 @@ class ProjectionPlane{
   * Build all the subplanes with fake textures and fake origins. The purpose is just to create a compatible data structure able to receive relevant texture data when time comes.
   */
   _buildSubPlanes(){
-
     var subPlaneGeometry = new THREE.PlaneBufferGeometry( this._subPlaneSize, this._subPlaneSize, 1 );
-
-    /*
-    var subPlaneMaterial = new THREE.MeshBasicMaterial({
-        color: 0x666666,
-        wireframe: true
-    });
-    */
 
     // a fake texture is a texture used instead of a real one, just because
     // we have to send something to the shader even if we dont have data
@@ -96,19 +85,16 @@ class ProjectionPlane{
     subPlaneMaterial_original.side = THREE.DoubleSide;
     subPlaneMaterial_original.transparent = true;
 
-
     for(var j=0; j<this._subPlaneDim.row; j++){
       for(var i=0; i<this._subPlaneDim.col; i++){
-
         var subPlaneMaterial = subPlaneMaterial_original.clone();
-
         var mesh = new THREE.Mesh( subPlaneGeometry, subPlaneMaterial );
+
         mesh.position.set(-this._subPlaneDim.col*this._subPlaneSize/2 + i*this._subPlaneSize + this._subPlaneSize/2, -this._subPlaneDim.row*this._subPlaneSize/2 + j*this._subPlaneSize + this._subPlaneSize/2, 0.0);
 
         this._plane.add( mesh );
         this._subPlanes.push( mesh );
         this._shaderMaterials.push( subPlaneMaterial );
-
       }
     }
 
@@ -129,7 +115,6 @@ class ProjectionPlane{
   */
   setMeshColor(c){
     this._subPlanes[0].material.color = c;
-    //this._subPlanes[0].visible = false;
   }
 
 
@@ -140,27 +125,14 @@ class ProjectionPlane{
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     var textureData = 0;
 
-    //let timer = 0;
-
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
       var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0))
       var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
 
-      //var t0 = performance.now();
       textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
-
-      //var t1 = performance.now();
-      //timer += (t1 - t0);
-
       this.updateSubPlaneUniform(i, textureData);
     }
-
-    //timer /= nbSubPlanes;
-    //console.log("Time: " + timer + " milliseconds.")
-
-
-    //console.log(textureData);
 
   }
 
@@ -203,8 +175,19 @@ class ProjectionPlane{
   }
 
 
+  /**
+  * Compute and return the normal vector of this plane in world coordinates using the local quaternion.
+  * @returns {THREE.Vector3} a normalized vector.
+  */
+  getWorldNormal(){
+    var ParentQuaternion = new THREE.Quaternion().copy(this._plane.quaternion);
+    var normalVector = new THREE.Vector3(0, 0, 1);
+    normalVector.applyQuaternion(ParentQuaternion).normalize();
+    return normalVector;
+  }
 
-}
+
+} /* END class ProjectionPlane */
 
 
 export { ProjectionPlane };

@@ -211,7 +211,30 @@ class QuadScene{
       },
 
       debug: function(){
-        that._guiVar.posx += 0.1;
+        console.log(that._mainObjectContainer);
+        /*
+        console.log("---------");
+        console.log(that._projectionPlanes[0].getWorldNormal());
+        console.log(that._projectionPlanes[1].getWorldNormal());
+        console.log(that._projectionPlanes[2].getWorldNormal());
+        console.log("---------");
+        */
+      },
+
+
+      rotateX: function(){
+        var normalPlane = that._projectionPlanes[2].getWorldNormal();
+        that._mainObjectContainer.rotateOnAxis ( normalPlane, Math.PI/10 );
+      },
+
+      rotateY: function(){
+        var normalPlane = that._projectionPlanes[1].getWorldNormal();
+        that._mainObjectContainer.rotateOnAxis ( normalPlane, Math.PI/10 );
+      },
+
+      rotateZ: function(){
+        var normalPlane = that._projectionPlanes[0].getWorldNormal();
+        that._mainObjectContainer.rotateOnAxis ( normalPlane, Math.PI/10 );
       },
 
     }
@@ -227,6 +250,10 @@ class QuadScene{
 
     this._datGui.add(this._guiVar, 'refresh');
     this._datGui.add(this._guiVar, 'debug');
+
+    this._datGui.add(this._guiVar, 'rotateX');
+    this._datGui.add(this._guiVar, 'rotateY');
+    this._datGui.add(this._guiVar, 'rotateZ');
 
 
     levelController.onFinishChange(function(lvl) {
@@ -308,6 +335,10 @@ class QuadScene{
     this._mainObjectContainer.rotation.y = y;
     this._mainObjectContainer.rotation.z = z;
 
+    //this._projectionPlanes[0].getPlane().rotation.z = z;
+    //this._projectionPlanes[1].getPlane().rotation.x = x;
+    //this._projectionPlanes[2].getPlane().rotation.x = x;
+
     // already done if called by the renderer and using DAT.gui
     this._guiVar.rotx = x;
     this._guiVar.roty = y;
@@ -328,12 +359,14 @@ class QuadScene{
       this._guiVar.posz
     );
 
+    /*
     // rotation
     this.setMainObjectRotation(
       this._guiVar.rotx,
       this._guiVar.roty,
       this._guiVar.rotz
     );
+    */
 
   }
 
