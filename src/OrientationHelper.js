@@ -142,16 +142,13 @@ class OrientationHelper{
 
 
   /**
-  *
+  * Resize the helper depending on the resolution level
   */
   rescaleFromResolutionLvl( lvl ){
     var scale = 1 / Math.pow( 2, lvl );
-
     this._sphere.scale.x = scale;
     this._sphere.scale.y = scale;
     this._sphere.scale.z = scale;
-
-    console.log(scale);
   }
 
   /**
@@ -159,9 +156,6 @@ class OrientationHelper{
   * @param {THREE.Vector3} vPos - The position as a vector to clone.
   */
   setPosition( vPos ){
-    console.log(vPos);
-    //this._sphere.position.clone(vPos);
-
     this._sphere.position.x = vPos.x;
     this._sphere.position.y = vPos.y;
     this._sphere.position.z = vPos.z;

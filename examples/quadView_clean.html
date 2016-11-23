@@ -45,13 +45,22 @@
 
 		<script>
 
-    var quadScene = new SHAD.QuadScene( "container" );
-
-    //quadScene.addTestCube();
-    quadScene.addProjectionPlane(); // done internally
-    //quadScene.showCubeHull();
+    var quadScene = new SHAD.QuadScene( "container", 2 );
     quadScene.initStat();
-    quadScene.animate();
+
+    quadScene.onReady(function(qs){
+      qs.setResolutionLevel(5);
+      qs.setMainObjectRotation(1, 0.2, 0.6);
+      qs.setMainObjectPosition(0.3, 0.41, 0.8);
+    });
+
+
+    /*
+    // methods available when ready
+    setResolutionLevel(lvl)
+    setMainObjectRotation(x, y, z)
+    setMainObjectPosition(x, y, z)
+    */
 		</script>
 
 	</body>

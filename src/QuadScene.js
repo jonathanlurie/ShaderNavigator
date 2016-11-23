@@ -19,12 +19,27 @@ import { OrientationHelper } from './OrientationHelper.js';
 */
 class QuadScene{
 
-  constructor(DomContainer){
+  constructor(DomContainer, rez=2){
     this._ready = false;
     this._counterRefresh = 0;
+    this._resolutionLevel = rez;
 
     // the four QuadView instances, to be built (initViews)
     this._quadViews = [];
+
+    // all the planes to intersect the chunks. They will all lie into _mainObjectContainer
+    this._projectionPlanes = [];
+
+    // visible bounding box for the dataset
+    this._cubeHull3D = null;
+
+    // size of the dataset in world coords. TO BE INIT
+    this._cubeHullSize = [0, 0, 0];
+
+    // a static gimbal to show dataset orientation
+    this._orientationHelper = null;
+
+    this._onReadyCallback = null;
 
     // variables used to sync the dat.guy widget and some position/rotation.
     // see _initUI() for more info.
@@ -48,9 +63,8 @@ class QuadScene{
     this._mainObjectContainer = new THREE.Object3D();
     this._scene.add(this._mainObjectContainer );
 
-    this._resolutionLevel = 0;
-
-    // TODO: to be
+    // TODO: use object real size (maybe)
+    // a default camera distance we use instead of cube real size.
     this._cameraDistance = 10;
 
     // mouse position in [0, 1], origin being at the bottom left of the viewport
@@ -70,19 +84,10 @@ class QuadScene{
     // some help!
     this._scene.add( new THREE.AxisHelper( 1 ) );
 
-    // all the planes to intersect the chunks. They will all lie into _mainObjectContainer
-    this._projectionPlanes = [];
-
     this._levelManager = new SHAD.LevelManager();
-
-    this._cubeHull3D = null;
-
-    // size of the dataset in world coords
-    this._cubeHullSize = [0, 0, 0];
-
-    this._orientationHelper = null;
-
+    this._addProjectionPlane();
     this._initLevelManager();
+    this.animate();
   }
 
 
@@ -218,7 +223,7 @@ class QuadScene{
       roty: 0,
       rotz: 0,
       frustrum: 1,
-      resolutionLevel: 0,
+      resolutionLevel: that._resolutionLevel,
 
       toggleOrientationHelper: function(){
         that._orientationHelper.toggle();
@@ -291,12 +296,12 @@ class QuadScene{
 
 
     levelController.onFinishChange(function(lvl) {
-      that._updateResolutionLevel(lvl);
-      that._updateOthoCamFrustrum();
+      that.setResolutionLevel(lvl);
+      //that._updateOthoCamFrustrum();
     });
     levelController.onChange(function(lvl) {
-      that._updateResolutionLevel(lvl);
-      that._updateOthoCamFrustrum();
+      that.setResolutionLevel(lvl);
+      //that._updateOthoCamFrustrum();
     });
 
     controllerRotX.onChange(function(value) {
@@ -415,6 +420,8 @@ class QuadScene{
     this._guiVar.rotx = x;
     this._guiVar.roty = y;
     this._guiVar.rotz = z;
+
+    this._updateAllPlanesShaderUniforms();
   }
 
 
@@ -449,7 +456,7 @@ class QuadScene{
   /**
   *
   */
-  addProjectionPlane(){
+  _addProjectionPlane(){
     var pn = new ProjectionPlane(1);
     pn.setMeshColor(new THREE.Color(0x000099) );
     this._projectionPlanes.push( pn );
@@ -486,9 +493,8 @@ class QuadScene{
         plane.setLevelManager(that._levelManager);
       });
 
-      that._levelManager.setResolutionLevel( that._resolutionLevel ); // most likely 0 at the init
+      that._levelManager.setResolutionLevel( that._resolutionLevel );
 
-      that._updateAllPlanesShaderUniforms();
       that._buildCubeHull();
 
       that.setMainObjectPosition(
@@ -498,25 +504,36 @@ class QuadScene{
       );
 
       that._initOrientationHelper();
+      //that._updateAllPlanesShaderUniforms();
+
+      that.setResolutionLevel( that._resolutionLevel );
 
       that._ready = true;
+
+      if(that._onReadyCallback){
+        console.log('DEBUG01');
+        that._onReadyCallback(that);
+      }
 
     })
   }
 
 
-
-
   /**
-  *
+  * Update the resolution level, refresh the frustrum, the size of the helper, the scale of the planes.
+  * @param {Number} lvl - resolution level in [0, 6]
   */
-  _updateResolutionLevel(lvl){
+  setResolutionLevel(lvl){
     console.log("--------- LVL " + lvl + " ---------------");
     this._resolutionLevel = lvl;
     this._levelManager.setResolutionLevel( this._resolutionLevel );
     this._updateAllPlanesScaleFromRezLvl();
     this._updateAllPlanesShaderUniforms();
     this._syncOrientationHelperScale();
+
+    this._guiVar.resolutionLevel = lvl;
+
+    this._updateOthoCamFrustrum();
   }
 
 
@@ -700,6 +717,13 @@ class QuadScene{
   }
 
 
+  /**
+  * Specify a callback for when the Quadscene is ready.
+  * @param {Callback} cb - a function to be call with the object _this_ in param (the current QuadScene instance).
+  */
+  onReady(cb){
+    this._onReadyCallback = cb;
+  }
 
 }
 
