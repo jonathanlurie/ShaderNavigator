@@ -63,8 +63,8 @@ class QuadView{
       bottom: 0.5,
       width: 0.5,
       height: 0.5,
-      position: [ this._objectSize, 0, 0 ],
-      up: [ 0, 1, 0 ]
+      position: [ -this._objectSize, 0, 0 ],
+      up: [ -1, 0, 0 ]
     }
     this._viewName = "top_left";
     this._backgroundColor = new THREE.Color().setRGB( 0.8, 0.8, 0.8 );
@@ -80,7 +80,7 @@ class QuadView{
       bottom: 0.5,
       width: 0.5,
       height: 0.5,
-      position: [ 0, this._objectSize, 0 ],
+      position: [ 0, -this._objectSize, 0 ],
       up: [ 0, -1, 0 ]
     }
     this._viewName = "top_right";
@@ -96,7 +96,7 @@ class QuadView{
       bottom: 0.0,
       width: 0.5,
       height: 0.5,
-      position: [ 0, 0, this._objectSize ],
+      position: [ 0, 0, -this._objectSize ],
       up: [ 0, 1, 0 ]
     }
     this._viewName = "bottom_left";
@@ -113,8 +113,8 @@ class QuadView{
       bottom: 0,
       width: 0.5,
       height: 0.5,
-      position: [ this._objectSize / -2, this._objectSize/2, this._objectSize ],
-      up: [ 0, 1, 0 ]
+      position: [ -this._objectSize/2, this._objectSize/2, -this._objectSize/3 ],
+      up: [ 0, 0, -1 ]
     }
     this._viewName = "bottom_right";
     this._backgroundColor = new THREE.Color().setRGB( 0.97, 0.97, 0.97 );

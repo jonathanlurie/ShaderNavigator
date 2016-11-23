@@ -220,6 +220,10 @@ class QuadScene{
       frustrum: 1,
       resolutionLevel: 0,
 
+      toggleOrientationHelper: function(){
+        that._orientationHelper.toggle();
+      },
+
       refresh: function(){
         that._updateAllPlanesShaderUniforms();
       },
@@ -242,6 +246,8 @@ class QuadScene{
       },
 
     }
+
+    this._datGui.add(this._guiVar, 'toggleOrientationHelper').name("Toggle helper");
 
     var controllerPosX = this._datGui.add(this._guiVar, 'posx', 0, 2).name("position x").step(0.001).listen();
     var controllerPosY = this._datGui.add(this._guiVar, 'posy', 0, 2).name("position y").step(0.001).listen();
@@ -447,6 +453,7 @@ class QuadScene{
     var pn = new ProjectionPlane(1);
     pn.setMeshColor(new THREE.Color(0x000099) );
     this._projectionPlanes.push( pn );
+    //pn.getPlane().rotateZ( Math.PI / 2);
     this._mainObjectContainer.add( pn.getPlane() );
 
     var pu = new ProjectionPlane(1);
@@ -459,6 +466,7 @@ class QuadScene{
     pv.setMeshColor(new THREE.Color(0x990000) );
     this._projectionPlanes.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
+    pv.getPlane().rotateZ( Math.PI / 2);
     this._mainObjectContainer.add( pv.getPlane() );
   }
 
@@ -629,8 +637,8 @@ class QuadScene{
   */
   _initOrientationHelper(){
     this._orientationHelper = new OrientationHelper(
-      //this._projectionPlanes[0].getWorldDiagonal() / 2
-      1.5
+      this._projectionPlanes[0].getWorldDiagonal() / 20
+      //1.5
     );
 
     this._orientationHelper.addTo( this._scene );

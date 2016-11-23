@@ -56,7 +56,7 @@ class OrientationHelper{
 
     var xLine = new THREE.Line(
       xLineGeometry,
-      new THREE.LineBasicMaterial({	color: xColor })
+      new THREE.LineBasicMaterial({	color: xColor, linewidth:1.5 })
     );
 
     var yLineGeometry = new THREE.Geometry();
@@ -67,7 +67,7 @@ class OrientationHelper{
 
     var yLine = new THREE.Line(
       yLineGeometry,
-      new THREE.LineBasicMaterial({	color: yColor })
+      new THREE.LineBasicMaterial({	color: yColor, linewidth:1.5 })
     );
 
     var zLineGeometry = new THREE.Geometry();
@@ -78,7 +78,7 @@ class OrientationHelper{
 
     var zLine = new THREE.Line(
       zLineGeometry,
-      new THREE.LineBasicMaterial({	color: zColor })
+      new THREE.LineBasicMaterial({	color: zColor, linewidth:1.5 })
     );
 
     this._sphere.add( xLine );
@@ -86,7 +86,7 @@ class OrientationHelper{
     this._sphere.add( zLine );
 
 
-    // adding sprites
+    // adding sprites with labels
     var textureLoader = new THREE.TextureLoader();
     var leftTex = textureLoader.load( "../textures/left.png" );
     var rightTex = textureLoader.load( "../textures/right.png" );
@@ -94,11 +94,6 @@ class OrientationHelper{
     var postTex = textureLoader.load( "../textures/posterior.png" );
     var supTex = textureLoader.load( "../textures/superior.png" );
     var infTex = textureLoader.load( "../textures/inferior.png" );
-
-  //  var materialB = new THREE.SpriteMaterial( { map: mapB, color: 0xffffff, fog: false } );
-  //  var sprite = new THREE.Sprite( materialB );
-  //  sprite.position.set( initRadius, 0, 0 );
-    //sprite.scale.set(0.5, 0.5, 0.5);
 
     var leftSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: leftTex} ) );
     var rightSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: rightTex} ) );
@@ -143,8 +138,6 @@ class OrientationHelper{
     this._sphere.scale.x = f;
     this._sphere.scale.y = f;
     this._sphere.scale.z = f;
-
-
   }
 
 
@@ -172,6 +165,13 @@ class OrientationHelper{
     this._sphere.position.x = vPos.x;
     this._sphere.position.y = vPos.y;
     this._sphere.position.z = vPos.z;
+  }
+
+  /**
+  * Show the helper if hidden, hide it if shown.
+  */
+  toggle(){
+    this._sphere.visible = !this._sphere.visible;
   }
 
 

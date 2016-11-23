@@ -80,10 +80,10 @@ class ProjectionPlane{
       }
       ,
       vertexShader: ShaderImporter.texture3d_vert,
-      fragmentShader: ShaderImporter.texture3d_frag
+      fragmentShader: ShaderImporter.texture3d_frag,
+      side: THREE.DoubleSide,
+      transparent: true
     });
-    subPlaneMaterial_original.side = THREE.DoubleSide;
-    subPlaneMaterial_original.transparent = true;
 
     for(var j=0; j<this._subPlaneDim.row; j++){
       for(var i=0; i<this._subPlaneDim.col; i++){
