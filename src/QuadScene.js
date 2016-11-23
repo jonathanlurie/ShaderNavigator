@@ -600,18 +600,18 @@ class QuadScene{
       this._cubeHullSize[2]
     );
 
-    cubeHullGeometry.faces[0].color.setHex( 0xe1ceff ); // Sagittal
-    cubeHullGeometry.faces[1].color.setHex( 0xe1ceff );
-    cubeHullGeometry.faces[2].color.setHex( 0xA882E0 );
-    cubeHullGeometry.faces[3].color.setHex( 0xA882E0 );
-    cubeHullGeometry.faces[4].color.setHex( 0xbafcfb ); // Coronal
-    cubeHullGeometry.faces[5].color.setHex( 0xbafcfb );
-    cubeHullGeometry.faces[6].color.setHex( 0x54B8B6 );
-    cubeHullGeometry.faces[7].color.setHex( 0x54B8B6 );
-    cubeHullGeometry.faces[8].color.setHex( 0xFFEDB3 ); // Axial
-    cubeHullGeometry.faces[9].color.setHex( 0xFFEDB3 );
-    cubeHullGeometry.faces[10].color.setHex( 0xDBAA09 );
-    cubeHullGeometry.faces[11].color.setHex( 0xDBAA09 );
+    cubeHullGeometry.faces[0].color.setHex( 0xFF7A7A ); // Sagittal
+    cubeHullGeometry.faces[1].color.setHex( 0xFF7A7A );
+    cubeHullGeometry.faces[2].color.setHex( 0xff3333 );
+    cubeHullGeometry.faces[3].color.setHex( 0xff3333 );
+    cubeHullGeometry.faces[4].color.setHex( 0x61FA94 ); // Coronal
+    cubeHullGeometry.faces[5].color.setHex( 0x61FA94 );
+    cubeHullGeometry.faces[6].color.setHex( 0xA7FAC3 );
+    cubeHullGeometry.faces[7].color.setHex( 0xA7FAC3 );
+    cubeHullGeometry.faces[8].color.setHex( 0x95CCFC ); // Axial
+    cubeHullGeometry.faces[9].color.setHex( 0x95CCFC );
+    cubeHullGeometry.faces[10].color.setHex( 0x0088ff );
+    cubeHullGeometry.faces[11].color.setHex( 0x0088ff );
 
     // mesh
     var cubeHullPlainMesh = new THREE.Mesh( cubeHullGeometry, cubeHullMaterial );

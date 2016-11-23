@@ -1372,7 +1372,7 @@ class OrientationHelper{
     this._sphere = new THREE.Object3D();
 
     var xColor = 0xff3333;
-    var yColor = 0x00ff55;
+    var yColor = 0x00EB4E;
     var zColor = 0x0088ff;
 
     var geometryX = new THREE.CircleGeometry( initRadius, 64 );
@@ -1381,6 +1381,11 @@ class OrientationHelper{
     var materialX = new THREE.LineBasicMaterial( { color: xColor, linewidth:1.5 } );
     var materialY = new THREE.LineBasicMaterial( { color: yColor, linewidth:1.5 } );
     var materialZ = new THREE.LineBasicMaterial( { color: zColor, linewidth:1.5 } );
+
+    // remove inner vertice
+    geometryX.vertices.shift();
+    geometryY.vertices.shift();
+    geometryZ.vertices.shift();
 
     // X circle
     var circleX = new THREE.Line( geometryX, materialX );
@@ -1398,6 +1403,82 @@ class OrientationHelper{
     this._sphere.add(circleX);
     this._sphere.add(circleY);
     this._sphere.add(circleZ);
+
+    // adding central lines
+    var xLineGeometry = new THREE.Geometry();
+    xLineGeometry.vertices.push(
+    	new THREE.Vector3( -initRadius, 0, 0 ),
+    	new THREE.Vector3( initRadius, 0, 0 )
+    );
+
+    var xLine = new THREE.Line(
+      xLineGeometry,
+      new THREE.LineBasicMaterial({	color: xColor })
+    );
+
+    var yLineGeometry = new THREE.Geometry();
+    yLineGeometry.vertices.push(
+    	new THREE.Vector3(0, -initRadius, 0 ),
+    	new THREE.Vector3(0,  initRadius, 0 )
+    );
+
+    var yLine = new THREE.Line(
+      yLineGeometry,
+      new THREE.LineBasicMaterial({	color: yColor })
+    );
+
+    var zLineGeometry = new THREE.Geometry();
+    zLineGeometry.vertices.push(
+    	new THREE.Vector3(0, 0, -initRadius ),
+    	new THREE.Vector3(0, 0,  initRadius )
+    );
+
+    var zLine = new THREE.Line(
+      zLineGeometry,
+      new THREE.LineBasicMaterial({	color: zColor })
+    );
+
+    this._sphere.add( xLine );
+    this._sphere.add( yLine );
+    this._sphere.add( zLine );
+
+
+    // adding sprites
+    var textureLoader = new THREE.TextureLoader();
+    var leftTex = textureLoader.load( "../textures/left.png" );
+    var rightTex = textureLoader.load( "../textures/right.png" );
+    var antTex = textureLoader.load( "../textures/anterior.png" );
+    var postTex = textureLoader.load( "../textures/posterior.png" );
+    var supTex = textureLoader.load( "../textures/superior.png" );
+    var infTex = textureLoader.load( "../textures/inferior.png" );
+
+  //  var materialB = new THREE.SpriteMaterial( { map: mapB, color: 0xffffff, fog: false } );
+  //  var sprite = new THREE.Sprite( materialB );
+  //  sprite.position.set( initRadius, 0, 0 );
+    //sprite.scale.set(0.5, 0.5, 0.5);
+
+    var leftSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: leftTex} ) );
+    var rightSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: rightTex} ) );
+    var antSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: antTex} ) );
+    var postSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: postTex} ) );
+    var supSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: supTex} ) );
+    var infSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: infTex} ) );
+
+    var distanceFromCenter = initRadius * 1.4;
+
+    leftSprite.position.set( distanceFromCenter, 0, 0 );
+    rightSprite.position.set( -distanceFromCenter, 0, 0 );
+    antSprite.position.set(0, distanceFromCenter, 0 );
+    postSprite.position.set(0, -distanceFromCenter, 0 );
+    supSprite.position.set(0, 0, -distanceFromCenter );
+    infSprite.position.set(0, 0, distanceFromCenter );
+
+    this._sphere.add(leftSprite);
+    this._sphere.add(rightSprite);
+    this._sphere.add(antSprite);
+    this._sphere.add(postSprite);
+    this._sphere.add(supSprite);
+    this._sphere.add(infSprite);
   }
 
 
@@ -2046,18 +2127,18 @@ class QuadScene{
       this._cubeHullSize[2]
     );
 
-    cubeHullGeometry.faces[0].color.setHex( 0xe1ceff ); // Sagittal
-    cubeHullGeometry.faces[1].color.setHex( 0xe1ceff );
-    cubeHullGeometry.faces[2].color.setHex( 0xA882E0 );
-    cubeHullGeometry.faces[3].color.setHex( 0xA882E0 );
-    cubeHullGeometry.faces[4].color.setHex( 0xbafcfb ); // Coronal
-    cubeHullGeometry.faces[5].color.setHex( 0xbafcfb );
-    cubeHullGeometry.faces[6].color.setHex( 0x54B8B6 );
-    cubeHullGeometry.faces[7].color.setHex( 0x54B8B6 );
-    cubeHullGeometry.faces[8].color.setHex( 0xFFEDB3 ); // Axial
-    cubeHullGeometry.faces[9].color.setHex( 0xFFEDB3 );
-    cubeHullGeometry.faces[10].color.setHex( 0xDBAA09 );
-    cubeHullGeometry.faces[11].color.setHex( 0xDBAA09 );
+    cubeHullGeometry.faces[0].color.setHex( 0xFF7A7A ); // Sagittal
+    cubeHullGeometry.faces[1].color.setHex( 0xFF7A7A );
+    cubeHullGeometry.faces[2].color.setHex( 0xff3333 );
+    cubeHullGeometry.faces[3].color.setHex( 0xff3333 );
+    cubeHullGeometry.faces[4].color.setHex( 0xA7FAC3 ); // Coronal
+    cubeHullGeometry.faces[5].color.setHex( 0xA7FAC3 );
+    cubeHullGeometry.faces[6].color.setHex( 0x61FA94 );
+    cubeHullGeometry.faces[7].color.setHex( 0x61FA94 );
+    cubeHullGeometry.faces[8].color.setHex( 0x95CCFC ); // Axial
+    cubeHullGeometry.faces[9].color.setHex( 0x95CCFC );
+    cubeHullGeometry.faces[10].color.setHex( 0x0088ff );
+    cubeHullGeometry.faces[11].color.setHex( 0x0088ff );
 
     // mesh
     var cubeHullPlainMesh = new THREE.Mesh( cubeHullGeometry, cubeHullMaterial );
