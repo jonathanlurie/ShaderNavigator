@@ -6,6 +6,8 @@
 import { QuadView } from './QuadView.js';
 import { ProjectionPlane } from './ProjectionPlane.js';
 import { OrientationHelper } from './OrientationHelper.js';
+import { QuadViewInteraction } from './QuadViewInteraction.js';
+
 
 
 
@@ -26,6 +28,7 @@ class QuadScene{
 
     // the four QuadView instances, to be built (initViews)
     this._quadViews = [];
+    this._quadViewInteraction = null;
 
     // all the planes to intersect the chunks. They will all lie into _mainObjectContainer
     this._projectionPlanes = [];
@@ -122,6 +125,9 @@ class QuadScene{
     this._quadViews.push(topRightView);
     this._quadViews.push(bottomLeft);
     this._quadViews.push(bottomRight);
+
+    // the quadviewinteraction instance deals with mouse things
+    this._quadViewInteraction = new QuadViewInteraction( this._quadViews );
   }
 
 
@@ -155,6 +161,8 @@ class QuadScene{
   _onMouseMove( event ) {
     this._mouse.x = (event.clientX / this._windowSize.width);
     this._mouse.y = 1 - (event.clientY / this._windowSize.height);
+
+    this._quadViewInteraction.updateMousePosition(this._mouse.x, this._mouse.y);
   }
 
 
@@ -172,8 +180,8 @@ class QuadScene{
     // call a built-in webGL method for annimation
     requestAnimationFrame( this.animate.bind(this) );
 
-    // TODO
-    this._quadViews[3]._control.update();
+    // updating the control is necessary in the case of a TrackballControls
+    this._quadViews[3].updateControl();
   }
 
 
@@ -197,8 +205,9 @@ class QuadScene{
     // in case the window was resized
     this._updateSize();
 
-    // the last view has an Orbit Control, thus it need the mouse coords
-    this._quadViews[3].updateMousePosition(this._mouse.x, this._mouse.y);
+    // the last view has an Orbit Control, thus it needs the mouse coords
+    //this._quadViews[3].updateMousePosition(this._mouse.x, this._mouse.y);
+    // moved to mouse move
 
     // refresh each view
     this._quadViews.forEach(function(view){

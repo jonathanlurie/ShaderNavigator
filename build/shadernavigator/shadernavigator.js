@@ -1063,7 +1063,7 @@ class QuadView{
         // just entered
         if(! this._mouseInView){
           this._mouseInView = true;
-          this._control.enabled = true;
+          this.enableControl();
           console.log("ENTER " + this._viewName);
         }
 
@@ -1072,7 +1072,7 @@ class QuadView{
         // just left
         if(this._mouseInView){
           this._mouseInView = false;
-          this._control.enabled = false;
+          this.disableControl();
           console.log("LEAVE" + this._viewName);
         }
 
@@ -1094,9 +1094,8 @@ class QuadView{
   * Render the view, should be called when the main renderer is rendering.
   */
   renderView(){
-
     // will only work if an Orbt Control is defined
-    this._updateCameraWithControl();
+    //this._updateCameraWithControl();
 
     var left   = Math.floor( window.innerWidth  * this._config.left );
     var bottom = Math.floor( window.innerHeight * this._config.bottom );
@@ -1107,16 +1106,15 @@ class QuadView{
     this._renderer.setScissor( left, bottom, width, height );
     this._renderer.setScissorTest( true );
     this._renderer.setClearColor( this._backgroundColor );
-
     this._camera.aspect = width / height;
     this._camera.updateProjectionMatrix();
-
     this._renderer.render( this._scene, this._camera );
   }
 
 
   /**
-  *
+  * To use to embed the camera of this QuadView into an existing object, so that it can profit from this object space transformation without further work.
+  * We use it to embed a orthographic camera to planes so that the wole system can rotate and move all at once.
   */
   useRelativeCoordinatesOf( object3D ){
     // TODO: remove from an possibly existing parent first (if not scene)
@@ -1150,6 +1148,72 @@ class QuadView{
     }
 
   }
+
+
+  /**
+  * Update the control. This control needs to be updated from an "animate" function (like every frames) but not from a render function.
+  * If the control is a TrackballControls, updateControl needs to be called at every loop.
+  * If the control is a OrbitControls, updateControl needs to be called only if using the cinetic effect.
+  */
+  updateControl(){
+    this._control.update();
+  }
+
+
+  /**
+  * If the control (orbit or trackball) was initialized, it enables it.
+  * (Can be called even though it was already enabled, this is NOT a toggle)
+  */
+  enableControl(){
+    if(this._control){
+      if(!this._control.enabled){
+        console.log("mouse entered " + this._viewName);
+        this._control.enabled = true;
+      }
+    }
+  }
+
+
+  /**
+  * If the control (orbit or trackball) was initialized, it disables it.
+  * (Can be called even though it was already enabled, this is NOT a toggle)
+  */
+  disableControl(){
+    if(this._control){
+      if(this._control.enabled){
+        //console.log("mouse left " + this._viewName);
+        this._control.enabled = false;
+      }
+    }
+  }
+
+
+  /**
+  * @returns {boolean} true if this view is using a orbit/trackball control (no matter if enabled or disabled). Return false if this view does not use any kind of controls.
+  */
+  isUsingControl(){
+    return !!this._control;
+  }
+
+
+  /**
+  * Ask if a specific normalized coordinates are in the window boundaries of this view.
+  * @param {Number} x - horizontal coordinate normalized to the screen, so within [0, 1]. Origin on the left.
+  * @param {Number} y - vertical coordinate normalized to the screen, so within [0, 1]. Origin on the bottom.
+  * @returns true if (x, y) are
+  */
+  isInViewWindow(x, y){
+    //return x > 0 && y > 0 &&
+    //  (x - this._config.left) < this._config.width &&
+    //  (y - this._config.bottom) < this._config.height;
+
+    return x > this._config.left && y > this._config.bottom &&
+      x < (this._config.left + this._config.width) &&
+      y < (this._config.bottom + this._config.height);
+  }
+
+
+
 
 
 } /* END QuadView */
@@ -1528,6 +1592,67 @@ class OrientationHelper{
 
 } /* END class OrientationHelper */
 
+/**
+* A QuadViewInteraction instance knows all the QuadView instance (aggregated in an array) and deals with all the interaction/controller side that a QuadView may need. This includes mouse/keyboard interaction on each view (independently) and possibly orbit/trackball control for QuadViews which enabled it.
+*
+*/
+class QuadViewInteraction{
+
+  /**
+  * Build the QuadViewInteraction instance. Requires a list of QuadView instances.
+  * @param {Array of QuadView} QuadViewArray - an array of QuadView.
+  */
+  constructor(QuadViewArray){
+    this._quadViews = QuadViewArray;
+
+    this._mouse = {x:0, y:0};
+  }
+
+
+  /**
+  * Updates the position of the mouse pointer with x and y in [0, 1] with origin at the bottom left corner.
+  * Updating the mouse position may trigger some events like orbit/trackball control activation
+  */
+  updateMousePosition(x, y){
+    this._mouse = {x:x, y:y};
+
+    this._manageQuadViewsMouseActivity();
+  }
+
+
+  /**
+  * For each QuadView instance, trigger things depending on how the mouse pointer interact with a quadview.
+  */
+  _manageQuadViewsMouseActivity(){
+    var that = this;
+    var x = this._mouse.x;
+    var y = this._mouse.y;
+
+    this._quadViews.forEach(function(qv){
+
+      // the pointer is within the QuadView window
+      if(qv.isInViewWindow(x, y)){
+
+        console.log(qv._viewName);
+        // even though this quadview may not have any controller
+        qv.enableControl();
+      }
+      // the pointer is outside the QuadView window
+      else{
+
+
+        // even though this quadview may not have any controller
+        qv.disableControl();
+      }
+
+    });
+
+  }
+
+
+
+} /* END class QuadViewInteraction */
+
 // take some inspiration here:
 // https://threejs.org/examples/webgl_multiple_views.html
 
@@ -1547,6 +1672,7 @@ class QuadScene{
 
     // the four QuadView instances, to be built (initViews)
     this._quadViews = [];
+    this._quadViewInteraction = null;
 
     // all the planes to intersect the chunks. They will all lie into _mainObjectContainer
     this._projectionPlanes = [];
@@ -1643,6 +1769,9 @@ class QuadScene{
     this._quadViews.push(topRightView);
     this._quadViews.push(bottomLeft);
     this._quadViews.push(bottomRight);
+
+    // the quadviewinteraction instance deals with mouse things
+    this._quadViewInteraction = new QuadViewInteraction( this._quadViews );
   }
 
 
@@ -1676,6 +1805,8 @@ class QuadScene{
   _onMouseMove( event ) {
     this._mouse.x = (event.clientX / this._windowSize.width);
     this._mouse.y = 1 - (event.clientY / this._windowSize.height);
+
+    this._quadViewInteraction.updateMousePosition(this._mouse.x, this._mouse.y);
   }
 
 
@@ -1693,8 +1824,8 @@ class QuadScene{
     // call a built-in webGL method for annimation
     requestAnimationFrame( this.animate.bind(this) );
 
-    // TODO
-    this._quadViews[3]._control.update();
+    // updating the control is necessary in the case of a TrackballControls
+    this._quadViews[3].updateControl();
   }
 
 
@@ -1718,8 +1849,9 @@ class QuadScene{
     // in case the window was resized
     this._updateSize();
 
-    // the last view has an Orbit Control, thus it need the mouse coords
-    this._quadViews[3].updateMousePosition(this._mouse.x, this._mouse.y);
+    // the last view has an Orbit Control, thus it needs the mouse coords
+    //this._quadViews[3].updateMousePosition(this._mouse.x, this._mouse.y);
+    // moved to mouse move
 
     // refresh each view
     this._quadViews.forEach(function(view){
@@ -2040,10 +2172,9 @@ class QuadScene{
   }
 
 
-
-
   /**
-  *
+  * Update the resolution level, refresh the frustrum, the size of the helper, the scale of the planes.
+  * @param {Number} lvl - resolution level in [0, 6]
   */
   setResolutionLevel(lvl){
     console.log("--------- LVL " + lvl + " ---------------");

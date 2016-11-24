@@ -237,7 +237,7 @@ class QuadView{
         // just entered
         if(! this._mouseInView){
           this._mouseInView = true;
-          this._control.enabled = true;
+          this.enableControl();
           console.log("ENTER " + this._viewName);
         }
 
@@ -246,7 +246,7 @@ class QuadView{
         // just left
         if(this._mouseInView){
           this._mouseInView = false;
-          this._control.enabled = false;
+          this.disableControl();
           console.log("LEAVE" + this._viewName);
         }
 
@@ -268,9 +268,8 @@ class QuadView{
   * Render the view, should be called when the main renderer is rendering.
   */
   renderView(){
-
     // will only work if an Orbt Control is defined
-    this._updateCameraWithControl();
+    //this._updateCameraWithControl();
 
     var left   = Math.floor( window.innerWidth  * this._config.left );
     var bottom = Math.floor( window.innerHeight * this._config.bottom );
@@ -281,16 +280,15 @@ class QuadView{
     this._renderer.setScissor( left, bottom, width, height );
     this._renderer.setScissorTest( true );
     this._renderer.setClearColor( this._backgroundColor );
-
     this._camera.aspect = width / height;
     this._camera.updateProjectionMatrix();
-
     this._renderer.render( this._scene, this._camera );
   }
 
 
   /**
-  *
+  * To use to embed the camera of this QuadView into an existing object, so that it can profit from this object space transformation without further work.
+  * We use it to embed a orthographic camera to planes so that the wole system can rotate and move all at once.
   */
   useRelativeCoordinatesOf( object3D ){
     // TODO: remove from an possibly existing parent first (if not scene)
@@ -324,6 +322,67 @@ class QuadView{
     }
 
   }
+
+
+  /**
+  * Update the control. This control needs to be updated from an "animate" function (like every frames) but not from a render function.
+  * If the control is a TrackballControls, updateControl needs to be called at every loop.
+  * If the control is a OrbitControls, updateControl needs to be called only if using the cinetic effect.
+  */
+  updateControl(){
+    this._control.update();
+  }
+
+
+  /**
+  * If the control (orbit or trackball) was initialized, it enables it.
+  * (Can be called even though it was already enabled, this is NOT a toggle)
+  */
+  enableControl(){
+    if(this._control){
+      if(!this._control.enabled){
+        this._control.enabled = true;
+      }
+    }
+  }
+
+
+  /**
+  * If the control (orbit or trackball) was initialized, it disables it.
+  * (Can be called even though it was already enabled, this is NOT a toggle)
+  */
+  disableControl(){
+    if(this._control){
+      if(this._control.enabled){
+        //console.log("mouse left " + this._viewName);
+        this._control.enabled = false;
+      }
+    }
+  }
+
+
+  /**
+  * @returns {boolean} true if this view is using a orbit/trackball control (no matter if enabled or disabled). Return false if this view does not use any kind of controls.
+  */
+  isUsingControl(){
+    return !!this._control;
+  }
+
+
+  /**
+  * Ask if a specific normalized coordinates are in the window boundaries of this view.
+  * @param {Number} x - horizontal coordinate normalized to the screen, so within [0, 1]. Origin on the left.
+  * @param {Number} y - vertical coordinate normalized to the screen, so within [0, 1]. Origin on the bottom.
+  * @returns true if (x, y) are
+  */
+  isInViewWindow(x, y){
+    return x > this._config.left && y > this._config.bottom &&
+      x < (this._config.left + this._config.width) &&
+      y < (this._config.bottom + this._config.height);
+  }
+
+
+
 
 
 } /* END QuadView */
