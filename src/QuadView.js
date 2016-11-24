@@ -286,6 +286,7 @@ class QuadView{
   }
 
 
+
   /**
   * To use to embed the camera of this QuadView into an existing object, so that it can profit from this object space transformation without further work.
   * We use it to embed a orthographic camera to planes so that the wole system can rotate and move all at once.

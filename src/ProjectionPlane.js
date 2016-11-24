@@ -180,10 +180,31 @@ class ProjectionPlane{
   * @returns {THREE.Vector3} a normalized vector.
   */
   getWorldNormal(){
+    return this._getWorldVectorNormalized( new THREE.Vector3(0, 0, 1) );
+  }
+
+
+  getWorldVectorU(){
+    return this._getWorldVectorNormalized( new THREE.Vector3(1, 0, 0) );
+  }
+
+
+  getWorldVectorV(){
+    return this._getWorldVectorNormalized( new THREE.Vector3(0, 1, 0) );
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Transform a local vector (local to the plane) into a world coodinate vector.
+  * @param {THREE.Vector3} v - a local vector
+  * @returns {THREE.Vector3} a vector in world coodinates
+  */
+  _getWorldVectorNormalized( v ){
     var ParentQuaternion = new THREE.Quaternion().copy(this._plane.quaternion);
-    var normalVector = new THREE.Vector3(0, 0, 1);
-    normalVector.applyQuaternion(ParentQuaternion).normalize();
-    return normalVector;
+    var vector = v.clone();
+    vector.applyQuaternion(ParentQuaternion).normalize();
+    return vector;
   }
 
 

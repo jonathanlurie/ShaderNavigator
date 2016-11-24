@@ -1112,6 +1112,7 @@ class QuadView{
   }
 
 
+
   /**
   * To use to embed the camera of this QuadView into an existing object, so that it can profit from this object space transformation without further work.
   * We use it to embed a orthographic camera to planes so that the wole system can rotate and move all at once.
@@ -1167,7 +1168,6 @@ class QuadView{
   enableControl(){
     if(this._control){
       if(!this._control.enabled){
-        console.log("mouse entered " + this._viewName);
         this._control.enabled = true;
       }
     }
@@ -1203,10 +1203,6 @@ class QuadView{
   * @returns true if (x, y) are
   */
   isInViewWindow(x, y){
-    //return x > 0 && y > 0 &&
-    //  (x - this._config.left) < this._config.width &&
-    //  (y - this._config.bottom) < this._config.height;
-
     return x > this._config.left && y > this._config.bottom &&
       x < (this._config.left + this._config.width) &&
       y < (this._config.bottom + this._config.height);
@@ -1405,10 +1401,31 @@ class ProjectionPlane{
   * @returns {THREE.Vector3} a normalized vector.
   */
   getWorldNormal(){
+    return this._getWorldVectorNormalized( new THREE.Vector3(0, 0, 1) );
+  }
+
+
+  getWorldVectorU(){
+    return this._getWorldVectorNormalized( new THREE.Vector3(1, 0, 0) );
+  }
+
+
+  getWorldVectorV(){
+    return this._getWorldVectorNormalized( new THREE.Vector3(0, 1, 0) );
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Transform a local vector (local to the plane) into a world coodinate vector.
+  * @param {THREE.Vector3} v - a local vector
+  * @returns {THREE.Vector3} a vector in world coodinates
+  */
+  _getWorldVectorNormalized( v ){
     var ParentQuaternion = new THREE.Quaternion().copy(this._plane.quaternion);
-    var normalVector = new THREE.Vector3(0, 0, 1);
-    normalVector.applyQuaternion(ParentQuaternion).normalize();
-    return normalVector;
+    var vector = v.clone();
+    vector.applyQuaternion(ParentQuaternion).normalize();
+    return vector;
   }
 
 
@@ -1605,7 +1622,36 @@ class QuadViewInteraction{
   constructor(QuadViewArray){
     this._quadViews = QuadViewArray;
 
+    this._windowSize = {
+      width: window.innerWidth ,
+      height: window.innerHeight
+    };
+
+    // updated at every mousemove event by the QuadScene
     this._mouse = {x:0, y:0};
+
+    // distance traveled by the mouse, most likely between 2 mousemouve event
+    this._mouseDistance = {x:0, y:0};
+
+    // index of the quadview the mouse currently is
+    this._indexCurrentView = -1;
+    this._mousePressed = false;
+
+    document.addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
+    document.addEventListener( 'mousedown', this._onMouseDown.bind(this), false );
+    document.addEventListener( 'mouseup', this._onMouseUp.bind(this), false );
+  }
+
+
+  /**
+  * Because we dont want to be querying window.innerWidth and window.innerHeight all the time.
+  * This is supposed to be called by a QuadScene, at the same moment we update the window size for the renderer.
+  * @param {Number} w - width of the window in pixel, most likely window.innerWidth
+  * @param {Number} h - height of the window in pixel, most likely window.innerHeight
+  */
+  updateWindowSize(w, h){
+    this._windowSize.width = w;
+    this._windowSize.height = h;
   }
 
 
@@ -1613,12 +1659,24 @@ class QuadViewInteraction{
   * Updates the position of the mouse pointer with x and y in [0, 1] with origin at the bottom left corner.
   * Updating the mouse position may trigger some events like orbit/trackball control activation
   */
-  updateMousePosition(x, y){
-    this._mouse = {x:x, y:y};
+  _onMouseMove( event ) {
+    this._mouse.x = (event.clientX / this._windowSize.width);
+    this._mouse.y = 1 - (event.clientY / this._windowSize.height);
 
     this._manageQuadViewsMouseActivity();
   }
 
+
+
+  _onMouseDown( event ){
+    console.log("DOWN");
+  }
+
+
+
+  _onMouseUp( event ){
+    console.log("UP");
+  }
 
   /**
   * For each QuadView instance, trigger things depending on how the mouse pointer interact with a quadview.
@@ -1628,12 +1686,14 @@ class QuadViewInteraction{
     var x = this._mouse.x;
     var y = this._mouse.y;
 
-    this._quadViews.forEach(function(qv){
+    this._quadViews.forEach(function(qv, index){
 
       // the pointer is within the QuadView window
       if(qv.isInViewWindow(x, y)){
 
-        console.log(qv._viewName);
+
+        that._indexCurrentView = index;
+
         // even though this quadview may not have any controller
         qv.enableControl();
       }
@@ -1714,10 +1774,6 @@ class QuadScene{
     // a default camera distance we use instead of cube real size.
     this._cameraDistance = 10;
 
-    // mouse position in [0, 1], origin being at the bottom left of the viewport
-    this._mouse = {x:0, y:0};
-    document.addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
-
     // to feed the renderer. will be init
     this._windowSize = {
       width: 0 ,
@@ -1791,23 +1847,20 @@ class QuadScene{
   _updateSize() {
     if (  this._windowSize.width != window.innerWidth ||
           this._windowSize.height != window.innerHeight ) {
+
       this._windowSize.width  = window.innerWidth;
       this._windowSize.height = window.innerHeight;
+
+      // update the object that deals with view interaction
+      this._quadViewInteraction.updateWindowSize(
+        this._windowSize.width,
+        this._windowSize.height
+      );
+
       this._renderer.setSize ( this._windowSize.width, this._windowSize.height );
     }
   }
 
-
-  /**
-  * [PRIVATE / EVENT]
-  * called whenever the pointer is moving. Updates internal coords.
-  */
-  _onMouseMove( event ) {
-    this._mouse.x = (event.clientX / this._windowSize.width);
-    this._mouse.y = 1 - (event.clientY / this._windowSize.height);
-
-    this._quadViewInteraction.updateMousePosition(this._mouse.x, this._mouse.y);
-  }
 
 
   /**
@@ -1849,10 +1902,6 @@ class QuadScene{
     // in case the window was resized
     this._updateSize();
 
-    // the last view has an Orbit Control, thus it needs the mouse coords
-    //this._quadViews[3].updateMousePosition(this._mouse.x, this._mouse.y);
-    // moved to mouse move
-
     // refresh each view
     this._quadViews.forEach(function(view){
       view.renderView();
@@ -1888,7 +1937,12 @@ class QuadScene{
 
       debug: function(){
         //console.log( that._projectionPlanes[0].getWorldDiagonal() );
-        console.log( that._projectionPlanes[0].getWorldDiagonal() );
+        that.translateNativePlaneX(0.01, 0);
+      },
+
+      debug2: function(){
+        //console.log( that._projectionPlanes[0].getWorldDiagonal() );
+        that.translateNativePlaneX(0, 0.01);
       },
 
       rotateX: function(){
@@ -1916,9 +1970,10 @@ class QuadScene{
     var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 2).name("frustrum").step(0.01).listen();
     var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1).listen();
 
-    this._datGui.add(this._guiVar, 'refresh');
     this._datGui.add(this._guiVar, 'debug');
+    this._datGui.add(this._guiVar, 'debug2');
 
+    this._datGui.add(this._guiVar, 'refresh');
     this._datGui.add(this._guiVar, 'rotateX');
     this._datGui.add(this._guiVar, 'rotateY');
     this._datGui.add(this._guiVar, 'rotateZ');
@@ -2359,6 +2414,7 @@ class QuadScene{
 
 
   /**
+  * [PRIVATE]
   * Rotate the main object container on one of its native axis. This axis is relative to inside the object.
   * @param {Number} planeIndex - Index of the plane (0:Z, 1:Y, 2:X)
   * @param {Number} rad - angle in radian
@@ -2369,6 +2425,56 @@ class QuadScene{
     this._updateAllPlanesShaderUniforms();
   }
 
+
+  /**
+  * Translate the main object container along the u and v vector relative to the x plane instead of the regular coordinate system X.
+  * @param {Number} uDistance - distance to move along the uVector of the plane X
+  * @param {Number} vDistance - distance to move along the vVector of the plane X
+  */
+  translateNativePlaneX(uDistance, vDistance){
+    this._translateNativePlane(2, uDistance, vDistance);
+  }
+
+
+  /**
+  * Translate the main object container along the u and v vector relative to the y plane instead of the regular coordinate system Y.
+  * @param {Number} uDistance - distance to move along the uVector of the plane Y
+  * @param {Number} vDistance - distance to move along the vVector of the plane Y
+  */
+  translateNativePlaneY(uDistance, vDistance){
+    this._translateNativePlane(1, uDistance, vDistance);
+  }
+
+
+  /**
+  * Translate the main object container along the u and v vector relative to the z plane instead of the regular coordinate system Z.
+  * @param {Number} uDistance - distance to move along the uVector of the plane Z
+  * @param {Number} vDistance - distance to move along the vVector of the plane Z
+  */
+  translateNativePlaneZ(uDistance, vDistance){
+    this._translateNativePlane(0, uDistance, vDistance);
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Moves the main object container using a the u and v local unit vector of a specific plane.
+  * The u and v vector are orthogonal to the plane's normal (even in an oblique context).
+  * @param {Number} planeIndex - index of the plane, most likely in [0, 2]
+  * @param {Number} uDistance - distance to move the main object along u vector. signed float.
+  * @param {Number} vDistance - distance to move the main object along v vector. signed float.
+  */
+  _translateNativePlane(planeIndex, uDistance, vDistance){
+    var uVector = this._projectionPlanes[planeIndex].getWorldVectorU();
+    var vVector = this._projectionPlanes[planeIndex].getWorldVectorV();
+    this._mainObjectContainer.translateOnAxis( uVector, uDistance );
+    this._mainObjectContainer.translateOnAxis( vVector, vDistance );
+
+    // update things related to the main object
+    this._updateAllPlanesShaderUniforms();
+    this._updatePerspectiveCameraLookAt();
+    this._syncOrientationHelperPosition();
+  }
 
   /**
   * Specify a callback for when the Quadscene is ready.
