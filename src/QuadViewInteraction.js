@@ -35,12 +35,23 @@ class QuadViewInteraction{
     // updated by the mousedown/mouseup
     this._mousePressed = false;
 
+    this._rKeyPressed = false;
+
+    // declaring some interaction events
     document.addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
     document.addEventListener( 'mousedown', this._onMouseDown.bind(this), false );
     document.addEventListener( 'mouseup', this._onMouseUp.bind(this), false );
+    document.addEventListener( 'keydown', this._onKeyDown.bind(this), false);
+    document.addEventListener( 'keyup', this._onKeyUp.bind(this), false);
 
-    // function to be called when the mouse is pressed on a view.
-    this._onGrabViewCallback = null;
+    // function to be called when the mouse is pressed on a view for translation - no R key pressed
+    this._onGrabViewTranslateCallback = null;
+
+    // function to be called when the mouse is pressed on a view for rotation - with R key pressed
+    this._onGrabViewRotateCallback = null;
+
+    // function called when
+    this._onScrollViewCallback = null;
   }
 
 
@@ -66,7 +77,7 @@ class QuadViewInteraction{
 
     this._manageQuadViewsMouseActivity();
 
-
+    // mouse pressed + moving
     if(this._mousePressed){
 
       // distance from the last update
@@ -77,11 +88,28 @@ class QuadViewInteraction{
       this._mouseLastPosition.x = this._mouse.x;
       this._mouseLastPosition.y = this._mouse.y;
 
-      // call a callback
-      if(this._onGrabViewCallback){
-        this._onGrabViewCallback(this._mouseDistance, this._indexViewMouseDown);
+      // + R key down --> rotation
+      if(this._rKeyPressed){
+        console.log("ROTATE");
+        var center = {
+          x: (this._indexViewMouseDown%2)*0.5 + 0.25,
+          y: (this._indexViewMouseDown>1?0:1)*0.5 +0.25,
+        }
+
+        console.log(center);
       }
-    }
+      // + NO key down --> translation
+      else{
+        if(this._onGrabViewTranslateCallback){
+          this._onGrabViewTranslateCallback(this._mouseDistance, this._indexViewMouseDown);
+        }
+      }
+
+    } /* END  */
+
+
+
+
 
   }
 
@@ -112,6 +140,28 @@ class QuadViewInteraction{
     this._mouseDistance.y = 0;
   }
 
+
+  /**
+  * [PRIVATE]
+  *
+  */
+  _onKeyDown( event ){
+    switch( event.key ){
+      case "r":
+        this._rKeyPressed = true;
+        break;
+      default:;
+    }
+  }
+
+  _onKeyUp( event ){
+    switch( event.key ){
+      case "r":
+        this._rKeyPressed = false;
+        break;
+      default:;
+    }
+  }
 
   /**
   * For each QuadView instance, trigger things depending on how the mouse pointer interact with a quadview.
@@ -148,9 +198,18 @@ class QuadViewInteraction{
   *   {Object} distance {x:, y: } - the distance along x and y in normalized space
   *   {Number} QuadView index
   */
-  onGrabView(cb){
-    this._onGrabViewCallback = cb;
+  onGrabViewTranslate(cb){
+    this._onGrabViewTranslateCallback = cb;
   }
+
+
+  /**
+  *
+  */
+  onGrabViewRotate(cb){
+    this._onGrabViewRotateCallback = cb;
+  }
+
 
 
 } /* END class QuadViewInteraction */

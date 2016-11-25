@@ -789,12 +789,10 @@ class QuadScene{
   _initPlaneInteraction(){
     var that = this;
 
-    this._quadViewInteraction.onGrabView( function(distance, viewIndex){
-
+    this._quadViewInteraction.onGrabViewTranslate( function(distance, viewIndex){
       var factor = Math.pow(2, that._resolutionLevel);
 
       switch (viewIndex) {
-
         case 0:
           that.translateNativePlaneX(-distance.x/factor, distance.y/factor);
           break;
