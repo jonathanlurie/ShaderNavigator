@@ -512,10 +512,11 @@ class QuadScene{
 
       that.setResolutionLevel( that._resolutionLevel );
 
+      that._initPlaneInteraction();
+
       that._ready = true;
 
       if(that._onReadyCallback){
-        console.log('DEBUG01');
         that._onReadyCallback(that);
       }
 
@@ -779,6 +780,39 @@ class QuadScene{
   onReady(cb){
     this._onReadyCallback = cb;
   }
+
+
+  /**
+  * [PRIVATE]
+  *
+  */
+  _initPlaneInteraction(){
+    var that = this;
+
+    this._quadViewInteraction.onGrabView( function(distance, viewIndex){
+
+      var factor = Math.pow(2, that._resolutionLevel);
+
+      switch (viewIndex) {
+
+        case 0:
+          that.translateNativePlaneX(-distance.x/factor, distance.y/factor);
+          break;
+        case 1:
+          that.translateNativePlaneY(distance.x/factor, distance.y/factor);
+          break;
+        case 2:
+          that.translateNativePlaneZ(distance.x/factor, -distance.y/factor);
+          break;
+        default:  // if last view, we dont do anything
+          return;
+      }
+
+
+    });
+
+  }
+
 
 }
 

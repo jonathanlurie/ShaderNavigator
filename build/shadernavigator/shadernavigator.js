@@ -1630,16 +1630,26 @@ class QuadViewInteraction{
     // updated at every mousemove event by the QuadScene
     this._mouse = {x:0, y:0};
 
+    this._mouseLastPosition = {x:-1, y:-1};
+
     // distance traveled by the mouse, most likely between 2 mousemouve event
     this._mouseDistance = {x:0, y:0};
 
     // index of the quadview the mouse currently is
     this._indexCurrentView = -1;
+
+    // index of the view the mouse was pressed
+    this._indexViewMouseDown = -1;
+
+    // updated by the mousedown/mouseup
     this._mousePressed = false;
 
     document.addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
     document.addEventListener( 'mousedown', this._onMouseDown.bind(this), false );
     document.addEventListener( 'mouseup', this._onMouseUp.bind(this), false );
+
+    // function to be called when the mouse is pressed on a view.
+    this._onGrabViewCallback = null;
   }
 
 
@@ -1664,19 +1674,53 @@ class QuadViewInteraction{
     this._mouse.y = 1 - (event.clientY / this._windowSize.height);
 
     this._manageQuadViewsMouseActivity();
+
+
+    if(this._mousePressed){
+
+      // distance from the last update
+      this._mouseDistance.x = (this._mouse.x - this._mouseLastPosition.x)*this._windowSize.width / 100;
+      this._mouseDistance.y = (this._mouse.y - this._mouseLastPosition.y)*this._windowSize.height / 100;
+
+      // update the last position
+      this._mouseLastPosition.x = this._mouse.x;
+      this._mouseLastPosition.y = this._mouse.y;
+
+      // call a callback
+      if(this._onGrabViewCallback){
+        this._onGrabViewCallback(this._mouseDistance, this._indexViewMouseDown);
+      }
+    }
+
   }
 
 
-
+  /**
+  * [PRIVATE]
+  * callback to the mousedown event
+  */
   _onMouseDown( event ){
-    console.log("DOWN");
+    this._mousePressed = true;
+    this._indexViewMouseDown = this._indexCurrentView;
+
+    // will be used as an init position
+    this._mouseLastPosition.x = this._mouse.x;
+    this._mouseLastPosition.y = this._mouse.y;
   }
 
 
-
+  /**
+  * [PRIVATE]
+  * callback to the mouseup event
+  */
   _onMouseUp( event ){
-    console.log("UP");
+    this._mousePressed = false;
+    this._indexViewMouseDown = -1;
+
+    this._mouseDistance.x = 0;
+    this._mouseDistance.y = 0;
   }
+
 
   /**
   * For each QuadView instance, trigger things depending on how the mouse pointer interact with a quadview.
@@ -1691,7 +1735,6 @@ class QuadViewInteraction{
       // the pointer is within the QuadView window
       if(qv.isInViewWindow(x, y)){
 
-
         that._indexCurrentView = index;
 
         // even though this quadview may not have any controller
@@ -1700,15 +1743,23 @@ class QuadViewInteraction{
       // the pointer is outside the QuadView window
       else{
 
-
         // even though this quadview may not have any controller
         qv.disableControl();
       }
 
     });
-
   }
 
+
+  /**
+  * Callback when one of the QuadView is grabed.
+  * The callback will be called with 2 arguments:
+  *   {Object} distance {x:, y: } - the distance along x and y in normalized space
+  *   {Number} QuadView index
+  */
+  onGrabView(cb){
+    this._onGrabViewCallback = cb;
+  }
 
 
 } /* END class QuadViewInteraction */
@@ -2216,10 +2267,11 @@ class QuadScene{
 
       that.setResolutionLevel( that._resolutionLevel );
 
+      that._initPlaneInteraction();
+
       that._ready = true;
 
       if(that._onReadyCallback){
-        console.log('DEBUG01');
         that._onReadyCallback(that);
       }
 
@@ -2483,6 +2535,40 @@ class QuadScene{
   onReady(cb){
     this._onReadyCallback = cb;
   }
+
+
+  /**
+  * [PRIVATE]
+  *
+  */
+  _initPlaneInteraction(){
+    var that = this;
+
+    this._quadViewInteraction.onGrabView( function(distance, viewIndex){
+      console.log(distance.x + " " + distance.y + "  view: " + viewIndex );
+
+      var factor = Math.pow(2, that._resolutionLevel);
+
+      switch (viewIndex) {
+
+        case 0:
+          that.translateNativePlaneX(-distance.x/factor, distance.y/factor);
+          break;
+        case 1:
+          that.translateNativePlaneY(distance.x/factor, distance.y/factor);
+          break;
+        case 2:
+          that.translateNativePlaneZ(distance.x/factor, -distance.y/factor);
+          break;
+        default:  // if last view, we dont do anything
+          return;
+      }
+
+
+    });
+
+  }
+
 
 }
 

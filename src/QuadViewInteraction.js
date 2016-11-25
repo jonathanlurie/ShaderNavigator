@@ -69,16 +69,18 @@ class QuadViewInteraction{
 
     if(this._mousePressed){
 
-      // first time, init
-      if(this._mouseLastPosition.x == -1){
-        this._mouseLastPosition.x = this._mouse.x;
-        this._mouseLastPosition.y = this._mouse.y;
-      }
-      // regular time
-      else{
-        this._mouseDistance // TODO
-      }
+      // distance from the last update
+      this._mouseDistance.x = (this._mouse.x - this._mouseLastPosition.x)*this._windowSize.width / 100;
+      this._mouseDistance.y = (this._mouse.y - this._mouseLastPosition.y)*this._windowSize.height / 100;
 
+      // update the last position
+      this._mouseLastPosition.x = this._mouse.x;
+      this._mouseLastPosition.y = this._mouse.y;
+
+      // call a callback
+      if(this._onGrabViewCallback){
+        this._onGrabViewCallback(this._mouseDistance, this._indexViewMouseDown);
+      }
     }
 
   }
@@ -91,6 +93,10 @@ class QuadViewInteraction{
   _onMouseDown( event ){
     this._mousePressed = true;
     this._indexViewMouseDown = this._indexCurrentView;
+
+    // will be used as an init position
+    this._mouseLastPosition.x = this._mouse.x;
+    this._mouseLastPosition.y = this._mouse.y;
   }
 
 
@@ -101,6 +107,9 @@ class QuadViewInteraction{
   _onMouseUp( event ){
     this._mousePressed = false;
     this._indexViewMouseDown = -1;
+
+    this._mouseDistance.x = 0;
+    this._mouseDistance.y = 0;
   }
 
 
@@ -117,7 +126,6 @@ class QuadViewInteraction{
       // the pointer is within the QuadView window
       if(qv.isInViewWindow(x, y)){
 
-
         that._indexCurrentView = index;
 
         // even though this quadview may not have any controller
@@ -126,15 +134,23 @@ class QuadViewInteraction{
       // the pointer is outside the QuadView window
       else{
 
-
         // even though this quadview may not have any controller
         qv.disableControl();
       }
 
     });
-
   }
 
+
+  /**
+  * Callback when one of the QuadView is grabed.
+  * The callback will be called with 2 arguments:
+  *   {Object} distance {x:, y: } - the distance along x and y in normalized space
+  *   {Number} QuadView index
+  */
+  onGrabView(cb){
+    this._onGrabViewCallback = cb;
+  }
 
 
 } /* END class QuadViewInteraction */
