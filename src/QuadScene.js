@@ -827,18 +827,20 @@ class QuadScene{
 
 
     this._quadViewInteraction.onGrabViewTransverseRotate( function(distance, viewIndex){
-      var factor = Math.pow(2, that._resolutionLevel);
+      var factor = Math.pow(2, that._resolutionLevel) / 10;
 
       switch (viewIndex) {
         case 0:
-          that.rotateNativePlaneY(distance.x / factor);
-          that.rotateNativePlaneZ(distance.y / factor);
+          that.rotateNativePlaneZ(distance.x / factor);
+          that.rotateNativePlaneY(-distance.y / factor);
           break;
         case 1:
-
+          that.rotateNativePlaneX(-distance.y / factor);
+          that.rotateNativePlaneZ(distance.x / factor);
           break;
         case 2:
-
+          that.rotateNativePlaneX(-distance.y / factor);
+          that.rotateNativePlaneY(distance.x / factor);
           break;
         default:  // if last view, we dont do anything
           return;
