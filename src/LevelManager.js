@@ -176,6 +176,8 @@ class LevelManager{
     var the8ClosestTextureData = this._chunkCollections[ this._resolutionLevel ]
               .get8ClosestTextureData(position);
 
+    //console.log(this._resolutionLevel + " " + position[0] + " " + position[1] + " " +position[2]);
+
     return the8ClosestTextureData;
   }
 

@@ -125,15 +125,27 @@ class ProjectionPlane{
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     var textureData = 0;
 
+    console.log(this._levelManager._resolutionLevel);
+
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
-      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0))
-      var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
+      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
+      //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
 
       textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
       this.updateSubPlaneUniform(i, textureData);
     }
 
+  }
+
+
+  printSubPlaneCenterWorld(){
+    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+    for(var i=0; i<nbSubPlanes; i++){
+      // center of the sub-plane in world coordinates
+      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
+      console.log(center);
+    }
   }
 
 
@@ -172,6 +184,13 @@ class ProjectionPlane{
     this._plane.scale.x = scale;
     this._plane.scale.y = scale;
     this._plane.scale.z = scale;
+
+    // explicitely call to update the matrix, otherwise it would be called at the next render
+    // and in the meantime, we need to have proper position to load the chunks.
+    this._plane.updateMatrixWorld();
+
+    // this one is not supposed to be necessary
+    //this._plane.updateMatrix();
   }
 
 

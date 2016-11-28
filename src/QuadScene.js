@@ -190,7 +190,7 @@ class QuadScene{
     // TODO: make somethink better for refresh once per sec!
     if(this._ready){
       if(this._counterRefresh % 30 == 0){
-        this._updateAllPlanesShaderUniforms();
+        //this._updateAllPlanesShaderUniforms();
       }
       this._counterRefresh ++;
     }
@@ -232,13 +232,13 @@ class QuadScene{
       },
 
       debug: function(){
-        //console.log( that._projectionPlanes[0].getWorldDiagonal() );
-        that.translateNativePlaneX(0.01, 0);
+        that._projectionPlanes.forEach( function(plane){
+          plane.printSubPlaneCenterWorld();
+        });
       },
 
       debug2: function(){
-        //console.log( that._projectionPlanes[0].getWorldDiagonal() );
-        that.translateNativePlaneX(0, 0.01);
+
       },
 
       rotateX: function(){
@@ -532,8 +532,9 @@ class QuadScene{
     console.log("--------- LVL " + lvl + " ---------------");
     this._resolutionLevel = lvl;
     this._levelManager.setResolutionLevel( this._resolutionLevel );
+
     this._updateAllPlanesScaleFromRezLvl();
-    this._updateAllPlanesShaderUniforms();
+    this._updateAllPlanesShaderUniforms();  // TODO: should be uncommented!!
     this._syncOrientationHelperScale();
 
     this._guiVar.resolutionLevel = lvl;
@@ -541,6 +542,11 @@ class QuadScene{
     this._updateOthoCamFrustrum();
   }
 
+  printSubPlaneCenterWorld(){
+    this._projectionPlanes.forEach( function(plane){
+      plane.printSubPlaneCenterWorld();
+    });
+  }
 
   /**
   * When the resolution level is changing, the scale of each plane has to change accordingly before the texture chunks are fetched ( = before _updateAllPlanesShaderUniforms is called).
@@ -548,9 +554,11 @@ class QuadScene{
   _updateAllPlanesScaleFromRezLvl(){
     var that = this;
 
+    console.log(">> Updating plane scale to lvl " + this._resolutionLevel + " ...");
     this._projectionPlanes.forEach( function(plane){
       plane.updateScaleFromRezLvl( that._resolutionLevel );
     });
+    console.log("<< Plane scale updated!");
   }
 
 
@@ -558,10 +566,11 @@ class QuadScene{
   * Updates the uniforms to send to the shader of the plane. Will trigger chunk loading for those which are not already in memory.
   */
   _updateAllPlanesShaderUniforms(){
-    //console.log(">> updating uniforms");
+    console.log(">> Updating uniforms...");
     this._projectionPlanes.forEach( function(plane){
       plane.updateUniforms();
     });
+    console.log("<< updating uniform loop done. (async work on background)");
   }
 
 
@@ -772,6 +781,7 @@ class QuadScene{
     this._updatePerspectiveCameraLookAt();
     this._syncOrientationHelperPosition();
   }
+  
 
   /**
   * Specify a callback for when the Quadscene is ready.
@@ -784,11 +794,12 @@ class QuadScene{
 
   /**
   * [PRIVATE]
-  *
+  * Defines the callback for interacting with the views
   */
   _initPlaneInteraction(){
     var that = this;
 
+    // callback def: translation
     this._quadViewInteraction.onGrabViewTranslate( function(distance, viewIndex){
       var factor = Math.pow(2, that._resolutionLevel);
 
@@ -809,6 +820,7 @@ class QuadScene{
     });
 
 
+    // callback def: regular rotation (using R key)
     this._quadViewInteraction.onGrabViewRotate( function(angleRad, angleDir, viewIndex){
       switch (viewIndex) {
         case 0:
@@ -826,8 +838,10 @@ class QuadScene{
     });
 
 
+    // callback def: transverse rotation (using T key)
     this._quadViewInteraction.onGrabViewTransverseRotate( function(distance, viewIndex){
-      var factor = Math.pow(2, that._resolutionLevel) / 10;
+      //var factor = Math.pow(2, that._resolutionLevel) / 10;
+      var factor =  that._resolutionLevel / 2;
 
       switch (viewIndex) {
         case 0:
@@ -846,6 +860,48 @@ class QuadScene{
           return;
       }
     });
+
+
+    // callback def: arrow down
+    this._quadViewInteraction.onArrowDown( function(viewIndex){
+      var factor = 0.01 / Math.pow(2, that._resolutionLevel);
+      console.log("ARROW DOWN " + factor);
+
+      switch (viewIndex) {
+        case 0:
+          that.translateNativePlaneY(factor, 0);
+          break;
+        case 1:
+          that.translateNativePlaneX(factor, 0);
+          break;
+        case 2:
+          that.translateNativePlaneY(0, -factor);
+          break;
+        default:  // if last view, we dont do anything
+          return;
+      }
+    });
+
+
+    // callback def: arrow up
+    this._quadViewInteraction.onArrowUp( function(viewIndex){
+      var factor = 0.01 / Math.pow(2, that._resolutionLevel) * -1;
+      console.log("ARROW UP " + factor);
+      switch (viewIndex) {
+        case 0:
+          that.translateNativePlaneY(factor, 0);
+          break;
+        case 1:
+          that.translateNativePlaneX(factor, 0);
+          break;
+        case 2:
+          that.translateNativePlaneY(0, -factor);
+          break;
+        default:  // if last view, we dont do anything
+          return;
+      }
+    });
+
 
   }
 

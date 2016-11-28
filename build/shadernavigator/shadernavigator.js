@@ -790,6 +790,8 @@ class LevelManager{
     var the8ClosestTextureData = this._chunkCollections[ this._resolutionLevel ]
               .get8ClosestTextureData(position);
 
+    //console.log(this._resolutionLevel + " " + position[0] + " " + position[1] + " " +position[2]);
+
     return the8ClosestTextureData;
   }
 
@@ -1346,15 +1348,27 @@ class ProjectionPlane{
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     var textureData = 0;
 
+    console.log(this._levelManager._resolutionLevel);
+
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
       var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
-      var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
+      //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
 
       textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
       this.updateSubPlaneUniform(i, textureData);
     }
 
+  }
+
+
+  printSubPlaneCenterWorld(){
+    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+    for(var i=0; i<nbSubPlanes; i++){
+      // center of the sub-plane in world coordinates
+      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
+      console.log(center);
+    }
   }
 
 
@@ -1393,6 +1407,13 @@ class ProjectionPlane{
     this._plane.scale.x = scale;
     this._plane.scale.y = scale;
     this._plane.scale.z = scale;
+
+    // explicitely call to update the matrix, otherwise it would be called at the next render
+    // and in the meantime, we need to have proper position to load the chunks.
+    this._plane.updateMatrixWorld();
+
+    // this one is not supposed to be necessary
+    //this._plane.updateMatrix();
   }
 
 
@@ -1660,11 +1681,16 @@ class QuadViewInteraction{
     // function to be called when the mouse is pressed on a view for rotation - with R key pressed
     this._onGrabViewRotateCallback = null;
 
-
+    // function called when user maintains click + T and moves mouse
     this._onGrabViewTransverseRotateCallback = null;
 
-    // function called when
+    // function called when user scrolls
     this._onScrollViewCallback = null;
+
+    this._onArrowUpCallback = null;
+    this._onArrowDownCallback = null;
+
+
   }
 
 
@@ -1799,11 +1825,26 @@ class QuadViewInteraction{
       case "t":
         this._tKeyPressed = true;
         break;
+
+      case "ArrowDown":
+        if(this._onArrowDownCallback){
+          this._onArrowDownCallback(this._indexCurrentView);
+        }
+        break;
+
+      case "ArrowUp":
+        if(this._onArrowUpCallback){
+          this._onArrowUpCallback(this._indexCurrentView);
+        }
+        break;
+
       default:;
     }
   }
 
+
   _onKeyUp( event ){
+
     switch( event.key ){
       case "r":
         this._rKeyPressed = false;
@@ -1811,6 +1852,7 @@ class QuadViewInteraction{
       case "t":
         this._tKeyPressed = false;
         break;
+
       default:;
     }
   }
@@ -1869,6 +1911,18 @@ class QuadViewInteraction{
   onGrabViewTransverseRotate(cb){
     this._onGrabViewTransverseRotateCallback = cb;
   }
+
+
+  onArrowDown(cb){
+    this._onArrowDownCallback = cb;
+  }
+
+
+  onArrowUp(cb){
+    this._onArrowUpCallback = cb;
+  }
+
+
 
 
 } /* END class QuadViewInteraction */
@@ -2054,7 +2108,7 @@ class QuadScene{
     // TODO: make somethink better for refresh once per sec!
     if(this._ready){
       if(this._counterRefresh % 30 == 0){
-        this._updateAllPlanesShaderUniforms();
+        //this._updateAllPlanesShaderUniforms();
       }
       this._counterRefresh ++;
     }
@@ -2096,13 +2150,13 @@ class QuadScene{
       },
 
       debug: function(){
-        //console.log( that._projectionPlanes[0].getWorldDiagonal() );
-        that.translateNativePlaneX(0.01, 0);
+        that._projectionPlanes.forEach( function(plane){
+          plane.printSubPlaneCenterWorld();
+        });
       },
 
       debug2: function(){
-        //console.log( that._projectionPlanes[0].getWorldDiagonal() );
-        that.translateNativePlaneX(0, 0.01);
+
       },
 
       rotateX: function(){
@@ -2396,8 +2450,9 @@ class QuadScene{
     console.log("--------- LVL " + lvl + " ---------------");
     this._resolutionLevel = lvl;
     this._levelManager.setResolutionLevel( this._resolutionLevel );
+
     this._updateAllPlanesScaleFromRezLvl();
-    this._updateAllPlanesShaderUniforms();
+    this._updateAllPlanesShaderUniforms();  // TODO: should be uncommented!!
     this._syncOrientationHelperScale();
 
     this._guiVar.resolutionLevel = lvl;
@@ -2405,6 +2460,11 @@ class QuadScene{
     this._updateOthoCamFrustrum();
   }
 
+  printSubPlaneCenterWorld(){
+    this._projectionPlanes.forEach( function(plane){
+      plane.printSubPlaneCenterWorld();
+    });
+  }
 
   /**
   * When the resolution level is changing, the scale of each plane has to change accordingly before the texture chunks are fetched ( = before _updateAllPlanesShaderUniforms is called).
@@ -2412,9 +2472,11 @@ class QuadScene{
   _updateAllPlanesScaleFromRezLvl(){
     var that = this;
 
+    console.log(">> Updating plane scale to lvl " + this._resolutionLevel + " ...");
     this._projectionPlanes.forEach( function(plane){
       plane.updateScaleFromRezLvl( that._resolutionLevel );
     });
+    console.log("<< Plane scale updated!");
   }
 
 
@@ -2422,10 +2484,11 @@ class QuadScene{
   * Updates the uniforms to send to the shader of the plane. Will trigger chunk loading for those which are not already in memory.
   */
   _updateAllPlanesShaderUniforms(){
-    //console.log(">> updating uniforms");
+    console.log(">> Updating uniforms...");
     this._projectionPlanes.forEach( function(plane){
       plane.updateUniforms();
     });
+    console.log("<< updating uniform loop done. (async work on background)");
   }
 
 
@@ -2691,7 +2754,8 @@ class QuadScene{
 
 
     this._quadViewInteraction.onGrabViewTransverseRotate( function(distance, viewIndex){
-      var factor = Math.pow(2, that._resolutionLevel) / 10;
+      //var factor = Math.pow(2, that._resolutionLevel) / 10;
+      var factor =  that._resolutionLevel / 2;
 
       switch (viewIndex) {
         case 0:
@@ -2710,6 +2774,47 @@ class QuadScene{
           return;
       }
     });
+
+
+    this._quadViewInteraction.onArrowDown( function(viewIndex){
+      var factor = 0.01 / Math.pow(2, that._resolutionLevel);
+      console.log("ARROW DOWN " + factor);
+
+      switch (viewIndex) {
+        case 0:
+          that.translateNativePlaneY(factor, 0);
+          break;
+        case 1:
+          that.translateNativePlaneX(factor, 0);
+          break;
+        case 2:
+          that.translateNativePlaneY(0, -factor);
+          break;
+        default:  // if last view, we dont do anything
+          return;
+      }
+    });
+
+
+
+    this._quadViewInteraction.onArrowUp( function(viewIndex){
+      var factor = 0.01 / Math.pow(2, that._resolutionLevel) * -1;
+      console.log("ARROW UP " + factor);
+      switch (viewIndex) {
+        case 0:
+          that.translateNativePlaneY(factor, 0);
+          break;
+        case 1:
+          that.translateNativePlaneX(factor, 0);
+          break;
+        case 2:
+          that.translateNativePlaneY(0, -factor);
+          break;
+        default:  // if last view, we dont do anything
+          return;
+      }
+    });
+
 
   }
 

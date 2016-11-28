@@ -51,11 +51,16 @@ class QuadViewInteraction{
     // function to be called when the mouse is pressed on a view for rotation - with R key pressed
     this._onGrabViewRotateCallback = null;
 
-
+    // function called when user maintains click + T and moves mouse
     this._onGrabViewTransverseRotateCallback = null;
 
-    // function called when
+    // function called when user scrolls
     this._onScrollViewCallback = null;
+
+    this._onArrowUpCallback = null;
+    this._onArrowDownCallback = null;
+
+
   }
 
 
@@ -180,7 +185,7 @@ class QuadViewInteraction{
 
   /**
   * [PRIVATE]
-  *
+  * Callback to the event onkeydown, aka. when a keyboard key is pressed
   */
   _onKeyDown( event ){
     switch( event.key ){
@@ -190,10 +195,28 @@ class QuadViewInteraction{
       case "t":
         this._tKeyPressed = true;
         break;
+
+      case "ArrowDown":
+        if(this._onArrowDownCallback){
+          this._onArrowDownCallback(this._indexCurrentView);
+        }
+        break;
+
+      case "ArrowUp":
+        if(this._onArrowUpCallback){
+          this._onArrowUpCallback(this._indexCurrentView);
+        }
+        break;
+
       default:;
     }
   }
 
+
+  /**
+  * [PRIVATE]
+  * Callback to the event onkeyup, aka. when a keyboard key is released
+  */
   _onKeyUp( event ){
     switch( event.key ){
       case "r":
@@ -202,9 +225,11 @@ class QuadViewInteraction{
       case "t":
         this._tKeyPressed = false;
         break;
+
       default:;
     }
   }
+
 
   /**
   * For each QuadView instance, trigger things depending on how the mouse pointer interact with a quadview.
@@ -247,7 +272,13 @@ class QuadViewInteraction{
 
 
   /**
-  *
+  * Defines the callback called when click on a view holding
+  * the R keyboard key and move the mouse.
+  * It performs a rotation around the normal vector of the current view/plane.
+  * The callback is called with 2 arguments:
+  *   {Number} angle in radian
+  *   {Number} direction, is 1-always +1 or -1
+  *   {Number} QuadView index
   */
   onGrabViewRotate(cb){
     this._onGrabViewRotateCallback = cb;
@@ -255,11 +286,38 @@ class QuadViewInteraction{
 
 
   /**
-  *
+  * Defines the callback called when click on a view holding the T keyboard key
+  * and move the mouse.
+  * It performs a transverse rotation.
+  *   {Object} distance {x:, y: } - the distance along x and y in normalized space
+  *   {Number} QuadView index
   */
   onGrabViewTransverseRotate(cb){
     this._onGrabViewTransverseRotateCallback = cb;
   }
+
+
+  /**
+  * Defines the callback for when the arrow_down keyboard key is down.
+  * Usually for travelling along the normal of the plane/view.
+  * Called with 1 argument:
+  *   {Number} QuadView index
+  */
+  onArrowDown(cb){
+    this._onArrowDownCallback = cb;
+  }
+
+
+  /**
+  * Defines the callback for when the arrow_up keyboard key is down.
+  * Usually for travelling along the normal of the plane/view.
+  * Called with 1 argument:
+  *   {Number} QuadView index
+  */
+  onArrowUp(cb){
+    this._onArrowUpCallback = cb;
+  }
+
 
 
 } /* END class QuadViewInteraction */
