@@ -825,6 +825,26 @@ class QuadScene{
       }
     });
 
+
+    this._quadViewInteraction.onGrabViewTransverseRotate( function(distance, viewIndex){
+      var factor = Math.pow(2, that._resolutionLevel);
+
+      switch (viewIndex) {
+        case 0:
+          that.rotateNativePlaneY(distance.x / factor);
+          that.rotateNativePlaneZ(distance.y / factor);
+          break;
+        case 1:
+
+          break;
+        case 2:
+
+          break;
+        default:  // if last view, we dont do anything
+          return;
+      }
+    });
+
   }
 
 

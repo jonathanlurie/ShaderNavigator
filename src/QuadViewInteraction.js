@@ -36,6 +36,7 @@ class QuadViewInteraction{
     this._mousePressed = false;
 
     this._rKeyPressed = false;
+    this._tKeyPressed = false;
 
     // declaring some interaction events
     document.addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
@@ -49,6 +50,9 @@ class QuadViewInteraction{
 
     // function to be called when the mouse is pressed on a view for rotation - with R key pressed
     this._onGrabViewRotateCallback = null;
+
+
+    this._onGrabViewTransverseRotateCallback = null;
 
     // function called when
     this._onScrollViewCallback = null;
@@ -88,7 +92,6 @@ class QuadViewInteraction{
 
       // + R key down --> rotation
       if(this._rKeyPressed){
-        console.log("ROTATE");
         var center = {
           x: (this._indexViewMouseDown%2)*0.5 + 0.25,
           y: (this._indexViewMouseDown>1?0:1)*0.5 +0.25,
@@ -106,19 +109,26 @@ class QuadViewInteraction{
           this._mouse.z - center.z
         ).normalize();
 
+        // the rotation angle (unsigned)
         var angleRad = Math.acos( centerToPrevious.dot(centerToCurrent) );
 
+        // the rotation direction depends on the normal of the angle
         var angleDirection = Math.sign( centerToPrevious.cross(centerToCurrent).z );
 
-
-
+        // call the callback for this kind of interaction
         if(this._onGrabViewRotateCallback){
           this._onGrabViewRotateCallback(angleRad, angleDirection, this._indexViewMouseDown);
         }
 
       }
 
-      // else if another key?
+      // + T key down --> tranverse rotation
+      else if(this._tKeyPressed){
+
+        if(this._onGrabViewTransverseRotateCallback){
+          this._onGrabViewTransverseRotateCallback(this._mouseDistance, this._indexViewMouseDown);
+        }
+      }
 
       // + NO key down --> translation
       else{
@@ -177,6 +187,9 @@ class QuadViewInteraction{
       case "r":
         this._rKeyPressed = true;
         break;
+      case "t":
+        this._tKeyPressed = true;
+        break;
       default:;
     }
   }
@@ -185,6 +198,9 @@ class QuadViewInteraction{
     switch( event.key ){
       case "r":
         this._rKeyPressed = false;
+        break;
+      case "t":
+        this._tKeyPressed = false;
         break;
       default:;
     }
@@ -237,6 +253,13 @@ class QuadViewInteraction{
     this._onGrabViewRotateCallback = cb;
   }
 
+
+  /**
+  *
+  */
+  onGrabViewTransverseRotate(cb){
+    this._onGrabViewTransverseRotateCallback = cb;
+  }
 
 
 } /* END class QuadViewInteraction */
