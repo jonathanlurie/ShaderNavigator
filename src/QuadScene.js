@@ -806,7 +806,23 @@ class QuadScene{
           return;
       }
 
+    });
 
+
+    this._quadViewInteraction.onGrabViewRotate( function(angleRad, angleDir, viewIndex){
+      switch (viewIndex) {
+        case 0:
+          that.rotateNativePlaneX(angleRad * angleDir);
+          break;
+        case 1:
+          that.rotateNativePlaneY(angleRad * angleDir * -1);
+          break;
+        case 2:
+          that.rotateNativePlaneZ(angleRad * angleDir);
+          break;
+        default:  // if last view, we dont do anything
+          return;
+      }
     });
 
   }

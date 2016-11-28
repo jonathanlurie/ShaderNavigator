@@ -1693,9 +1693,7 @@ class QuadViewInteraction{
       this._mouseDistance.x = (this._mouse.x - this._mouseLastPosition.x)*this._windowSize.width / 100;
       this._mouseDistance.y = (this._mouse.y - this._mouseLastPosition.y)*this._windowSize.height / 100;
 
-      // update the last position
-      this._mouseLastPosition.x = this._mouse.x;
-      this._mouseLastPosition.y = this._mouse.y;
+
 
       // + R key down --> rotation
       if(this._rKeyPressed){
@@ -1705,14 +1703,43 @@ class QuadViewInteraction{
           y: (this._indexViewMouseDown>1?0:1)*0.5 +0.25,
         };
 
-        console.log(center);
+        var centerToPrevious = new THREE.Vector3(
+          this._mouseLastPosition.x - center.x,
+          this._mouseLastPosition.y - center.y,
+          this._mouseLastPosition.z - center.z
+        ).normalize();
+
+        var centerToCurrent = new THREE.Vector3(
+          this._mouse.x - center.x,
+          this._mouse.y - center.y,
+          this._mouse.z - center.z
+        ).normalize();
+
+        var angleRad = Math.acos( centerToPrevious.dot(centerToCurrent) );
+
+        var angleDirection = Math.sign( centerToPrevious.cross(centerToCurrent).z );
+
+
+
+        if(this._onGrabViewRotateCallback){
+          this._onGrabViewRotateCallback(angleRad, angleDirection, this._indexViewMouseDown);
+        }
+
       }
+
+      // else if another key?
+
       // + NO key down --> translation
       else{
         if(this._onGrabViewTranslateCallback){
           this._onGrabViewTranslateCallback(this._mouseDistance, this._indexViewMouseDown);
         }
       }
+
+
+      // update the last position
+      this._mouseLastPosition.x = this._mouse.x;
+      this._mouseLastPosition.y = this._mouse.y;
 
     } /* END  */
 
@@ -2620,7 +2647,23 @@ class QuadScene{
           return;
       }
 
+    });
 
+
+    this._quadViewInteraction.onGrabViewRotate( function(angleRad, angleDir, viewIndex){
+      switch (viewIndex) {
+        case 0:
+          that.rotateNativePlaneX(angleRad * angleDir);
+          break;
+        case 1:
+          that.rotateNativePlaneY(angleRad * angleDir * -1);
+          break;
+        case 2:
+          that.rotateNativePlaneZ(angleRad * angleDir);
+          break;
+        default:  // if last view, we dont do anything
+          return;
+      }
     });
 
   }
