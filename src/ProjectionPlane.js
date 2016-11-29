@@ -125,8 +125,6 @@ class ProjectionPlane{
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     var textureData = 0;
 
-    console.log(this._levelManager._resolutionLevel);
-
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
       var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
@@ -144,7 +142,6 @@ class ProjectionPlane{
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
       var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
-      console.log(center);
     }
   }
 

@@ -57,10 +57,11 @@ class QuadViewInteraction{
     // function called when user scrolls
     this._onScrollViewCallback = null;
 
+    // function to call when the arrow up (keyboard) is down
     this._onArrowUpCallback = null;
+
+    // function to call when the arrow down (keyboard) is down
     this._onArrowDownCallback = null;
-
-
   }
 
 
@@ -83,7 +84,6 @@ class QuadViewInteraction{
   _onMouseMove( event ) {
     this._mouse.x = (event.clientX / this._windowSize.width);
     this._mouse.y = 1 - (event.clientY / this._windowSize.height);
-
     this._manageQuadViewsMouseActivity();
 
     // mouse pressed + moving
@@ -92,8 +92,6 @@ class QuadViewInteraction{
       // distance from the last update
       this._mouseDistance.x = (this._mouse.x - this._mouseLastPosition.x)*this._windowSize.width / 100;
       this._mouseDistance.y = (this._mouse.y - this._mouseLastPosition.y)*this._windowSize.height / 100;
-
-
 
       // + R key down --> rotation
       if(this._rKeyPressed){
@@ -142,16 +140,11 @@ class QuadViewInteraction{
         }
       }
 
-
       // update the last position
       this._mouseLastPosition.x = this._mouse.x;
       this._mouseLastPosition.y = this._mouse.y;
 
     } /* END  */
-
-
-
-
 
   }
 

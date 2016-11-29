@@ -21,7 +21,7 @@ import { QuadViewInteraction } from './QuadViewInteraction.js';
 */
 class QuadScene{
 
-  constructor(DomContainer, rez=2){
+  constructor(DomContainer, rez=0){
     this._ready = false;
     this._counterRefresh = 0;
     this._resolutionLevel = rez;
@@ -41,6 +41,9 @@ class QuadScene{
 
     // a static gimbal to show dataset orientation
     this._orientationHelper = null;
+
+    // called whenever the lvl, orientation or position changes (if set)
+    this._onChangeCallback = null;
 
     this._onReadyCallback = null;
 
@@ -81,7 +84,7 @@ class QuadScene{
     this._initViews();
 
     // some help!
-    this._scene.add( new THREE.AxisHelper( 1 ) );
+    //this._scene.add( new THREE.AxisHelper( 1 ) );
 
     this._levelManager = new SHAD.LevelManager();
     this._addProjectionPlane();
@@ -190,7 +193,7 @@ class QuadScene{
     // TODO: make somethink better for refresh once per sec!
     if(this._ready){
       if(this._counterRefresh % 30 == 0){
-        //this._updateAllPlanesShaderUniforms();
+        this._updateAllPlanesShaderUniforms();
       }
       this._counterRefresh ++;
     }
@@ -257,15 +260,16 @@ class QuadScene{
 
     this._datGui.add(this._guiVar, 'toggleOrientationHelper').name("Toggle helper");
 
-    var controllerPosX = this._datGui.add(this._guiVar, 'posx', 0, 2).name("position x").step(0.001).listen();
-    var controllerPosY = this._datGui.add(this._guiVar, 'posy', 0, 2).name("position y").step(0.001).listen();
-    var controllerPosZ = this._datGui.add(this._guiVar, 'posz', 0, 2).name("position z").step(0.001).listen();
-    var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01).listen();
-    var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01).listen();
-    var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01).listen();
-    var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 2).name("frustrum").step(0.01).listen();
+    //var controllerPosX = this._datGui.add(this._guiVar, 'posx', 0, 2).name("position x").step(0.001).listen();
+    //var controllerPosY = this._datGui.add(this._guiVar, 'posy', 0, 2).name("position y").step(0.001).listen();
+    //var controllerPosZ = this._datGui.add(this._guiVar, 'posz', 0, 2).name("position z").step(0.001).listen();
+    //var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01).listen();
+    //var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01).listen();
+    //var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01).listen();
+    //var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 2).name("frustrum").step(0.01).listen();
     var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1).listen();
 
+    /*
     this._datGui.add(this._guiVar, 'debug');
     this._datGui.add(this._guiVar, 'debug2');
 
@@ -273,8 +277,9 @@ class QuadScene{
     this._datGui.add(this._guiVar, 'rotateX');
     this._datGui.add(this._guiVar, 'rotateY');
     this._datGui.add(this._guiVar, 'rotateZ');
+    */
 
-
+    /*
     controllerPosX.onFinishChange(function(xpos) {
       that.setMainObjectPositionX(xpos);
     });
@@ -297,7 +302,7 @@ class QuadScene{
       that.setMainObjectPositionZ(zpos);
       console.log("posZ on change");
     });
-
+    */
 
     levelController.onFinishChange(function(lvl) {
       that.setResolutionLevel(lvl);
@@ -308,6 +313,7 @@ class QuadScene{
       //that._updateOthoCamFrustrum();
     });
 
+    /*
     controllerRotX.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
     });
@@ -334,6 +340,7 @@ class QuadScene{
       that._quadViews[1].updateOrthoCamFrustrum(value);
       that._quadViews[2].updateOrthoCamFrustrum(value);
     });
+    */
 
   }
 
@@ -489,7 +496,8 @@ class QuadScene{
   _initLevelManager(){
     var that = this;
 
-    this._levelManager.loadConfig("../data/info.json");
+    //this._levelManager.loadConfig("../data/info2.json");
+    this._levelManager.loadConfig("http://132.216.122.238/jpeg/info2.json");
 
     this._levelManager.onReady(function(){
 
@@ -559,6 +567,10 @@ class QuadScene{
       plane.updateScaleFromRezLvl( that._resolutionLevel );
     });
     console.log("<< Plane scale updated!");
+
+    if(this._onChangeCallback){
+      this._onChangeCallback( this.getMainObjectInfo() );
+    }
   }
 
 
@@ -566,11 +578,11 @@ class QuadScene{
   * Updates the uniforms to send to the shader of the plane. Will trigger chunk loading for those which are not already in memory.
   */
   _updateAllPlanesShaderUniforms(){
-    console.log(">> Updating uniforms...");
+    //console.log(">> Updating uniforms...");
     this._projectionPlanes.forEach( function(plane){
       plane.updateUniforms();
     });
-    console.log("<< updating uniform loop done. (async work on background)");
+    //console.log("<< updating uniform loop done. (async work on background)");
   }
 
 
@@ -729,6 +741,10 @@ class QuadScene{
     var normalPlane = this._projectionPlanes[planeIndex].getWorldNormal();
     this._mainObjectContainer.rotateOnAxis ( normalPlane, rad );
     this._updateAllPlanesShaderUniforms();
+
+    if(this._onChangeCallback){
+      this._onChangeCallback( this.getMainObjectInfo() );
+    }
   }
 
 
@@ -780,8 +796,12 @@ class QuadScene{
     this._updateAllPlanesShaderUniforms();
     this._updatePerspectiveCameraLookAt();
     this._syncOrientationHelperPosition();
+
+    if(this._onChangeCallback){
+      this._onChangeCallback( this.getMainObjectInfo() );
+    }
   }
-  
+
 
   /**
   * Specify a callback for when the Quadscene is ready.
@@ -865,7 +885,6 @@ class QuadScene{
     // callback def: arrow down
     this._quadViewInteraction.onArrowDown( function(viewIndex){
       var factor = 0.01 / Math.pow(2, that._resolutionLevel);
-      console.log("ARROW DOWN " + factor);
 
       switch (viewIndex) {
         case 0:
@@ -886,7 +905,7 @@ class QuadScene{
     // callback def: arrow up
     this._quadViewInteraction.onArrowUp( function(viewIndex){
       var factor = 0.01 / Math.pow(2, that._resolutionLevel) * -1;
-      console.log("ARROW UP " + factor);
+
       switch (viewIndex) {
         case 0:
           that.translateNativePlaneY(factor, 0);
@@ -903,6 +922,36 @@ class QuadScene{
     });
 
 
+  }
+
+
+  /**
+  * @return {Object} the returned object if of the form:
+  * { resolutionLvl, position {x, y, z}, rotation {x, y, z} }
+  */
+  getMainObjectInfo(){
+
+    return {
+      resolutionLvl: this._resolutionLevel,
+      position: {
+        x: this._mainObjectContainer.position.x,
+        y: this._mainObjectContainer.position.y,
+        z: this._mainObjectContainer.position.z
+      },
+      rotation: {
+        x: this._mainObjectContainer.rotation.x,
+        y: this._mainObjectContainer.rotation.y,
+        z: this._mainObjectContainer.rotation.z
+      }
+    };
+
+  }
+
+  /**
+  * Defines the callback for whenever the lvl, rotation or position changes
+  */
+  onChange( cb ){
+    this._onChangeCallback = cb;
   }
 
 

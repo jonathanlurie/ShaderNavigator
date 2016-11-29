@@ -7,7 +7,7 @@
 export { TextureChunk } from './TextureChunk.js';
 export { ChunkCollection } from './ChunkCollection.js';
 export { LevelManager } from './LevelManager.js';
-//export { QuadView } from './QuadView.js';
+export { HashIO } from './HashIO.js';
 export { QuadScene } from './QuadScene.js';
 
 

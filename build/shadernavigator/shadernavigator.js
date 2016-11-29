@@ -830,6 +830,83 @@ class LevelManager{
 } /* END CLASS LevelManager */
 
 /**
+* An HashIO instance reads and writes the hash part of the URL (what is after '#').
+* The read mode: the user can specify some arguments in the URL to specify
+* the resolution level, the position and the rotation. Here is how the URL should
+* look like: mydomain.com/quadView.html#5/1.01,1.02,1.03/0.1,0.2,0.3
+* Where:
+*    5 is the resolution level
+*    1.01,1.02,1.03 is the x,y,z position of the intersection plane
+*    0.1,0.2,0.3 is the x,y,z Euler angle rotation of the intersection plane
+*
+* The write mode: everytime the intersection plane is moved, the hash is refreshed
+* so that the url can be used to come back to a specific position within the dataset.
+*
+*/
+class HashIO{
+
+  constructor(){
+    this._rePattern = /(\d)[\/]([-]?[0-9]*[.]?[0-9]+)[,]([-]?[0-9]*[.]?[0-9]+)[,]([-]?[0-9]*[.]?[0-9]+)[\/]([-]?[0-9]*[.]?[0-9]+)[,]([-]?[0-9]*[.]?[0-9]+)[,]([-]?[0-9]*[.]?[0-9]+)/g;
+
+  }
+
+
+  /**
+  * @returns the hash if there is one (without the '#'). Return an empty string if no hash.
+  */
+  getRawHash(){
+    return window.location.hash.substr(1);
+  }
+
+
+  /**
+  * Reads the URL hash and returns plane intersection information if the format matches.
+  * @return {Object} the returned object if of the form:
+  * { resolutionLvl, position {x, y, z}, rotation {x, y, z} }
+  * Or returns null if the format does not match.
+  */
+  getHashInfo(){
+    var match  = this._rePattern.exec( this.getRawHash() );
+
+    if(!match)
+      return null;
+
+    return {
+      resolutionLvl: parseInt(match[1]),
+      position: {
+        x: parseFloat(match[2]),
+        y: parseFloat(match[3]),
+        z: parseFloat(match[4])
+      },
+      rotation: {
+        x: parseFloat(match[5]),
+        y: parseFloat(match[6]),
+        z: parseFloat(match[7])
+      }
+    };
+  }
+
+  /**
+  * Write the hash part of the url
+  * @param {Object} objectInfo - should have this structure:
+  *   { resolutionLvl, position {x, y, z}, rotation {x, y, z} }
+  *
+  */
+  setHashInfo( objectInfo ){
+    window.location.hash = objectInfo.resolutionLvl + "/"+
+      objectInfo.position.x + "," +
+      objectInfo.position.y + "," +
+      objectInfo.position.z + "/" +
+      objectInfo.rotation.x + "," +
+      objectInfo.rotation.y + "," +
+      objectInfo.rotation.z;
+  }
+
+
+
+} /* END CLASS HashIO */
+
+/**
 * A QuadView is a projection of a rendered scene on a quarter of the viewport, typically: top_left, top_right, bottom_left or bottom_right.
 * A QuadView instance is part of a QuadScene, where are renderer 4 QuadViews.
 */
@@ -1348,8 +1425,6 @@ class ProjectionPlane{
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     var textureData = 0;
 
-    console.log(this._levelManager._resolutionLevel);
-
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
       var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
@@ -1367,7 +1442,6 @@ class ProjectionPlane{
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
       var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
-      console.log(center);
     }
   }
 
@@ -1687,10 +1761,11 @@ class QuadViewInteraction{
     // function called when user scrolls
     this._onScrollViewCallback = null;
 
+    // function to call when the arrow up (keyboard) is down
     this._onArrowUpCallback = null;
+
+    // function to call when the arrow down (keyboard) is down
     this._onArrowDownCallback = null;
-
-
   }
 
 
@@ -1713,7 +1788,6 @@ class QuadViewInteraction{
   _onMouseMove( event ) {
     this._mouse.x = (event.clientX / this._windowSize.width);
     this._mouse.y = 1 - (event.clientY / this._windowSize.height);
-
     this._manageQuadViewsMouseActivity();
 
     // mouse pressed + moving
@@ -1722,8 +1796,6 @@ class QuadViewInteraction{
       // distance from the last update
       this._mouseDistance.x = (this._mouse.x - this._mouseLastPosition.x)*this._windowSize.width / 100;
       this._mouseDistance.y = (this._mouse.y - this._mouseLastPosition.y)*this._windowSize.height / 100;
-
-
 
       // + R key down --> rotation
       if(this._rKeyPressed){
@@ -1772,16 +1844,11 @@ class QuadViewInteraction{
         }
       }
 
-
       // update the last position
       this._mouseLastPosition.x = this._mouse.x;
       this._mouseLastPosition.y = this._mouse.y;
 
     } /* END  */
-
-
-
-
 
   }
 
@@ -1815,7 +1882,7 @@ class QuadViewInteraction{
 
   /**
   * [PRIVATE]
-  *
+  * Callback to the event onkeydown, aka. when a keyboard key is pressed
   */
   _onKeyDown( event ){
     switch( event.key ){
@@ -1843,8 +1910,11 @@ class QuadViewInteraction{
   }
 
 
+  /**
+  * [PRIVATE]
+  * Callback to the event onkeyup, aka. when a keyboard key is released
+  */
   _onKeyUp( event ){
-
     switch( event.key ){
       case "r":
         this._rKeyPressed = false;
@@ -1856,6 +1926,7 @@ class QuadViewInteraction{
       default:;
     }
   }
+
 
   /**
   * For each QuadView instance, trigger things depending on how the mouse pointer interact with a quadview.
@@ -1898,7 +1969,13 @@ class QuadViewInteraction{
 
 
   /**
-  *
+  * Defines the callback called when click on a view holding
+  * the R keyboard key and move the mouse.
+  * It performs a rotation around the normal vector of the current view/plane.
+  * The callback is called with 2 arguments:
+  *   {Number} angle in radian
+  *   {Number} direction, is 1-always +1 or -1
+  *   {Number} QuadView index
   */
   onGrabViewRotate(cb){
     this._onGrabViewRotateCallback = cb;
@@ -1906,22 +1983,37 @@ class QuadViewInteraction{
 
 
   /**
-  *
+  * Defines the callback called when click on a view holding the T keyboard key
+  * and move the mouse.
+  * It performs a transverse rotation.
+  *   {Object} distance {x:, y: } - the distance along x and y in normalized space
+  *   {Number} QuadView index
   */
   onGrabViewTransverseRotate(cb){
     this._onGrabViewTransverseRotateCallback = cb;
   }
 
 
+  /**
+  * Defines the callback for when the arrow_down keyboard key is down.
+  * Usually for travelling along the normal of the plane/view.
+  * Called with 1 argument:
+  *   {Number} QuadView index
+  */
   onArrowDown(cb){
     this._onArrowDownCallback = cb;
   }
 
 
+  /**
+  * Defines the callback for when the arrow_up keyboard key is down.
+  * Usually for travelling along the normal of the plane/view.
+  * Called with 1 argument:
+  *   {Number} QuadView index
+  */
   onArrowUp(cb){
     this._onArrowUpCallback = cb;
   }
-
 
 
 
@@ -1939,7 +2031,7 @@ class QuadViewInteraction{
 */
 class QuadScene{
 
-  constructor(DomContainer, rez=2){
+  constructor(DomContainer, rez=0){
     this._ready = false;
     this._counterRefresh = 0;
     this._resolutionLevel = rez;
@@ -1959,6 +2051,9 @@ class QuadScene{
 
     // a static gimbal to show dataset orientation
     this._orientationHelper = null;
+
+    // called whenever the lvl, orientation or position changes (if set)
+    this._onChangeCallback = null;
 
     this._onReadyCallback = null;
 
@@ -1999,7 +2094,7 @@ class QuadScene{
     this._initViews();
 
     // some help!
-    this._scene.add( new THREE.AxisHelper( 1 ) );
+    //this._scene.add( new THREE.AxisHelper( 1 ) );
 
     this._levelManager = new SHAD.LevelManager();
     this._addProjectionPlane();
@@ -2108,7 +2203,7 @@ class QuadScene{
     // TODO: make somethink better for refresh once per sec!
     if(this._ready){
       if(this._counterRefresh % 30 == 0){
-        //this._updateAllPlanesShaderUniforms();
+        this._updateAllPlanesShaderUniforms();
       }
       this._counterRefresh ++;
     }
@@ -2175,15 +2270,16 @@ class QuadScene{
 
     this._datGui.add(this._guiVar, 'toggleOrientationHelper').name("Toggle helper");
 
-    var controllerPosX = this._datGui.add(this._guiVar, 'posx', 0, 2).name("position x").step(0.001).listen();
-    var controllerPosY = this._datGui.add(this._guiVar, 'posy', 0, 2).name("position y").step(0.001).listen();
-    var controllerPosZ = this._datGui.add(this._guiVar, 'posz', 0, 2).name("position z").step(0.001).listen();
-    var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01).listen();
-    var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01).listen();
-    var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01).listen();
-    var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 2).name("frustrum").step(0.01).listen();
+    //var controllerPosX = this._datGui.add(this._guiVar, 'posx', 0, 2).name("position x").step(0.001).listen();
+    //var controllerPosY = this._datGui.add(this._guiVar, 'posy', 0, 2).name("position y").step(0.001).listen();
+    //var controllerPosZ = this._datGui.add(this._guiVar, 'posz', 0, 2).name("position z").step(0.001).listen();
+    //var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01).listen();
+    //var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01).listen();
+    //var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01).listen();
+    //var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 2).name("frustrum").step(0.01).listen();
     var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1).listen();
 
+    /*
     this._datGui.add(this._guiVar, 'debug');
     this._datGui.add(this._guiVar, 'debug2');
 
@@ -2191,8 +2287,9 @@ class QuadScene{
     this._datGui.add(this._guiVar, 'rotateX');
     this._datGui.add(this._guiVar, 'rotateY');
     this._datGui.add(this._guiVar, 'rotateZ');
+    */
 
-
+    /*
     controllerPosX.onFinishChange(function(xpos) {
       that.setMainObjectPositionX(xpos);
     });
@@ -2215,7 +2312,7 @@ class QuadScene{
       that.setMainObjectPositionZ(zpos);
       console.log("posZ on change");
     });
-
+    */
 
     levelController.onFinishChange(function(lvl) {
       that.setResolutionLevel(lvl);
@@ -2226,6 +2323,7 @@ class QuadScene{
       //that._updateOthoCamFrustrum();
     });
 
+    /*
     controllerRotX.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
     });
@@ -2252,6 +2350,7 @@ class QuadScene{
       that._quadViews[1].updateOrthoCamFrustrum(value);
       that._quadViews[2].updateOrthoCamFrustrum(value);
     });
+    */
 
   }
 
@@ -2407,7 +2506,8 @@ class QuadScene{
   _initLevelManager(){
     var that = this;
 
-    this._levelManager.loadConfig("../data/info.json");
+    //this._levelManager.loadConfig("../data/info2.json");
+    this._levelManager.loadConfig("http://132.216.122.238/jpeg/info2.json");
 
     this._levelManager.onReady(function(){
 
@@ -2477,6 +2577,10 @@ class QuadScene{
       plane.updateScaleFromRezLvl( that._resolutionLevel );
     });
     console.log("<< Plane scale updated!");
+
+    if(this._onChangeCallback){
+      this._onChangeCallback( this.getMainObjectInfo() );
+    }
   }
 
 
@@ -2484,11 +2588,11 @@ class QuadScene{
   * Updates the uniforms to send to the shader of the plane. Will trigger chunk loading for those which are not already in memory.
   */
   _updateAllPlanesShaderUniforms(){
-    console.log(">> Updating uniforms...");
+    //console.log(">> Updating uniforms...");
     this._projectionPlanes.forEach( function(plane){
       plane.updateUniforms();
     });
-    console.log("<< updating uniform loop done. (async work on background)");
+    //console.log("<< updating uniform loop done. (async work on background)");
   }
 
 
@@ -2647,6 +2751,10 @@ class QuadScene{
     var normalPlane = this._projectionPlanes[planeIndex].getWorldNormal();
     this._mainObjectContainer.rotateOnAxis ( normalPlane, rad );
     this._updateAllPlanesShaderUniforms();
+
+    if(this._onChangeCallback){
+      this._onChangeCallback( this.getMainObjectInfo() );
+    }
   }
 
 
@@ -2698,7 +2806,12 @@ class QuadScene{
     this._updateAllPlanesShaderUniforms();
     this._updatePerspectiveCameraLookAt();
     this._syncOrientationHelperPosition();
+
+    if(this._onChangeCallback){
+      this._onChangeCallback( this.getMainObjectInfo() );
+    }
   }
+
 
   /**
   * Specify a callback for when the Quadscene is ready.
@@ -2711,11 +2824,12 @@ class QuadScene{
 
   /**
   * [PRIVATE]
-  *
+  * Defines the callback for interacting with the views
   */
   _initPlaneInteraction(){
     var that = this;
 
+    // callback def: translation
     this._quadViewInteraction.onGrabViewTranslate( function(distance, viewIndex){
       var factor = Math.pow(2, that._resolutionLevel);
 
@@ -2736,6 +2850,7 @@ class QuadScene{
     });
 
 
+    // callback def: regular rotation (using R key)
     this._quadViewInteraction.onGrabViewRotate( function(angleRad, angleDir, viewIndex){
       switch (viewIndex) {
         case 0:
@@ -2753,6 +2868,7 @@ class QuadScene{
     });
 
 
+    // callback def: transverse rotation (using T key)
     this._quadViewInteraction.onGrabViewTransverseRotate( function(distance, viewIndex){
       //var factor = Math.pow(2, that._resolutionLevel) / 10;
       var factor =  that._resolutionLevel / 2;
@@ -2776,9 +2892,9 @@ class QuadScene{
     });
 
 
+    // callback def: arrow down
     this._quadViewInteraction.onArrowDown( function(viewIndex){
       var factor = 0.01 / Math.pow(2, that._resolutionLevel);
-      console.log("ARROW DOWN " + factor);
 
       switch (viewIndex) {
         case 0:
@@ -2796,10 +2912,10 @@ class QuadScene{
     });
 
 
-
+    // callback def: arrow up
     this._quadViewInteraction.onArrowUp( function(viewIndex){
       var factor = 0.01 / Math.pow(2, that._resolutionLevel) * -1;
-      console.log("ARROW UP " + factor);
+
       switch (viewIndex) {
         case 0:
           that.translateNativePlaneY(factor, 0);
@@ -2819,6 +2935,36 @@ class QuadScene{
   }
 
 
+  /**
+  * @return {Object} the returned object if of the form:
+  * { resolutionLvl, position {x, y, z}, rotation {x, y, z} }
+  */
+  getMainObjectInfo(){
+
+    return {
+      resolutionLvl: this._resolutionLevel,
+      position: {
+        x: this._mainObjectContainer.position.x,
+        y: this._mainObjectContainer.position.y,
+        z: this._mainObjectContainer.position.z
+      },
+      rotation: {
+        x: this._mainObjectContainer.rotation.x,
+        y: this._mainObjectContainer.rotation.y,
+        z: this._mainObjectContainer.rotation.z
+      }
+    };
+
+  }
+
+  /**
+  * Defines the callback for whenever the lvl, rotation or position changes
+  */
+  onChange( cb ){
+    this._onChangeCallback = cb;
+  }
+
+
 }
 
 // if we wanted to use foo here:
@@ -2835,6 +2981,7 @@ class QuadScene{
 exports.TextureChunk = TextureChunk;
 exports.ChunkCollection = ChunkCollection;
 exports.LevelManager = LevelManager;
+exports.HashIO = HashIO;
 exports.QuadScene = QuadScene;
 
 Object.defineProperty(exports, '__esModule', { value: true });

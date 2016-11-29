@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>three.js webgl - multiple views</title>
+		<title>BigBrain Quadview</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
@@ -22,16 +22,39 @@
 				padding: 5px;
 			}
 
+      .key{
+        font-size: larger;
+        background-color: #fff;
+        padding: 1px 6px 1px 6px;
+        font-weight: 900;
+        border-style: solid;
+        border-width: 1px;
+        border-color: #6b6b6b;
+        border-bottom-width: 3px;
+        border-radius: 5px;
+      }
+
 			a {
 				color: #0080ff;
 			}
+
+      #container{
+        cursor: default;
+      }
 
 		</style>
 	</head>
 	<body>
 
 		<div id="container"></div>
-		<div id="info">A QuadScene test</div>
+		<div id="info">
+      <p>
+        BigBrain Quadview — use mouse to pan, <span class="key">R</span> + mouse to rotate, <span class="key">T</span> + mouse to transverse rotate, <span class="key">&#8593;</span> and <span class="key">&#8595;</span> to go forward/backward on the view the mouse hovers.
+      </p>
+      <p>
+        You can also share the URL because it is specific to the current view.
+      </p>
+    </div>
 
 		<script src="js/three.js"></script>
     <!-- <script src="js/OrbitControls.js"></script> -->
@@ -45,13 +68,50 @@
 
 		<script>
 
-    var quadScene = new SHAD.QuadScene( "container", 2 );
-    quadScene.initStat();
+    var quadScene = new SHAD.QuadScene( "container", 0 );
+    quadScene.initStat(); // optional
+
+    var hashIo = new SHAD.HashIO();
+    var hashInfo = hashIo.getHashInfo();
+
+
 
     quadScene.onReady(function(qs){
-      qs.setResolutionLevel(5);
-      //qs.setMainObjectRotation(1, 0.2, 0.6);
-      //qs.setMainObjectPosition(0.3, 0.41, 0.8);
+      console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>");
+      console.log(hashInfo);
+      if(hashInfo){
+
+
+
+        // position
+        qs.setMainObjectPosition(
+          hashInfo.position.x,
+          hashInfo.position.y,
+          hashInfo.position.z
+        );
+
+        // rotation
+        qs.setMainObjectRotation(
+          hashInfo.rotation.x,
+          hashInfo.rotation.y,
+          hashInfo.rotation.z
+        );
+
+        // resolution level - MUST be last to be sure not to load unused chunks (except the few of level 0)
+        qs.setResolutionLevel(hashInfo.resolutionLvl);
+
+      }else{
+        qs.setResolutionLevel(5);
+        //qs.setMainObjectRotation(1, 0.2, 0.6);
+        //qs.setMainObjectPosition(0.3, 0.41, 0.8);
+      }
+
+    });
+
+
+    quadScene.onChange( function(objectInfo){
+      //console.log(objectInfo);
+      hashIo.setHashInfo(objectInfo);
     });
 
 
