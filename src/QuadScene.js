@@ -315,11 +315,14 @@ class QuadScene{
       that.setResolutionLevel(lvl);
       //that._updateOthoCamFrustrum();
     });
+
+    /*
     levelController.onChange(function(lvl) {
       that.setResolutionLevel(lvl);
       //that._updateOthoCamFrustrum();
     });
-
+    */
+    
     /*
     controllerRotX.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();

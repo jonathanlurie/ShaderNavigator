@@ -88,12 +88,12 @@ class OrientationHelper{
 
     // adding sprites with labels
     var textureLoader = new THREE.TextureLoader();
-    var leftTex = textureLoader.load( "../textures/left.png" );
-    var rightTex = textureLoader.load( "../textures/right.png" );
-    var antTex = textureLoader.load( "../textures/anterior.png" );
-    var postTex = textureLoader.load( "../textures/posterior.png" );
-    var supTex = textureLoader.load( "../textures/superior.png" );
-    var infTex = textureLoader.load( "../textures/inferior.png" );
+    var leftTex = textureLoader.load( "textures/left.png" );
+    var rightTex = textureLoader.load( "textures/right.png" );
+    var antTex = textureLoader.load( "textures/anterior.png" );
+    var postTex = textureLoader.load( "textures/posterior.png" );
+    var supTex = textureLoader.load( "textures/superior.png" );
+    var infTex = textureLoader.load( "textures/inferior.png" );
 
     var leftSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: leftTex} ) );
     var rightSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: rightTex} ) );

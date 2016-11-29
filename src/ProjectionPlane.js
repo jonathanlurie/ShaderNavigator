@@ -26,7 +26,7 @@ class ProjectionPlane{
     this._shaderMaterials = [];
 
     // number of rows and cols of sub-planes to compose the _plane
-    this._subPlaneDim = {row: 12, col: 22};
+    this._subPlaneDim = {row: 10, col: 21};
 
     // given by aggregation
     this._levelManager = null;

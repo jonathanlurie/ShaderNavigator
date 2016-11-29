@@ -1326,7 +1326,7 @@ class ProjectionPlane{
     this._shaderMaterials = [];
 
     // number of rows and cols of sub-planes to compose the _plane
-    this._subPlaneDim = {row: 12, col: 22};
+    this._subPlaneDim = {row: 10, col: 21};
 
     // given by aggregation
     this._levelManager = null;
@@ -1621,12 +1621,12 @@ class OrientationHelper{
 
     // adding sprites with labels
     var textureLoader = new THREE.TextureLoader();
-    var leftTex = textureLoader.load( "../textures/left.png" );
-    var rightTex = textureLoader.load( "../textures/right.png" );
-    var antTex = textureLoader.load( "../textures/anterior.png" );
-    var postTex = textureLoader.load( "../textures/posterior.png" );
-    var supTex = textureLoader.load( "../textures/superior.png" );
-    var infTex = textureLoader.load( "../textures/inferior.png" );
+    var leftTex = textureLoader.load( "textures/left.png" );
+    var rightTex = textureLoader.load( "textures/right.png" );
+    var antTex = textureLoader.load( "textures/anterior.png" );
+    var postTex = textureLoader.load( "textures/posterior.png" );
+    var supTex = textureLoader.load( "textures/superior.png" );
+    var infTex = textureLoader.load( "textures/inferior.png" );
 
     var leftSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: leftTex} ) );
     var rightSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: rightTex} ) );
@@ -2205,12 +2205,11 @@ class QuadScene{
       if(this._counterRefresh % 30 == 0){
         this._updateAllPlanesShaderUniforms();
 
-        /*
         // refreshing the URL hash (because doing it at every move is too heavy)
         if(this._onChangeCallback){
           this._onChangeCallback( this.getMainObjectInfo() );
         }
-        */
+
       }
 
       this._counterRefresh ++;
@@ -2326,11 +2325,14 @@ class QuadScene{
       that.setResolutionLevel(lvl);
       //that._updateOthoCamFrustrum();
     });
+
+    /*
     levelController.onChange(function(lvl) {
       that.setResolutionLevel(lvl);
       //that._updateOthoCamFrustrum();
     });
-
+    */
+    
     /*
     controllerRotX.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
