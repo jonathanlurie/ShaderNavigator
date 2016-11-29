@@ -1327,6 +1327,7 @@ class ProjectionPlane{
 
     // number of rows and cols of sub-planes to compose the _plane
     this._subPlaneDim = {row: 10, col: 21};
+    //this._subPlaneDim = {row: 4, col: 4};
 
     // given by aggregation
     this._levelManager = null;
@@ -1766,6 +1767,8 @@ class QuadViewInteraction{
 
     // function to call when the arrow down (keyboard) is down
     this._onArrowDownCallback = null;
+
+    this._onDonePlayingCallback = null;
   }
 
 
@@ -1877,6 +1880,10 @@ class QuadViewInteraction{
 
     this._mouseDistance.x = 0;
     this._mouseDistance.y = 0;
+
+    if(this._onDonePlayingCallback){
+      this._onDonePlayingCallback();
+    }
   }
 
 
@@ -1925,6 +1932,11 @@ class QuadViewInteraction{
 
       default:;
     }
+
+    if(this._onDonePlayingCallback){
+      this._onDonePlayingCallback();
+    }
+
   }
 
 
@@ -2013,6 +2025,13 @@ class QuadViewInteraction{
   */
   onArrowUp(cb){
     this._onArrowUpCallback = cb;
+  }
+
+  /**
+  * Callback called when a key of a mouse button is released
+  */
+  onDonePlaying( cb ){
+    this._onDonePlayingCallback = cb;
   }
 
 
@@ -2205,10 +2224,6 @@ class QuadScene{
       if(this._counterRefresh % 30 == 0){
         this._updateAllPlanesShaderUniforms();
 
-        // refreshing the URL hash (because doing it at every move is too heavy)
-        if(this._onChangeCallback){
-          this._onChangeCallback( this.getMainObjectInfo() );
-        }
 
       }
 
@@ -2289,8 +2304,9 @@ class QuadScene{
     /*
     this._datGui.add(this._guiVar, 'debug');
     this._datGui.add(this._guiVar, 'debug2');
-
+    */
     this._datGui.add(this._guiVar, 'refresh');
+    /*
     this._datGui.add(this._guiVar, 'rotateX');
     this._datGui.add(this._guiVar, 'rotateY');
     this._datGui.add(this._guiVar, 'rotateZ');
@@ -2332,7 +2348,7 @@ class QuadScene{
       //that._updateOthoCamFrustrum();
     });
     */
-    
+
     /*
     controllerRotX.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
@@ -2568,6 +2584,10 @@ class QuadScene{
     this._guiVar.resolutionLevel = lvl;
 
     this._updateOthoCamFrustrum();
+
+    if(this._onChangeCallback){
+      this._onChangeCallback( this.getMainObjectInfo() );
+    }
   }
 
   printSubPlaneCenterWorld(){
@@ -2601,9 +2621,16 @@ class QuadScene{
   */
   _updateAllPlanesShaderUniforms(){
     //console.log(">> Updating uniforms...");
+    var t0 = performance.now();
+
     this._projectionPlanes.forEach( function(plane){
       plane.updateUniforms();
     });
+
+    var t1 = performance.now();
+
+    if((t1 - t0) > 1)
+      console.log("_updateAllPlanesShaderUniforms " + (t1 - t0) + " milliseconds.");
     //console.log("<< updating uniform loop done. (async work on background)");
   }
 
@@ -2948,6 +2975,13 @@ class QuadScene{
     });
 
 
+    this._quadViewInteraction.onDonePlaying(function(){
+      if(that._onChangeCallback){
+        that._onChangeCallback( that.getMainObjectInfo() );
+      }
+    });
+
+
   }
 
 
@@ -2979,6 +3013,8 @@ class QuadScene{
   onChange( cb ){
     this._onChangeCallback = cb;
   }
+
+
 
 
 }

@@ -62,6 +62,8 @@ class QuadViewInteraction{
 
     // function to call when the arrow down (keyboard) is down
     this._onArrowDownCallback = null;
+
+    this._onDonePlayingCallback = null;
   }
 
 
@@ -173,6 +175,10 @@ class QuadViewInteraction{
 
     this._mouseDistance.x = 0;
     this._mouseDistance.y = 0;
+
+    if(this._onDonePlayingCallback){
+      this._onDonePlayingCallback();
+    }
   }
 
 
@@ -221,6 +227,11 @@ class QuadViewInteraction{
 
       default:;
     }
+
+    if(this._onDonePlayingCallback){
+      this._onDonePlayingCallback();
+    }
+
   }
 
 
@@ -309,6 +320,13 @@ class QuadViewInteraction{
   */
   onArrowUp(cb){
     this._onArrowUpCallback = cb;
+  }
+
+  /**
+  * Callback called when a key of a mouse button is released
+  */
+  onDonePlaying( cb ){
+    this._onDonePlayingCallback = cb;
   }
 
 

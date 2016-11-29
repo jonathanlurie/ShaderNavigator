@@ -195,10 +195,6 @@ class QuadScene{
       if(this._counterRefresh % 30 == 0){
         this._updateAllPlanesShaderUniforms();
 
-        // refreshing the URL hash (because doing it at every move is too heavy)
-        if(this._onChangeCallback){
-          this._onChangeCallback( this.getMainObjectInfo() );
-        }
 
       }
 
@@ -279,8 +275,9 @@ class QuadScene{
     /*
     this._datGui.add(this._guiVar, 'debug');
     this._datGui.add(this._guiVar, 'debug2');
-
+    */
     this._datGui.add(this._guiVar, 'refresh');
+    /*
     this._datGui.add(this._guiVar, 'rotateX');
     this._datGui.add(this._guiVar, 'rotateY');
     this._datGui.add(this._guiVar, 'rotateZ');
@@ -322,7 +319,7 @@ class QuadScene{
       //that._updateOthoCamFrustrum();
     });
     */
-    
+
     /*
     controllerRotX.onChange(function(value) {
       that._updateAllPlanesShaderUniforms();
@@ -538,7 +535,7 @@ class QuadScene{
         that._onReadyCallback(that);
       }
 
-    })
+    });
   }
 
 
@@ -558,6 +555,10 @@ class QuadScene{
     this._guiVar.resolutionLevel = lvl;
 
     this._updateOthoCamFrustrum();
+
+    if(this._onChangeCallback){
+      this._onChangeCallback( this.getMainObjectInfo() );
+    }
   }
 
   printSubPlaneCenterWorld(){
@@ -591,9 +592,16 @@ class QuadScene{
   */
   _updateAllPlanesShaderUniforms(){
     //console.log(">> Updating uniforms...");
+    var t0 = performance.now();
+
     this._projectionPlanes.forEach( function(plane){
       plane.updateUniforms();
     });
+
+    var t1 = performance.now();
+
+    if((t1 - t0) > 1)
+      console.log("_updateAllPlanesShaderUniforms " + (t1 - t0) + " milliseconds.")
     //console.log("<< updating uniform loop done. (async work on background)");
   }
 
@@ -938,6 +946,13 @@ class QuadScene{
     });
 
 
+    this._quadViewInteraction.onDonePlaying(function(){
+      if(that._onChangeCallback){
+        that._onChangeCallback( that.getMainObjectInfo() );
+      }
+    });
+
+
   }
 
 
@@ -969,6 +984,8 @@ class QuadScene{
   onChange( cb ){
     this._onChangeCallback = cb;
   }
+
+
 
 
 }
