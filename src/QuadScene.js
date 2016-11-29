@@ -194,7 +194,14 @@ class QuadScene{
     if(this._ready){
       if(this._counterRefresh % 30 == 0){
         this._updateAllPlanesShaderUniforms();
+
+        // refreshing the URL hash (because doing it at every move is too heavy)
+        if(this._onChangeCallback){
+          this._onChangeCallback( this.getMainObjectInfo() );
+        }
+
       }
+
       this._counterRefresh ++;
     }
 
@@ -568,9 +575,11 @@ class QuadScene{
     });
     console.log("<< Plane scale updated!");
 
+    /*
     if(this._onChangeCallback){
       this._onChangeCallback( this.getMainObjectInfo() );
     }
+    */
   }
 
 
@@ -742,9 +751,11 @@ class QuadScene{
     this._mainObjectContainer.rotateOnAxis ( normalPlane, rad );
     this._updateAllPlanesShaderUniforms();
 
+    /*
     if(this._onChangeCallback){
       this._onChangeCallback( this.getMainObjectInfo() );
     }
+    */
   }
 
 
@@ -797,9 +808,11 @@ class QuadScene{
     this._updatePerspectiveCameraLookAt();
     this._syncOrientationHelperPosition();
 
+    /*
     if(this._onChangeCallback){
       this._onChangeCallback( this.getMainObjectInfo() );
     }
+    */
   }
 
 
