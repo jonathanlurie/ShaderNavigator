@@ -125,7 +125,7 @@ class QuadView{
   * Build an orthographic camera for this view.
   */
   initOrthoCamera(){
-    let orthographicCameraFovFactor = 350;
+    let orthographicCameraFovFactor = 360;
 
     this._camera = new THREE.OrthographicCamera(
       window.innerWidth / - orthographicCameraFovFactor,

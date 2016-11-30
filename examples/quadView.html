@@ -68,21 +68,24 @@
 
 		<script>
 
-    var quadScene = new SHAD.QuadScene( "container", 0 );
-    quadScene.initStat(); // optional
+    var quadScene = new SHAD.QuadScene(
+      "container",
+      "http://132.216.122.238/jpeg/info2.json",
+      0
+    );
 
+    // optional: display some performances
+    quadScene.initStat();
+
+    // to read the URL hash info
     var hashIo = new SHAD.HashIO();
     var hashInfo = hashIo.getHashInfo();
 
-
-
+    // when the quadscene is ready
     quadScene.onReady(function(qs){
-      console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>");
-      console.log(hashInfo);
+
+      // if position info in the URL, we go there
       if(hashInfo){
-
-
-
         // position
         qs.setMainObjectPosition(
           hashInfo.position.x,
@@ -100,8 +103,10 @@
         // resolution level - MUST be last to be sure not to load unused chunks (except the few of level 0)
         qs.setResolutionLevel(hashInfo.resolutionLvl);
 
+      // if no position is mentioned in the URL, the location is at the center,
+      // but we can change things like rezLvl, position or rotation
       }else{
-        qs.setResolutionLevel(5);
+        qs.setResolutionLevel(4);
         //qs.setMainObjectRotation(1, 0.2, 0.6);
         //qs.setMainObjectPosition(0.3, 0.41, 0.8);
       }
@@ -109,19 +114,21 @@
     });
 
 
-
-    quadScene.onChange( function(objectInfo){
+    // when
+    quadScene.onUpdateView( function(objectInfo){
+      console.log(objectInfo);
       hashIo.setHashInfo(objectInfo);
     });
 
 
+    quadScene.onConfigFileError(function(url, code){
 
-    /*
-    // methods available when ready
-    setResolutionLevel(lvl)
-    setMainObjectRotation(x, y, z)
-    setMainObjectPosition(x, y, z)
-    */
+      if(code == 0){
+        alert("The config file:\n" + url + "\nfailed to load. (code " + code + ")");
+      }
+
+    });
+
 		</script>
 
 	</body>

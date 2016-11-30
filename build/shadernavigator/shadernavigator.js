@@ -478,16 +478,6 @@ class ChunkCollection{
       position[2] % this._sizeChunkWC > this._sizeChunkWC / 2 ? localChunk[2] +1 : localChunk[2] -1,
     ];
 
-    /*
-    console.log("chunk size: " + this._sizeChunkWC);
-    console.log(position);
-    console.log(localChunk);
-    console.log(closest);
-    */
-
-    //console.log(localChunk);
-    //sconsole.log(closest);
-
     // build the chunk index of the 8 closest chunks from position
     var indexes3D = [
       [
@@ -645,6 +635,8 @@ class LevelManager{
 
     /** size of a chunk, considering it's always cubic */
     this._chunkSize = 64; // will be overwritten using the config file, but it will be 64 anyway.
+
+    this._onConfigErrorCallback = null;
   }
 
 
@@ -675,6 +667,14 @@ class LevelManager{
 
         // Rading the config object
         that._loadConfigDescription(JSON.parse(xobj.responseText));
+      }else{
+        console.error("Could not load config file " + filepath + "\nCode: " + xobj.readyState);
+
+        // if loading the config file failed, we have a callback for that.
+        if(that._onConfigErrorCallback){
+          that._onConfigErrorCallback(filepath, xobj.status);
+        }
+
       }
     };
     xobj.send(null);
@@ -824,6 +824,17 @@ class LevelManager{
   */
   getCubeHull(){
     return this._cubeHull.slice();
+  }
+
+
+  /**
+  * Defines the callback called when the config file was not found/able to load.
+  * This callback will be called with 2 args:
+  *   {string} The config file url
+  *   {Number} The error code (most likely 0 rather than 404. Didn't dig why)
+  */
+  onConfigError(cb){
+    this._onConfigErrorCallback = cb;
   }
 
 
@@ -1030,7 +1041,7 @@ class QuadView{
   * Build an orthographic camera for this view.
   */
   initOrthoCamera(){
-    let orthographicCameraFovFactor = 350;
+    let orthographicCameraFovFactor = 360;
 
     this._camera = new THREE.OrthographicCamera(
       window.innerWidth / - orthographicCameraFovFactor,
@@ -1317,7 +1328,9 @@ class ProjectionPlane{
   constructor( chunkSize ){
     this._plane = new THREE.Object3D();
 
-    this._subPlaneSize = chunkSize / 2;
+    //this._subPlaneSize = chunkSize / 2; // ORIG
+    //this._subPlaneSize = chunkSize * 0.7; // OPTIM
+    this._subPlaneSize = chunkSize / Math.sqrt(2);
 
     // list of subplanes
     this._subPlanes = [];
@@ -1326,8 +1339,9 @@ class ProjectionPlane{
     this._shaderMaterials = [];
 
     // number of rows and cols of sub-planes to compose the _plane
-    this._subPlaneDim = {row: 10, col: 21};
-    //this._subPlaneDim = {row: 4, col: 4};
+    //this._subPlaneDim = {row: 10, col: 21}; // ORIG
+    this._subPlaneDim = {row: 7, col: 15}; // OPTIM
+    //this._subPlaneDim = {row: 4, col: 4}; // TEST
 
     // given by aggregation
     this._levelManager = null;
@@ -1460,6 +1474,7 @@ class ProjectionPlane{
     uniforms.textureOrigins.value = textureData.origins;
     uniforms.chunkSize.value = chunkSizeWC;
     this._shaderMaterials[i].needsUpdate = true;  // apparently useless
+
   }
 
 
@@ -2050,7 +2065,8 @@ class QuadViewInteraction{
 */
 class QuadScene{
 
-  constructor(DomContainer, rez=0){
+  constructor(DomContainer, configFile, rez=0){
+    this._configFile = configFile;
     this._ready = false;
     this._counterRefresh = 0;
     this._resolutionLevel = rez;
@@ -2074,7 +2090,11 @@ class QuadScene{
     // called whenever the lvl, orientation or position changes (if set)
     this._onChangeCallback = null;
 
+    // Called when the config file is loaded, the planes are build and now we just wait to do things
     this._onReadyCallback = null;
+
+    // called whennever the config file failed to load
+    this._onConfigFileErrorCallback = null;
 
     // variables used to sync the dat.guy widget and some position/rotation.
     // see _initUI() for more info.
@@ -2298,7 +2318,7 @@ class QuadScene{
     //var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01).listen();
     //var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01).listen();
     //var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01).listen();
-    //var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 2).name("frustrum").step(0.01).listen();
+    var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 0.05).name("frustrum").step(0.001).listen();
     var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1).listen();
 
     /*
@@ -2370,13 +2390,13 @@ class QuadScene{
     controllerRotZ.onFinishChange(function(value) {
       that._updateAllPlanesShaderUniforms();
     });
-
+    */
     controllerFrustrum.onChange(function(value){
       that._quadViews[0].updateOrthoCamFrustrum(value);
       that._quadViews[1].updateOrthoCamFrustrum(value);
       that._quadViews[2].updateOrthoCamFrustrum(value);
     });
-    */
+
 
   }
 
@@ -2532,8 +2552,8 @@ class QuadScene{
   _initLevelManager(){
     var that = this;
 
-    //this._levelManager.loadConfig("../data/info2.json");
-    this._levelManager.loadConfig("http://132.216.122.238/jpeg/info2.json");
+    // the config file was succesfully loaded
+    this._levelManager.loadConfig(this._configFile);
 
     this._levelManager.onReady(function(){
 
@@ -2565,6 +2585,15 @@ class QuadScene{
       }
 
     });
+
+
+    // the config file failed to load
+    this._levelManager.onConfigError( function(url, code){
+      if(that._onConfigFileErrorCallback){
+        that._onConfigFileErrorCallback(url, code);
+      }
+    });
+
   }
 
 
@@ -2585,16 +2614,22 @@ class QuadScene{
 
     this._updateOthoCamFrustrum();
 
-    if(this._onChangeCallback){
-      this._onChangeCallback( this.getMainObjectInfo() );
+    if(this._onUpdateViewCallback){
+      this._onUpdateViewCallback( this.getMainObjectInfo() );
     }
   }
 
+
+  /**
+  * [DEBUG]
+  * Prints the world coordinates of each subplanes of each ortho planes.
+  */
   printSubPlaneCenterWorld(){
     this._projectionPlanes.forEach( function(plane){
       plane.printSubPlaneCenterWorld();
     });
   }
+
 
   /**
   * When the resolution level is changing, the scale of each plane has to change accordingly before the texture chunks are fetched ( = before _updateAllPlanesShaderUniforms is called).
@@ -2607,12 +2642,6 @@ class QuadScene{
       plane.updateScaleFromRezLvl( that._resolutionLevel );
     });
     console.log("<< Plane scale updated!");
-
-    /*
-    if(this._onChangeCallback){
-      this._onChangeCallback( this.getMainObjectInfo() );
-    }
-    */
   }
 
 
@@ -2621,16 +2650,16 @@ class QuadScene{
   */
   _updateAllPlanesShaderUniforms(){
     //console.log(">> Updating uniforms...");
-    var t0 = performance.now();
+    //var t0 = performance.now();
 
     this._projectionPlanes.forEach( function(plane){
       plane.updateUniforms();
     });
 
-    var t1 = performance.now();
+    //var t1 = performance.now();
 
-    if((t1 - t0) > 1)
-      console.log("_updateAllPlanesShaderUniforms " + (t1 - t0) + " milliseconds.");
+    //if((t1 - t0) > 1)
+    //  console.log("_updateAllPlanesShaderUniforms " + (t1 - t0) + " milliseconds.")
     //console.log("<< updating uniform loop done. (async work on background)");
   }
 
@@ -2729,7 +2758,7 @@ class QuadScene{
   */
   _initOrientationHelper(){
     this._orientationHelper = new OrientationHelper(
-      this._projectionPlanes[0].getWorldDiagonal() / 20
+      this._projectionPlanes[0].getWorldDiagonal() / 13
       //1.5
     );
 
@@ -2976,8 +3005,8 @@ class QuadScene{
 
 
     this._quadViewInteraction.onDonePlaying(function(){
-      if(that._onChangeCallback){
-        that._onChangeCallback( that.getMainObjectInfo() );
+      if(that._onUpdateViewCallback){
+        that._onUpdateViewCallback( that.getMainObjectInfo() );
       }
     });
 
@@ -3010,11 +3039,14 @@ class QuadScene{
   /**
   * Defines the callback for whenever the lvl, rotation or position changes
   */
-  onChange( cb ){
-    this._onChangeCallback = cb;
+  onUpdateView( cb ){
+    this._onUpdateViewCallback = cb;
   }
 
 
+  onConfigFileError(cb){
+    this._onConfigFileErrorCallback = cb;
+  }
 
 
 }

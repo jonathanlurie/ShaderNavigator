@@ -17,7 +17,9 @@ class ProjectionPlane{
   constructor( chunkSize ){
     this._plane = new THREE.Object3D();
 
-    this._subPlaneSize = chunkSize / 2;
+    //this._subPlaneSize = chunkSize / 2; // ORIG
+    //this._subPlaneSize = chunkSize * 0.7; // OPTIM
+    this._subPlaneSize = chunkSize / Math.sqrt(2);
 
     // list of subplanes
     this._subPlanes = [];
@@ -26,8 +28,9 @@ class ProjectionPlane{
     this._shaderMaterials = [];
 
     // number of rows and cols of sub-planes to compose the _plane
-    this._subPlaneDim = {row: 10, col: 21};
-    //this._subPlaneDim = {row: 4, col: 4};
+    //this._subPlaneDim = {row: 10, col: 21}; // ORIG
+    this._subPlaneDim = {row: 7, col: 15}; // OPTIM
+    //this._subPlaneDim = {row: 4, col: 4}; // TEST
 
     // given by aggregation
     this._levelManager = null;
@@ -160,6 +163,7 @@ class ProjectionPlane{
     uniforms.textureOrigins.value = textureData.origins;
     uniforms.chunkSize.value = chunkSizeWC;
     this._shaderMaterials[i].needsUpdate = true;  // apparently useless
+
   }
 
 

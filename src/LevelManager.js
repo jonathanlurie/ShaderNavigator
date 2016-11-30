@@ -31,6 +31,8 @@ class LevelManager{
 
     /** size of a chunk, considering it's always cubic */
     this._chunkSize = 64; // will be overwritten using the config file, but it will be 64 anyway.
+
+    this._onConfigErrorCallback = null;
   }
 
 
@@ -61,6 +63,14 @@ class LevelManager{
 
         // Rading the config object
         that._loadConfigDescription(JSON.parse(xobj.responseText));
+      }else{
+        console.error("Could not load config file " + filepath + "\nCode: " + xobj.readyState);
+
+        // if loading the config file failed, we have a callback for that.
+        if(that._onConfigErrorCallback){
+          that._onConfigErrorCallback(filepath, xobj.status);
+        }
+
       }
     };
     xobj.send(null);
@@ -210,6 +220,17 @@ class LevelManager{
   */
   getCubeHull(){
     return this._cubeHull.slice();
+  }
+
+
+  /**
+  * Defines the callback called when the config file was not found/able to load.
+  * This callback will be called with 2 args:
+  *   {string} The config file url
+  *   {Number} The error code (most likely 0 rather than 404. Didn't dig why)
+  */
+  onConfigError(cb){
+    this._onConfigErrorCallback = cb;
   }
 
 

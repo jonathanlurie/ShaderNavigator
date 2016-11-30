@@ -252,16 +252,6 @@ class ChunkCollection{
       position[2] % this._sizeChunkWC > this._sizeChunkWC / 2 ? localChunk[2] +1 : localChunk[2] -1,
     ];
 
-    /*
-    console.log("chunk size: " + this._sizeChunkWC);
-    console.log(position);
-    console.log(localChunk);
-    console.log(closest);
-    */
-
-    //console.log(localChunk);
-    //sconsole.log(closest);
-
     // build the chunk index of the 8 closest chunks from position
     var indexes3D = [
       [
