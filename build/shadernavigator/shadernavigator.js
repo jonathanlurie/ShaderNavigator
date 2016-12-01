@@ -1304,9 +1304,9 @@ class QuadView{
 
 } /* END QuadView */
 
-var texture3d_frag = "const int maxNbChunks = 8;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform float chunkSize;\nvarying vec4 worldCoord;\nvarying vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||\n            chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||\n            chunkPosition.z<0.0 || chunkPosition.z>=1.0 );\n}\nvoid getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){\n  float numberOfImagePerStripY = 64.0;\n  float numberOfPixelPerSide = 64.0;\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY;\n  float stripX = chunkPosition.x;\n  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  colorFromTexture = texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){\n  vec3 chunkSystemCoordinate = vec3( (textureOrigin.x - world.x)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.z - world.z)*(-1.0)/chunkSize);\n  return chunkSystemCoordinate;\n}\nvoid main( void ) {\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(0.0, 0.0 , 0.0, 0.0);\n  vec3 chunkPosition;\n  bool mustWrite = false;\n  if(nbChunks >= 1){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);\n    if( isInsideChunk(chunkPosition) ){\n      getColorFrom3DTexture(textures[0], chunkPosition, color);\n      mustWrite = true;\n    }\n    if(nbChunks >= 2){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);\n      if( isInsideChunk(chunkPosition) ){\n        getColorFrom3DTexture(textures[1], chunkPosition, color);\n        mustWrite = true;\n      }\n      if(nbChunks >= 3){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);\n        if( isInsideChunk(chunkPosition) ){\n          getColorFrom3DTexture(textures[2], chunkPosition, color);\n          mustWrite = true;\n        }\n        if(nbChunks >= 4){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);\n          if( isInsideChunk(chunkPosition) ){\n            getColorFrom3DTexture(textures[3], chunkPosition, color);\n            mustWrite = true;\n          }\n          if(nbChunks >= 5){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);\n            if( isInsideChunk(chunkPosition) ){\n              getColorFrom3DTexture(textures[4], chunkPosition, color);\n              mustWrite = true;\n            }\n            if(nbChunks >= 6){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);\n              if( isInsideChunk(chunkPosition) ){\n                getColorFrom3DTexture(textures[5], chunkPosition, color);\n                mustWrite = true;\n              }\n              if(nbChunks >= 7){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);\n                if( isInsideChunk(chunkPosition) ){\n                  getColorFrom3DTexture(textures[6], chunkPosition, color);\n                  mustWrite = true;\n                }\n                if(nbChunks == 8){\n                  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);\n                  if( isInsideChunk(chunkPosition) ){\n                    getColorFrom3DTexture(textures[7], chunkPosition, color);\n                    mustWrite = true;\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(mustWrite){\n    gl_FragColor = color;\n  }else{\n    discard;\n  }\n}\n";
+var texture3d_frag = "const int maxNbChunks = 8;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying vec4 worldCoord;\nvarying vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||\n            chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||\n            chunkPosition.z<0.0 || chunkPosition.z>=1.0 );\n}\nvoid getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){\n  float numberOfImagePerStripY = 64.0;\n  float numberOfPixelPerSide = 64.0;\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY;\n  float stripX = chunkPosition.x;\n  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  colorFromTexture = texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){\n  vec3 chunkSystemCoordinate = vec3( (textureOrigin.x - world.x)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.z - world.z)*(-1.0)/chunkSize);\n  return chunkSystemCoordinate;\n}\nvoid main( void ) {\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(0.0, 0.0 , 0.0, 0.0);\n  vec3 chunkPosition;\n  bool mustWrite = false;\n  if(nbChunks >= 1){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);\n    if( isInsideChunk(chunkPosition) ){\n      getColorFrom3DTexture(textures[0], chunkPosition, color);\n      mustWrite = true;\n    }\n    if(nbChunks >= 2){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);\n      if( isInsideChunk(chunkPosition) ){\n        getColorFrom3DTexture(textures[1], chunkPosition, color);\n        mustWrite = true;\n      }\n      if(nbChunks >= 3){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);\n        if( isInsideChunk(chunkPosition) ){\n          getColorFrom3DTexture(textures[2], chunkPosition, color);\n          mustWrite = true;\n        }\n        if(nbChunks >= 4){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);\n          if( isInsideChunk(chunkPosition) ){\n            getColorFrom3DTexture(textures[3], chunkPosition, color);\n            mustWrite = true;\n          }\n          if(nbChunks >= 5){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);\n            if( isInsideChunk(chunkPosition) ){\n              getColorFrom3DTexture(textures[4], chunkPosition, color);\n              mustWrite = true;\n            }\n            if(nbChunks >= 6){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);\n              if( isInsideChunk(chunkPosition) ){\n                getColorFrom3DTexture(textures[5], chunkPosition, color);\n                mustWrite = true;\n              }\n              if(nbChunks >= 7){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);\n                if( isInsideChunk(chunkPosition) ){\n                  getColorFrom3DTexture(textures[6], chunkPosition, color);\n                  mustWrite = true;\n                }\n                if(nbChunks == 8){\n                  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);\n                  if( isInsideChunk(chunkPosition) ){\n                    getColorFrom3DTexture(textures[7], chunkPosition, color);\n                    mustWrite = true;\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(mustWrite){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a == 0.0){\n        discard;\n      }else{\n        gl_FragColor = colorFromColorMap;\n      }\n    }else{\n      gl_FragColor = color;\n    }\n  }else{\n    discard;\n  }\n}\n";
 
-var texture3d_vert = "uniform float chunkSize;\nvarying vec2 vUv;\nvarying vec4 worldCoord;\nvoid main()\n{\n  vUv = uv;\n  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );\n  gl_Position = projectionMatrix * mvPosition;\n  worldCoord = modelMatrix * vec4( position, 1.0 );\n}\n";
+var texture3d_vert = "uniform float chunkSize;\nuniform sampler2D colorMap;\nvarying vec2 vUv;\nvarying vec4 worldCoord;\nvoid main()\n{\n  vUv = uv;\n  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );\n  gl_Position = projectionMatrix * mvPosition;\n  worldCoord = modelMatrix * vec4( position, 1.0 );\n}\n";
 
 var ShaderImporter = {
 	texture3d_frag: texture3d_frag,
@@ -1326,6 +1326,8 @@ class ProjectionPlane{
   *
   */
   constructor( chunkSize ){
+    var that = this;
+
     this._plane = new THREE.Object3D();
 
     //this._subPlaneSize = chunkSize / 2; // ORIG
@@ -1342,6 +1344,42 @@ class ProjectionPlane{
     //this._subPlaneDim = {row: 10, col: 21}; // ORIG
     this._subPlaneDim = {row: 7, col: 15}; // OPTIM
     //this._subPlaneDim = {row: 4, col: 4}; // TEST
+
+    //this._colormap =  THREE.ImageUtils.loadTexture( "colormaps/blue02.png" );
+    this._colormap = null;
+    //console.log( colormap );
+
+    var url = "colormaps/blue_teal.png";
+
+    var base = new String(url).substring(url.lastIndexOf('/') + 1);
+    if(base.lastIndexOf(".") != -1)
+        base = base.substring(0, base.lastIndexOf("."));
+
+    console.log(base);
+
+
+    var loader = new THREE.TextureLoader();
+    loader.load(
+      "colormaps/blue_teal.png",
+
+      // success
+      function ( texture ) {
+        that._colormap = texture;
+	    },
+
+      // Function called when download progresses
+	    function ( xhr ) {
+		    console.log( (xhr.loaded / xhr.total * 100) + '% loaded' );
+	    },
+
+      // Function called when download errors
+    	function ( xhr ) {
+    		console.log( 'An error happened' );
+    	}
+
+    );
+
+
 
     // given by aggregation
     this._levelManager = null;
@@ -1368,6 +1406,9 @@ class ProjectionPlane{
         THREE.UnsignedByteType  // type for our Uint8Array
       );
 
+
+
+
     var fakeOrigin = new THREE.Vector3(0, 0, 0);
 
     var subPlaneMaterial_original = new THREE.ShaderMaterial( {
@@ -1391,6 +1432,14 @@ class ProjectionPlane{
         chunkSize : {
           type: "f",
           value: 1
+        },
+        colorMap : {
+          type: "t",
+          value: this._colormap
+        },
+        useColorMap : {
+          type: "b",
+          value: true
         }
       }
       ,
@@ -1473,7 +1522,11 @@ class ProjectionPlane{
     uniforms.textures.value = textureData.textures;
     uniforms.textureOrigins.value = textureData.origins;
     uniforms.chunkSize.value = chunkSizeWC;
-    this._shaderMaterials[i].needsUpdate = true;  // apparently useless
+    uniforms.colorMap.value = this._colormap;
+
+
+    //uniforms.colorMap.value = THREE.ImageUtils.loadTexture( "colormaps/rainbow.png" );
+    //this._shaderMaterials[i].needsUpdate = true;  // apparently useless
 
   }
 
@@ -2138,7 +2191,7 @@ class QuadScene{
     this._levelManager = new SHAD.LevelManager();
     this._addProjectionPlane();
     this._initLevelManager();
-    this.animate();
+    this._animate();
   }
 
 
@@ -2215,7 +2268,7 @@ class QuadScene{
   * [PRIVATE]
   * To feed the animation feature built in WebGL.
   */
-  animate(){
+  _animate(){
     this._render();
 
     if(this._stats){
@@ -2223,7 +2276,7 @@ class QuadScene{
     }
 
     // call a built-in webGL method for annimation
-    requestAnimationFrame( this.animate.bind(this) );
+    requestAnimationFrame( this._animate.bind(this) );
 
     // updating the control is necessary in the case of a TrackballControls
     this._quadViews[3].updateControl();
@@ -2231,22 +2284,17 @@ class QuadScene{
 
 
   /**
-  *
+  * [PRIVATE]
+  * Typical rendering function, necessary in THREE js
   */
   _render(){
     let that = this;
-
-    // when the gui is used
-    this._updateMainObjectContainerFromUI();
 
     // TODO: make somethink better for refresh once per sec!
     if(this._ready){
       if(this._counterRefresh % 30 == 0){
         this._updateAllPlanesShaderUniforms();
-
-
       }
-
       this._counterRefresh ++;
     }
 
@@ -2318,7 +2366,7 @@ class QuadScene{
     //var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01).listen();
     //var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01).listen();
     //var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01).listen();
-    var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 0.05).name("frustrum").step(0.001).listen();
+    //var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 0.05).name("frustrum").step(0.001).listen();
     var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1).listen();
 
     /*
@@ -2390,13 +2438,13 @@ class QuadScene{
     controllerRotZ.onFinishChange(function(value) {
       that._updateAllPlanesShaderUniforms();
     });
-    */
+
     controllerFrustrum.onChange(function(value){
       that._quadViews[0].updateOrthoCamFrustrum(value);
       that._quadViews[1].updateOrthoCamFrustrum(value);
       that._quadViews[2].updateOrthoCamFrustrum(value);
     });
-
+    */
 
   }
 
@@ -2428,6 +2476,11 @@ class QuadScene{
     }
   }
 
+
+  /**
+  * Set the x position of the main object container.
+  * @param {Number} x - position
+  */
   setMainObjectPositionX(x){
     if(x>0 && x<this._cubeHullSize[0]){
       this._mainObjectContainer.position.x = x;
@@ -2441,6 +2494,11 @@ class QuadScene{
     }
   }
 
+
+  /**
+  * Set the y position of the main object container.
+  * @param {Number} y - position
+  */
   setMainObjectPositionY(y){
     if(y>0 && y<this._cubeHullSize[1]){
       this._mainObjectContainer.position.y = y;
@@ -2454,6 +2512,11 @@ class QuadScene{
     }
   }
 
+
+  /**
+  * Set the z position of the main object container.
+  * @param {Number} z - position
+  */
   setMainObjectPositionZ(z){
     if(z>0 && z<this._cubeHullSize[2]){
       this._mainObjectContainer.position.z = z;
@@ -2489,34 +2552,6 @@ class QuadScene{
     this._guiVar.rotz = z;
 
     this._updateAllPlanesShaderUniforms();
-  }
-
-
-  /**
-  * [PRIVATE]
-  * Update the position and rotation of _mainObjectContainer from what is tuned in the dat.gui widget.
-  * Called at each _render()
-  */
-  _updateMainObjectContainerFromUI(){
-
-    /*
-    // position
-    this.setMainObjectPosition(
-      this._guiVar.posx,
-      this._guiVar.posy,
-      this._guiVar.posz
-    );
-    */
-
-    /*
-    // rotation
-    this.setMainObjectRotation(
-      this._guiVar.rotx,
-      this._guiVar.roty,
-      this._guiVar.rotz
-    );
-    */
-
   }
 
 
@@ -2562,7 +2597,6 @@ class QuadScene{
       });
 
       that._levelManager.setResolutionLevel( that._resolutionLevel );
-
       that._buildCubeHull();
 
       that.setMainObjectPosition(
@@ -2572,12 +2606,8 @@ class QuadScene{
       );
 
       that._initOrientationHelper();
-      //that._updateAllPlanesShaderUniforms();
-
       that.setResolutionLevel( that._resolutionLevel );
-
       that._initPlaneInteraction();
-
       that._ready = true;
 
       if(that._onReadyCallback){
@@ -2609,9 +2639,7 @@ class QuadScene{
     this._updateAllPlanesScaleFromRezLvl();
     this._updateAllPlanesShaderUniforms();  // TODO: should be uncommented!!
     this._syncOrientationHelperScale();
-
     this._guiVar.resolutionLevel = lvl;
-
     this._updateOthoCamFrustrum();
 
     if(this._onUpdateViewCallback){
@@ -2650,17 +2678,9 @@ class QuadScene{
   */
   _updateAllPlanesShaderUniforms(){
     //console.log(">> Updating uniforms...");
-    //var t0 = performance.now();
-
     this._projectionPlanes.forEach( function(plane){
       plane.updateUniforms();
     });
-
-    //var t1 = performance.now();
-
-    //if((t1 - t0) > 1)
-    //  console.log("_updateAllPlanesShaderUniforms " + (t1 - t0) + " milliseconds.")
-    //console.log("<< updating uniform loop done. (async work on background)");
   }
 
 
@@ -2877,11 +2897,6 @@ class QuadScene{
     this._updatePerspectiveCameraLookAt();
     this._syncOrientationHelperPosition();
 
-    /*
-    if(this._onChangeCallback){
-      this._onChangeCallback( this.getMainObjectInfo() );
-    }
-    */
   }
 
 

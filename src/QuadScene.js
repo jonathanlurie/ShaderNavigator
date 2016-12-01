@@ -94,7 +94,7 @@ class QuadScene{
     this._levelManager = new SHAD.LevelManager();
     this._addProjectionPlane();
     this._initLevelManager();
-    this.animate();
+    this._animate();
   }
 
 
@@ -171,7 +171,7 @@ class QuadScene{
   * [PRIVATE]
   * To feed the animation feature built in WebGL.
   */
-  animate(){
+  _animate(){
     this._render();
 
     if(this._stats){
@@ -179,7 +179,7 @@ class QuadScene{
     }
 
     // call a built-in webGL method for annimation
-    requestAnimationFrame( this.animate.bind(this) );
+    requestAnimationFrame( this._animate.bind(this) );
 
     // updating the control is necessary in the case of a TrackballControls
     this._quadViews[3].updateControl();
@@ -187,22 +187,17 @@ class QuadScene{
 
 
   /**
-  *
+  * [PRIVATE]
+  * Typical rendering function, necessary in THREE js
   */
   _render(){
     let that = this;
-
-    // when the gui is used
-    this._updateMainObjectContainerFromUI();
 
     // TODO: make somethink better for refresh once per sec!
     if(this._ready){
       if(this._counterRefresh % 30 == 0){
         this._updateAllPlanesShaderUniforms();
-
-
       }
-
       this._counterRefresh ++;
     }
 
@@ -274,7 +269,7 @@ class QuadScene{
     //var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01).listen();
     //var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01).listen();
     //var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01).listen();
-    var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 0.05).name("frustrum").step(0.001).listen();
+    //var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 0.05).name("frustrum").step(0.001).listen();
     var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1).listen();
 
     /*
@@ -346,13 +341,13 @@ class QuadScene{
     controllerRotZ.onFinishChange(function(value) {
       that._updateAllPlanesShaderUniforms();
     });
-    */
+
     controllerFrustrum.onChange(function(value){
       that._quadViews[0].updateOrthoCamFrustrum(value);
       that._quadViews[1].updateOrthoCamFrustrum(value);
       that._quadViews[2].updateOrthoCamFrustrum(value);
     });
-
+    */
 
   }
 
@@ -384,6 +379,11 @@ class QuadScene{
     }
   }
 
+
+  /**
+  * Set the x position of the main object container.
+  * @param {Number} x - position
+  */
   setMainObjectPositionX(x){
     if(x>0 && x<this._cubeHullSize[0]){
       this._mainObjectContainer.position.x = x;
@@ -397,6 +397,11 @@ class QuadScene{
     }
   }
 
+
+  /**
+  * Set the y position of the main object container.
+  * @param {Number} y - position
+  */
   setMainObjectPositionY(y){
     if(y>0 && y<this._cubeHullSize[1]){
       this._mainObjectContainer.position.y = y;
@@ -410,6 +415,11 @@ class QuadScene{
     }
   }
 
+
+  /**
+  * Set the z position of the main object container.
+  * @param {Number} z - position
+  */
   setMainObjectPositionZ(z){
     if(z>0 && z<this._cubeHullSize[2]){
       this._mainObjectContainer.position.z = z;
@@ -445,34 +455,6 @@ class QuadScene{
     this._guiVar.rotz = z;
 
     this._updateAllPlanesShaderUniforms();
-  }
-
-
-  /**
-  * [PRIVATE]
-  * Update the position and rotation of _mainObjectContainer from what is tuned in the dat.gui widget.
-  * Called at each _render()
-  */
-  _updateMainObjectContainerFromUI(){
-
-    /*
-    // position
-    this.setMainObjectPosition(
-      this._guiVar.posx,
-      this._guiVar.posy,
-      this._guiVar.posz
-    );
-    */
-
-    /*
-    // rotation
-    this.setMainObjectRotation(
-      this._guiVar.rotx,
-      this._guiVar.roty,
-      this._guiVar.rotz
-    );
-    */
-
   }
 
 
@@ -518,7 +500,6 @@ class QuadScene{
       });
 
       that._levelManager.setResolutionLevel( that._resolutionLevel );
-
       that._buildCubeHull();
 
       that.setMainObjectPosition(
@@ -528,12 +509,8 @@ class QuadScene{
       );
 
       that._initOrientationHelper();
-      //that._updateAllPlanesShaderUniforms();
-
       that.setResolutionLevel( that._resolutionLevel );
-
       that._initPlaneInteraction();
-
       that._ready = true;
 
       if(that._onReadyCallback){
@@ -565,9 +542,7 @@ class QuadScene{
     this._updateAllPlanesScaleFromRezLvl();
     this._updateAllPlanesShaderUniforms();  // TODO: should be uncommented!!
     this._syncOrientationHelperScale();
-
     this._guiVar.resolutionLevel = lvl;
-
     this._updateOthoCamFrustrum();
 
     if(this._onUpdateViewCallback){
@@ -606,17 +581,9 @@ class QuadScene{
   */
   _updateAllPlanesShaderUniforms(){
     //console.log(">> Updating uniforms...");
-    //var t0 = performance.now();
-
     this._projectionPlanes.forEach( function(plane){
       plane.updateUniforms();
     });
-
-    //var t1 = performance.now();
-
-    //if((t1 - t0) > 1)
-    //  console.log("_updateAllPlanesShaderUniforms " + (t1 - t0) + " milliseconds.")
-    //console.log("<< updating uniform loop done. (async work on background)");
   }
 
 
@@ -833,11 +800,6 @@ class QuadScene{
     this._updatePerspectiveCameraLookAt();
     this._syncOrientationHelperPosition();
 
-    /*
-    if(this._onChangeCallback){
-      this._onChangeCallback( this.getMainObjectInfo() );
-    }
-    */
   }
 
 

@@ -20,6 +20,7 @@
 				position: absolute;
 				top: 0px; width: 100%;
 				padding: 5px;
+
 			}
 
       .key{
@@ -42,12 +43,22 @@
         cursor: default;
       }
 
+      .noselect {
+        -webkit-touch-callout: none; /* iOS Safari */
+        -webkit-user-select: none; /* Chrome/Safari/Opera */
+        -khtml-user-select: none; /* Konqueror */
+        -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+        user-select: none; /* Non-prefixed version, currently
+                                  not supported by any browser */
+      }
+
 		</style>
 	</head>
 	<body>
 
 		<div id="container"></div>
-		<div id="info">
+		<div id="info" class="noselect">
       <p>
         BigBrain Quadview — use mouse to pan, <span class="key">R</span> + mouse to rotate, <span class="key">T</span> + mouse to transverse rotate, <span class="key">&#8593;</span> and <span class="key">&#8595;</span> to go forward/backward on the view the mouse hovers.
       </p>

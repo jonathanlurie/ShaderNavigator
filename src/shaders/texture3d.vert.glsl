@@ -1,5 +1,6 @@
 //uniform vec3 textureOrigins[2];
 uniform float chunkSize;
+uniform sampler2D colorMap;
 
 varying vec2 vUv;
 varying vec4 worldCoord;

@@ -15,6 +15,8 @@ class ProjectionPlane{
   *
   */
   constructor( chunkSize ){
+    var that = this;
+
     this._plane = new THREE.Object3D();
 
     //this._subPlaneSize = chunkSize / 2; // ORIG
@@ -31,6 +33,34 @@ class ProjectionPlane{
     //this._subPlaneDim = {row: 10, col: 21}; // ORIG
     this._subPlaneDim = {row: 7, col: 15}; // OPTIM
     //this._subPlaneDim = {row: 4, col: 4}; // TEST
+
+    //this._colormap =  THREE.ImageUtils.loadTexture( "colormaps/blue02.png" );
+    this._colormap = null;
+    //console.log( colormap );
+
+
+    var loader = new THREE.TextureLoader();
+    loader.load(
+      "colormaps/blue_teal.png",
+
+      // success
+      function ( texture ) {
+        that._colormap = texture;
+	    },
+
+      // Function called when download progresses
+	    function ( xhr ) {
+		    console.log( (xhr.loaded / xhr.total * 100) + '% loaded' );
+	    },
+
+      // Function called when download errors
+    	function ( xhr ) {
+    		console.log( 'An error happened' );
+    	}
+
+    );
+
+
 
     // given by aggregation
     this._levelManager = null;
@@ -57,6 +87,9 @@ class ProjectionPlane{
         THREE.UnsignedByteType  // type for our Uint8Array
       );
 
+
+
+
     var fakeOrigin = new THREE.Vector3(0, 0, 0);
 
     var subPlaneMaterial_original = new THREE.ShaderMaterial( {
@@ -80,6 +113,14 @@ class ProjectionPlane{
         chunkSize : {
           type: "f",
           value: 1
+        },
+        colorMap : {
+          type: "t",
+          value: this._colormap
+        },
+        useColorMap : {
+          type: "b",
+          value: true
         }
       }
       ,
@@ -162,7 +203,11 @@ class ProjectionPlane{
     uniforms.textures.value = textureData.textures;
     uniforms.textureOrigins.value = textureData.origins;
     uniforms.chunkSize.value = chunkSizeWC;
-    this._shaderMaterials[i].needsUpdate = true;  // apparently useless
+    uniforms.colorMap.value = this._colormap;
+
+
+    //uniforms.colorMap.value = THREE.ImageUtils.loadTexture( "colormaps/rainbow.png" );
+    //this._shaderMaterials[i].needsUpdate = true;  // apparently useless
 
   }
 

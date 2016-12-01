@@ -43,7 +43,7 @@ class ChunkCollection{
     /** Size of a chunk in 3D space (aka. in world coordinates) */
     this._sizeChunkWC = this._chunkSizeLvlZero / Math.pow(2, this._resolutionLevel);
 
-    /** Creates a fake texture and fake texture data to be sent to the shader in case it's not possible to fetch a real data (out of bound, unable to load texture file) */
+    // Creates a fake texture and fake texture data to be sent to the shader in case it's not possible to fetch a real data (out of bound, unable to load texture file)
     this._createFakeTexture();
 
     /** Keeps a track of how many textures are supposed to be loaded, how many failed to load and how many eventually loaded successfully */

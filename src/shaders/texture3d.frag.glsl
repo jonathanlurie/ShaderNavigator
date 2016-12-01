@@ -2,6 +2,8 @@ const int maxNbChunks = 8;
 uniform int nbChunks;
 uniform sampler2D textures[maxNbChunks];
 uniform vec3 textureOrigins[maxNbChunks];
+uniform sampler2D colorMap;
+uniform bool useColorMap;
 
 uniform float chunkSize;
 
@@ -157,9 +159,29 @@ void main( void ) {
   }
 
   if(mustWrite){
-    gl_FragColor = color;
+
+    if(useColorMap){
+      vec2 colorToPosition = vec2(color.r, 0.5);
+      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);
+
+      if(colorFromColorMap.a == 0.0){
+        discard;
+      }else{
+        gl_FragColor = colorFromColorMap;
+      }
+    }else{
+      gl_FragColor = color;
+    }
+
+
+
+
+
+
   }else{
     discard;
   }
+
+
 
 }
