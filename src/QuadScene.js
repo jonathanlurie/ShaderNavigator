@@ -7,6 +7,7 @@ import { QuadView } from './QuadView.js';
 import { ProjectionPlane } from './ProjectionPlane.js';
 import { OrientationHelper } from './OrientationHelper.js';
 import { QuadViewInteraction } from './QuadViewInteraction.js';
+import { ColorMapManager } from './ColorMapManager.js';
 
 
 
@@ -52,11 +53,16 @@ class QuadScene{
     // called whennever the config file failed to load
     this._onConfigFileErrorCallback = null;
 
+    // a single colormap manager that will be used for all the planes
+    this._colormapManager = new ColorMapManager();
+
     // variables used to sync the dat.guy widget and some position/rotation.
     // see _initUI() for more info.
     this._guiVar = null;
     this._datGui = new dat.GUI();
     this._initUI();
+
+
 
     // Container on the DOM tree, most likely a div
     this._domContainer = document.getElementById( DomContainer );
@@ -228,9 +234,15 @@ class QuadScene{
       rotz: 0,
       frustrum: 1,
       resolutionLevel: that._resolutionLevel,
+      colormapChoice: 0, // the value does not matter
+
 
       toggleOrientationHelper: function(){
         that._orientationHelper.toggle();
+      },
+
+      toggleCubeHull: function(){
+        that.toggleCubeHull();
       },
 
       refresh: function(){
@@ -238,117 +250,52 @@ class QuadScene{
       },
 
       debug: function(){
-        that._projectionPlanes.forEach( function(plane){
-          plane.printSubPlaneCenterWorld();
-        });
-      },
-
-      debug2: function(){
-
-      },
-
-      rotateX: function(){
-        that.rotateNativePlaneX( this.rotx );
-      },
-
-      rotateY: function(){
-        that.rotateNativePlaneY( this.roty );
-      },
-
-      rotateZ: function(){
-        that.rotateNativePlaneZ( this.rotz );
-      },
+        console.log(that._colormapManager.getCurrentColorMap());
+      }
 
     }
 
     this._datGui.add(this._guiVar, 'toggleOrientationHelper').name("Toggle helper");
+    this._datGui.add(this._guiVar, 'toggleCubeHull').name("Toggle cube");
 
-    //var controllerPosX = this._datGui.add(this._guiVar, 'posx', 0, 2).name("position x").step(0.001).listen();
-    //var controllerPosY = this._datGui.add(this._guiVar, 'posy', 0, 2).name("position y").step(0.001).listen();
-    //var controllerPosZ = this._datGui.add(this._guiVar, 'posz', 0, 2).name("position z").step(0.001).listen();
-    //var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01).listen();
-    //var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01).listen();
-    //var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01).listen();
     //var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 0.05).name("frustrum").step(0.001).listen();
+
     var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1).listen();
 
-    /*
     this._datGui.add(this._guiVar, 'debug');
-    this._datGui.add(this._guiVar, 'debug2');
-    */
-    this._datGui.add(this._guiVar, 'refresh');
-    /*
-    this._datGui.add(this._guiVar, 'rotateX');
-    this._datGui.add(this._guiVar, 'rotateY');
-    this._datGui.add(this._guiVar, 'rotateZ');
-    */
-
-    /*
-    controllerPosX.onFinishChange(function(xpos) {
-      that.setMainObjectPositionX(xpos);
-    });
-    controllerPosX.onChange(function(xpos) {
-      that.setMainObjectPositionX(xpos);
-    });
-
-    controllerPosY.onFinishChange(function(ypos) {
-      that.setMainObjectPositionY(ypos);
-    });
-    controllerPosY.onChange(function(ypos) {
-      that.setMainObjectPositionY(ypos);
-    });
-
-    controllerPosZ.onFinishChange(function(zpos) {
-      that.setMainObjectPositionZ(zpos);
-      console.log("posZ changed");
-    });
-    controllerPosZ.onChange(function(zpos) {
-      that.setMainObjectPositionZ(zpos);
-      console.log("posZ on change");
-    });
-    */
 
     levelController.onFinishChange(function(lvl) {
       that.setResolutionLevel(lvl);
       //that._updateOthoCamFrustrum();
     });
 
-    /*
-    levelController.onChange(function(lvl) {
-      that.setResolutionLevel(lvl);
-      //that._updateOthoCamFrustrum();
-    });
-    */
+    // whenever a colormap is loaded, add it to the list in dat.gui
+    this._colormapManager.onColormapUpdate( this._updateColormapList.bind(this) );
+  }
 
-    /*
-    controllerRotX.onChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-    });
-    controllerRotX.onFinishChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-    });
 
-    controllerRotY.onChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-    });
-    controllerRotY.onFinishChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-    });
+  /**
+  * [PRIVATE]
+  * Suposed to be called as a callback of _colormapManager.onColormapUpdate.
+  * Updates the dat.guy view and its corresponding controller with the new list of colormaps
+  */
+  _updateColormapList(){
+    var that = this;
 
-    controllerRotZ.onChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-    });
-    controllerRotZ.onFinishChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-    });
+    if( typeof this._colormapController !== "undefined" ){
+      this._datGui.remove(this._colormapController);
+      this._colormapController = null;
+    }
 
-    controllerFrustrum.onChange(function(value){
-      that._quadViews[0].updateOrthoCamFrustrum(value);
-      that._quadViews[1].updateOrthoCamFrustrum(value);
-      that._quadViews[2].updateOrthoCamFrustrum(value);
-    });
-    */
+    this._colormapController = this._datGui.add(
+      this._guiVar,
+      'colormapChoice',
+      this._colormapManager.getAvailableColormaps()
+    ).name("color map");
 
+    this._colormapController.onFinishChange(function(colormapId) {
+      that._colormapManager.useColormap(colormapId)
+    });
   }
 
 
@@ -462,19 +409,18 @@ class QuadScene{
   *
   */
   _addProjectionPlane(){
-    var pn = new ProjectionPlane(1);
+    var pn = new ProjectionPlane(1, this._colormapManager);
     pn.setMeshColor(new THREE.Color(0x000099) );
     this._projectionPlanes.push( pn );
-    //pn.getPlane().rotateZ( Math.PI / 2);
     this._mainObjectContainer.add( pn.getPlane() );
 
-    var pu = new ProjectionPlane(1);
+    var pu = new ProjectionPlane(1, this._colormapManager);
     pu.setMeshColor(new THREE.Color(0x009900) );
     this._projectionPlanes.push( pu );
     pu.getPlane().rotateX( Math.PI / 2);
     this._mainObjectContainer.add( pu.getPlane() );
 
-    var pv = new ProjectionPlane(1);
+    var pv = new ProjectionPlane(1, this._colormapManager);
     pv.setMeshColor(new THREE.Color(0x990000) );
     this._projectionPlanes.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
@@ -624,6 +570,16 @@ class QuadScene{
   hideCubeHull(){
     if(this._cubeHull3D){
       this._cubeHull3D.visible = false;
+    }
+  }
+
+
+  /**
+  *
+  */
+  toggleCubeHull(){
+    if(this._cubeHull3D){
+      this._cubeHull3D.visible = !this._cubeHull3D.visible;
     }
   }
 

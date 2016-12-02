@@ -7,13 +7,16 @@
 */
 class ColorMapManager{
 
+  /**
+  * Loads the default colormaps.
+  */
   constructor(){
-
     // default folder where the default colormaps are stored
     this._defaultMapFolder = "colormaps/";
 
     // default colormaps filename
     this._defaultMaps = [
+      "thermal.png",
       "blue_klein.png",
       "blue_teal.png",
       "rainbow.png",
@@ -23,9 +26,10 @@ class ColorMapManager{
     // map of colormaps. The keys are colormap file (no extension) and the objects are THREE.Texture
     this._colorMaps = {};
 
-    // The current color map is defined by a name/id and a THREE.Texture
-    this._currentColormap = {id: "", colormap: null};
+    this._onColormapUpdateCallback = null;
 
+    // The current color map is defined by a name/id and a THREE.Texture
+    this._currentColormap = {id: "none", colormap: null};
 
     // False to if we decide to use a colormap, true to use a colormap
     this._isEnabled = false;
@@ -33,8 +37,8 @@ class ColorMapManager{
     // single object to load all the textures
     this._textureLoader = new THREE.TextureLoader();
 
+    this._colorMaps["none"] = null;
     this._loadDefaultColormaps();
-
   }
 
 
@@ -59,9 +63,16 @@ class ColorMapManager{
         // add to the map of colormaps
         that._colorMaps[basename] = texture;
 
-        // make it the current in use
-        that._currentColormap.id = basename;
-        that._currentColormap.colormap = texture;
+        if(setCurrent){
+          // make it the current in use
+          that._currentColormap.id = basename;
+          that._currentColormap.colormap = texture;
+        }
+
+        if(that._onColormapUpdateCallback){
+          that._onColormapUpdateCallback();
+        }
+
       },
 
       // Function called when download progresses
@@ -91,7 +102,7 @@ class ColorMapManager{
       // loading the colormap
       that.loadColormap(
         that._defaultMapFolder + texFilename,
-        (index==0)  // ensure the first of the list is selected as default/to use.
+        false
       );
     });
   }
@@ -121,6 +132,11 @@ class ColorMapManager{
   }
 
 
+  disableColorMapping(){
+    this._isEnabled = false;
+  }
+
+
   /**
   * @returns a list of available colormaps IDs.
   */
@@ -135,18 +151,30 @@ class ColorMapManager{
   * @return true if success, return false if fail
   */
   useColormap(id){
-    if(this._colorMap.hasOwnProperty(id)){
-      this._currentColormap.id = id;
-      this._currentColormap.colormap = this._colorMap[id];
 
-      // we considere that anabling a specific texture comes with
-      // enabling the colormapping
-      this.enableColorMapping();
+
+
+    if(this._colorMaps.hasOwnProperty(id)){
+      this._currentColormap.id = id;
+      this._currentColormap.colormap = this._colorMaps[id];
+
+      if(id == "none"){
+        this.disableColorMapping();
+      }else{
+
+        // we considere that enabling a specific texture comes with
+        // enabling the colormapping
+        this.enableColorMapping();
+      }
       return true;
     }
     return false;
   }
 
+
+  onColormapUpdate(cb){
+    this._onColormapUpdateCallback = cb;
+  }
 
 
 } /* ColorMapManager */

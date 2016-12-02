@@ -269,7 +269,7 @@ class ChunkCollection{
     /** Size of a chunk in 3D space (aka. in world coordinates) */
     this._sizeChunkWC = this._chunkSizeLvlZero / Math.pow(2, this._resolutionLevel);
 
-    /** Creates a fake texture and fake texture data to be sent to the shader in case it's not possible to fetch a real data (out of bound, unable to load texture file) */
+    // Creates a fake texture and fake texture data to be sent to the shader in case it's not possible to fetch a real data (out of bound, unable to load texture file)
     this._createFakeTexture();
 
     /** Keeps a track of how many textures are supposed to be loaded, how many failed to load and how many eventually loaded successfully */
@@ -1325,7 +1325,7 @@ class ProjectionPlane{
   * @param {Number} chunkSize - The size of a texture chunk at the current level of resolution (in world coordinates)
   *
   */
-  constructor( chunkSize ){
+  constructor( chunkSize, colormapManager ){
     var that = this;
 
     this._plane = new THREE.Object3D();
@@ -1345,41 +1345,8 @@ class ProjectionPlane{
     this._subPlaneDim = {row: 7, col: 15}; // OPTIM
     //this._subPlaneDim = {row: 4, col: 4}; // TEST
 
-    //this._colormap =  THREE.ImageUtils.loadTexture( "colormaps/blue02.png" );
-    this._colormap = null;
-    //console.log( colormap );
-
-    var url = "colormaps/blue_teal.png";
-
-    var base = new String(url).substring(url.lastIndexOf('/') + 1);
-    if(base.lastIndexOf(".") != -1)
-        base = base.substring(0, base.lastIndexOf("."));
-
-    console.log(base);
-
-
-    var loader = new THREE.TextureLoader();
-    loader.load(
-      "colormaps/blue_teal.png",
-
-      // success
-      function ( texture ) {
-        that._colormap = texture;
-	    },
-
-      // Function called when download progresses
-	    function ( xhr ) {
-		    console.log( (xhr.loaded / xhr.total * 100) + '% loaded' );
-	    },
-
-      // Function called when download errors
-    	function ( xhr ) {
-    		console.log( 'An error happened' );
-    	}
-
-    );
-
-
+    // to be aggregated
+    this._colormapManager = colormapManager;
 
     // given by aggregation
     this._levelManager = null;
@@ -1394,6 +1361,10 @@ class ProjectionPlane{
   * Build all the subplanes with fake textures and fake origins. The purpose is just to create a compatible data structure able to receive relevant texture data when time comes.
   */
   _buildSubPlanes(){
+    var that = this;
+
+
+
     var subPlaneGeometry = new THREE.PlaneBufferGeometry( this._subPlaneSize, this._subPlaneSize, 1 );
 
     // a fake texture is a texture used instead of a real one, just because
@@ -1435,11 +1406,11 @@ class ProjectionPlane{
         },
         colorMap : {
           type: "t",
-          value: this._colormap
+          value: that._colormapManager.getCurrentColorMap().colormap
         },
         useColorMap : {
           type: "b",
-          value: true
+          value: that._colormapManager.isColormappingEnabled()
         }
       }
       ,
@@ -1522,7 +1493,9 @@ class ProjectionPlane{
     uniforms.textures.value = textureData.textures;
     uniforms.textureOrigins.value = textureData.origins;
     uniforms.chunkSize.value = chunkSizeWC;
-    uniforms.colorMap.value = this._colormap;
+
+    uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
+    uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
 
 
     //uniforms.colorMap.value = THREE.ImageUtils.loadTexture( "colormaps/rainbow.png" );
@@ -1599,7 +1572,6 @@ class ProjectionPlane{
 
     return diago;
   }
-
 
 
 } /* END class ProjectionPlane */
@@ -2106,6 +2078,185 @@ class QuadViewInteraction{
 
 } /* END class QuadViewInteraction */
 
+/**
+* An instance of ColorMapManager is used to load color maps and retrive them.
+* A certain amount of default color maps is available but curtom maps can also be added.
+* Each texture is stored as a THREE.Texture and are loaded with THREE.TextureLoader.
+*/
+class ColorMapManager{
+
+  /**
+  * Loads the default colormaps.
+  */
+  constructor(){
+    // default folder where the default colormaps are stored
+    this._defaultMapFolder = "colormaps/";
+
+    // default colormaps filename
+    this._defaultMaps = [
+      "thermal.png",
+      "blue_klein.png",
+      "blue_teal.png",
+      "rainbow.png",
+      "rainbow_alpha.png"
+    ];
+
+    // map of colormaps. The keys are colormap file (no extension) and the objects are THREE.Texture
+    this._colorMaps = {};
+
+    this._onColormapUpdateCallback = null;
+
+    // The current color map is defined by a name/id and a THREE.Texture
+    this._currentColormap = {id: "none", colormap: null};
+
+    // False to if we decide to use a colormap, true to use a colormap
+    this._isEnabled = false;
+
+    // single object to load all the textures
+    this._textureLoader = new THREE.TextureLoader();
+
+    this._colorMaps["none"] = null;
+    this._loadDefaultColormaps();
+  }
+
+
+  /**
+  * Load a new colormap from a file and add it to the list.
+  * @param {String} filename - url or the colormap file.
+  * @param {bool} setCurrent - true to use this one as default, false not to.
+  */
+  loadColormap(filename, setCurrent=true){
+    var that = this;
+
+    // get the basename (no extension)
+    var basename = new String(filename).substring(filename.lastIndexOf('/') + 1);
+    if(basename.lastIndexOf(".") != -1)
+        basename = basename.substring(0, basename.lastIndexOf("."));
+
+    this._textureLoader.load(
+      filename,
+
+      // success
+      function ( texture ) {
+        // add to the map of colormaps
+        that._colorMaps[basename] = texture;
+
+        if(setCurrent){
+          // make it the current in use
+          that._currentColormap.id = basename;
+          that._currentColormap.colormap = texture;
+        }
+
+        if(that._onColormapUpdateCallback){
+          that._onColormapUpdateCallback();
+        }
+
+      },
+
+      // Function called when download progresses
+      function ( xhr ) {
+        //console.log( (xhr.loaded / xhr.total * 100) + '% loaded' );
+      },
+
+      // Function called when download errors
+      function ( xhr ) {
+        console.error( 'Failed to load ' + filename );
+      }
+
+    );
+
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Loads all the default textures.
+  */
+  _loadDefaultColormaps(){
+    var that = this;
+
+    // for each colormap to be loaded
+    this._defaultMaps.forEach(function( texFilename, index ){
+      // loading the colormap
+      that.loadColormap(
+        that._defaultMapFolder + texFilename,
+        false
+      );
+    });
+  }
+
+
+  /**
+  * @return the colormap that is currently in use as an object {id, colormap}
+  */
+  getCurrentColorMap(){
+    return this._currentColormap;
+  }
+
+
+  /**
+  * @returns true if a colormap is supposed to be used, returns false if not
+  */
+  isColormappingEnabled(){
+    return this._isEnabled;
+  }
+
+
+  /**
+  * Activates color mapping. If no colormap has ever been explicitly mentioned as "in use", then the first of the default colormaps is the one to go with.
+  */
+  enableColorMapping(){
+    this._isEnabled = true;
+  }
+
+
+  disableColorMapping(){
+    this._isEnabled = false;
+  }
+
+
+  /**
+  * @returns a list of available colormaps IDs.
+  */
+  getAvailableColormaps(){
+    return Object.keys( this._colorMaps );
+  }
+
+
+  /**
+  * Enable a colormap by a given ID.
+  * @param {String} id - the colormap ID must be valid.
+  * @return true if success, return false if fail
+  */
+  useColormap(id){
+
+
+
+    if(this._colorMaps.hasOwnProperty(id)){
+      this._currentColormap.id = id;
+      this._currentColormap.colormap = this._colorMaps[id];
+
+      if(id == "none"){
+        this.disableColorMapping();
+      }else{
+
+        // we considere that enabling a specific texture comes with
+        // enabling the colormapping
+        this.enableColorMapping();
+      }
+      return true;
+    }
+    return false;
+  }
+
+
+  onColormapUpdate(cb){
+    this._onColormapUpdateCallback = cb;
+  }
+
+
+} /* ColorMapManager */
+
 // take some inspiration here:
 // https://threejs.org/examples/webgl_multiple_views.html
 
@@ -2149,11 +2300,16 @@ class QuadScene{
     // called whennever the config file failed to load
     this._onConfigFileErrorCallback = null;
 
+    // a single colormap manager that will be used for all the planes
+    this._colormapManager = new ColorMapManager();
+
     // variables used to sync the dat.guy widget and some position/rotation.
     // see _initUI() for more info.
     this._guiVar = null;
     this._datGui = new dat.GUI();
     this._initUI();
+
+
 
     // Container on the DOM tree, most likely a div
     this._domContainer = document.getElementById( DomContainer );
@@ -2325,9 +2481,15 @@ class QuadScene{
       rotz: 0,
       frustrum: 1,
       resolutionLevel: that._resolutionLevel,
+      colormapChoice: 0, // the value does not matter
+
 
       toggleOrientationHelper: function(){
         that._orientationHelper.toggle();
+      },
+
+      toggleCubeHull: function(){
+        that.toggleCubeHull();
       },
 
       refresh: function(){
@@ -2335,117 +2497,52 @@ class QuadScene{
       },
 
       debug: function(){
-        that._projectionPlanes.forEach( function(plane){
-          plane.printSubPlaneCenterWorld();
-        });
-      },
-
-      debug2: function(){
-
-      },
-
-      rotateX: function(){
-        that.rotateNativePlaneX( this.rotx );
-      },
-
-      rotateY: function(){
-        that.rotateNativePlaneY( this.roty );
-      },
-
-      rotateZ: function(){
-        that.rotateNativePlaneZ( this.rotz );
-      },
+        console.log(that._colormapManager.getCurrentColorMap());
+      }
 
     };
 
     this._datGui.add(this._guiVar, 'toggleOrientationHelper').name("Toggle helper");
+    this._datGui.add(this._guiVar, 'toggleCubeHull').name("Toggle cube");
 
-    //var controllerPosX = this._datGui.add(this._guiVar, 'posx', 0, 2).name("position x").step(0.001).listen();
-    //var controllerPosY = this._datGui.add(this._guiVar, 'posy', 0, 2).name("position y").step(0.001).listen();
-    //var controllerPosZ = this._datGui.add(this._guiVar, 'posz', 0, 2).name("position z").step(0.001).listen();
-    //var controllerRotX = this._datGui.add(this._guiVar, 'rotx', -Math.PI/2, Math.PI/2).name("rotation x").step(0.01).listen();
-    //var controllerRotY = this._datGui.add(this._guiVar, 'roty', -Math.PI/2, Math.PI/2).name("rotation y").step(0.01).listen();
-    //var controllerRotZ = this._datGui.add(this._guiVar, 'rotz', -Math.PI/2, Math.PI/2).name("rotation z").step(0.01).listen();
     //var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 0.05).name("frustrum").step(0.001).listen();
+
     var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1).listen();
 
-    /*
     this._datGui.add(this._guiVar, 'debug');
-    this._datGui.add(this._guiVar, 'debug2');
-    */
-    this._datGui.add(this._guiVar, 'refresh');
-    /*
-    this._datGui.add(this._guiVar, 'rotateX');
-    this._datGui.add(this._guiVar, 'rotateY');
-    this._datGui.add(this._guiVar, 'rotateZ');
-    */
-
-    /*
-    controllerPosX.onFinishChange(function(xpos) {
-      that.setMainObjectPositionX(xpos);
-    });
-    controllerPosX.onChange(function(xpos) {
-      that.setMainObjectPositionX(xpos);
-    });
-
-    controllerPosY.onFinishChange(function(ypos) {
-      that.setMainObjectPositionY(ypos);
-    });
-    controllerPosY.onChange(function(ypos) {
-      that.setMainObjectPositionY(ypos);
-    });
-
-    controllerPosZ.onFinishChange(function(zpos) {
-      that.setMainObjectPositionZ(zpos);
-      console.log("posZ changed");
-    });
-    controllerPosZ.onChange(function(zpos) {
-      that.setMainObjectPositionZ(zpos);
-      console.log("posZ on change");
-    });
-    */
 
     levelController.onFinishChange(function(lvl) {
       that.setResolutionLevel(lvl);
       //that._updateOthoCamFrustrum();
     });
 
-    /*
-    levelController.onChange(function(lvl) {
-      that.setResolutionLevel(lvl);
-      //that._updateOthoCamFrustrum();
-    });
-    */
+    // whenever a colormap is loaded, add it to the list in dat.gui
+    this._colormapManager.onColormapUpdate( this._updateColormapList.bind(this) );
+  }
 
-    /*
-    controllerRotX.onChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-    });
-    controllerRotX.onFinishChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-    });
 
-    controllerRotY.onChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-    });
-    controllerRotY.onFinishChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-    });
+  /**
+  * [PRIVATE]
+  * Suposed to be called as a callback of _colormapManager.onColormapUpdate.
+  * Updates the dat.guy view and its corresponding controller with the new list of colormaps
+  */
+  _updateColormapList(){
+    var that = this;
 
-    controllerRotZ.onChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-    });
-    controllerRotZ.onFinishChange(function(value) {
-      that._updateAllPlanesShaderUniforms();
-    });
+    if( typeof this._colormapController !== "undefined" ){
+      this._datGui.remove(this._colormapController);
+      this._colormapController = null;
+    }
 
-    controllerFrustrum.onChange(function(value){
-      that._quadViews[0].updateOrthoCamFrustrum(value);
-      that._quadViews[1].updateOrthoCamFrustrum(value);
-      that._quadViews[2].updateOrthoCamFrustrum(value);
-    });
-    */
+    this._colormapController = this._datGui.add(
+      this._guiVar,
+      'colormapChoice',
+      this._colormapManager.getAvailableColormaps()
+    ).name("color map");
 
+    this._colormapController.onFinishChange(function(colormapId) {
+      that._colormapManager.useColormap(colormapId);
+    });
   }
 
 
@@ -2559,19 +2656,18 @@ class QuadScene{
   *
   */
   _addProjectionPlane(){
-    var pn = new ProjectionPlane(1);
+    var pn = new ProjectionPlane(1, this._colormapManager);
     pn.setMeshColor(new THREE.Color(0x000099) );
     this._projectionPlanes.push( pn );
-    //pn.getPlane().rotateZ( Math.PI / 2);
     this._mainObjectContainer.add( pn.getPlane() );
 
-    var pu = new ProjectionPlane(1);
+    var pu = new ProjectionPlane(1, this._colormapManager);
     pu.setMeshColor(new THREE.Color(0x009900) );
     this._projectionPlanes.push( pu );
     pu.getPlane().rotateX( Math.PI / 2);
     this._mainObjectContainer.add( pu.getPlane() );
 
-    var pv = new ProjectionPlane(1);
+    var pv = new ProjectionPlane(1, this._colormapManager);
     pv.setMeshColor(new THREE.Color(0x990000) );
     this._projectionPlanes.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
@@ -2721,6 +2817,16 @@ class QuadScene{
   hideCubeHull(){
     if(this._cubeHull3D){
       this._cubeHull3D.visible = false;
+    }
+  }
+
+
+  /**
+  *
+  */
+  toggleCubeHull(){
+    if(this._cubeHull3D){
+      this._cubeHull3D.visible = !this._cubeHull3D.visible;
     }
   }
 

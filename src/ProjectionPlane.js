@@ -14,7 +14,7 @@ class ProjectionPlane{
   * @param {Number} chunkSize - The size of a texture chunk at the current level of resolution (in world coordinates)
   *
   */
-  constructor( chunkSize ){
+  constructor( chunkSize, colormapManager ){
     var that = this;
 
     this._plane = new THREE.Object3D();
@@ -34,33 +34,8 @@ class ProjectionPlane{
     this._subPlaneDim = {row: 7, col: 15}; // OPTIM
     //this._subPlaneDim = {row: 4, col: 4}; // TEST
 
-    //this._colormap =  THREE.ImageUtils.loadTexture( "colormaps/blue02.png" );
-    this._colormap = null;
-    //console.log( colormap );
-
-
-    var loader = new THREE.TextureLoader();
-    loader.load(
-      "colormaps/blue_teal.png",
-
-      // success
-      function ( texture ) {
-        that._colormap = texture;
-	    },
-
-      // Function called when download progresses
-	    function ( xhr ) {
-		    console.log( (xhr.loaded / xhr.total * 100) + '% loaded' );
-	    },
-
-      // Function called when download errors
-    	function ( xhr ) {
-    		console.log( 'An error happened' );
-    	}
-
-    );
-
-
+    // to be aggregated
+    this._colormapManager = colormapManager;
 
     // given by aggregation
     this._levelManager = null;
@@ -75,6 +50,10 @@ class ProjectionPlane{
   * Build all the subplanes with fake textures and fake origins. The purpose is just to create a compatible data structure able to receive relevant texture data when time comes.
   */
   _buildSubPlanes(){
+    var that = this;
+
+
+
     var subPlaneGeometry = new THREE.PlaneBufferGeometry( this._subPlaneSize, this._subPlaneSize, 1 );
 
     // a fake texture is a texture used instead of a real one, just because
@@ -116,11 +95,11 @@ class ProjectionPlane{
         },
         colorMap : {
           type: "t",
-          value: this._colormap
+          value: that._colormapManager.getCurrentColorMap().colormap
         },
         useColorMap : {
           type: "b",
-          value: true
+          value: that._colormapManager.isColormappingEnabled()
         }
       }
       ,
@@ -203,7 +182,9 @@ class ProjectionPlane{
     uniforms.textures.value = textureData.textures;
     uniforms.textureOrigins.value = textureData.origins;
     uniforms.chunkSize.value = chunkSizeWC;
-    uniforms.colorMap.value = this._colormap;
+
+    uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
+    uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
 
 
     //uniforms.colorMap.value = THREE.ImageUtils.loadTexture( "colormaps/rainbow.png" );
@@ -280,7 +261,6 @@ class ProjectionPlane{
 
     return diago;
   }
-
 
 
 } /* END class ProjectionPlane */
