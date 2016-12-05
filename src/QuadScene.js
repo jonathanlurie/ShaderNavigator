@@ -34,6 +34,7 @@ class QuadScene{
 
     // all the planes to intersect the chunks. They will all lie into _mainObjectContainer
     this._projectionPlanes = [];
+    this._projectionPlanesLowRez = [];
 
     // visible bounding box for the dataset
     this._cubeHull3D = null;
@@ -113,20 +114,25 @@ class QuadScene{
     topLeftView.initTopLeft();
     topLeftView.initOrthoCamera();
     topLeftView.useRelativeCoordinatesOf(this._mainObjectContainer);
+    topLeftView.enableLayer( 0 );
 
     var topRightView = new QuadView(this._scene, this._renderer, this._cameraDistance);
     topRightView.initTopRight();
     topRightView.initOrthoCamera();
     topRightView.useRelativeCoordinatesOf(this._mainObjectContainer);
+    topRightView.enableLayer( 0 );
 
     var bottomLeft = new QuadView(this._scene, this._renderer, this._cameraDistance);
     bottomLeft.initBottomLeft();
     bottomLeft.initOrthoCamera();
     bottomLeft.useRelativeCoordinatesOf(this._mainObjectContainer);
+    bottomLeft.enableLayer( 0 );
 
     var bottomRight = new QuadView(this._scene, this._renderer, this._cameraDistance);
     bottomRight.initBottomRight();
     bottomRight.initPerspectiveCamera();
+    bottomRight.enableLayer( 1 );
+    bottomRight.disableLayer(0);
     //bottomRight.addOrbitControl();
     bottomRight.addTrackballControl(this._render, this);
 
@@ -392,10 +398,6 @@ class QuadScene{
     this._mainObjectContainer.rotation.y = y;
     this._mainObjectContainer.rotation.z = z;
 
-    //this._projectionPlanes[0].getPlane().rotation.z = z;
-    //this._projectionPlanes[1].getPlane().rotation.x = x;
-    //this._projectionPlanes[2].getPlane().rotation.x = x;
-
     // already done if called by the renderer and using DAT.gui
     this._guiVar.rotx = x;
     this._guiVar.roty = y;
@@ -411,21 +413,51 @@ class QuadScene{
   _addProjectionPlane(){
     var pn = new ProjectionPlane(1, this._colormapManager);
     pn.setMeshColor(new THREE.Color(0x000099) );
+    pn.enableLayer( 0 );
     this._projectionPlanes.push( pn );
     this._mainObjectContainer.add( pn.getPlane() );
 
     var pu = new ProjectionPlane(1, this._colormapManager);
     pu.setMeshColor(new THREE.Color(0x009900) );
+    pu.enableLayer( 0 );
     this._projectionPlanes.push( pu );
     pu.getPlane().rotateX( Math.PI / 2);
     this._mainObjectContainer.add( pu.getPlane() );
 
     var pv = new ProjectionPlane(1, this._colormapManager);
     pv.setMeshColor(new THREE.Color(0x990000) );
+    pv.enableLayer( 0 );
     this._projectionPlanes.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
     pv.getPlane().rotateZ( Math.PI / 2);
     this._mainObjectContainer.add( pv.getPlane() );
+
+
+    // same for low rez
+    var pnLowRez = new ProjectionPlane(1, this._colormapManager);
+    pnLowRez.setMeshColor(new THREE.Color(0x000099) );
+    pnLowRez.enableLayer( 1 );
+    pnLowRez.disableLayer(0);
+    this._projectionPlanesLowRez.push( pnLowRez );
+    this._mainObjectContainer.add( pnLowRez.getPlane() );
+
+    var puLowRez = new ProjectionPlane(1, this._colormapManager);
+    puLowRez.setMeshColor(new THREE.Color(0x009900) );
+    puLowRez.enableLayer( 1 );
+    puLowRez.disableLayer(0);
+    this._projectionPlanesLowRez.push( puLowRez );
+    puLowRez.getPlane().rotateX( Math.PI / 2);
+    this._mainObjectContainer.add( puLowRez.getPlane() );
+
+    var pvLowRez = new ProjectionPlane(1, this._colormapManager);
+    pvLowRez.setMeshColor(new THREE.Color(0x990000) );
+    pvLowRez.enableLayer( 1 );
+    pvLowRez.disableLayer(0);
+    this._projectionPlanesLowRez.push( pvLowRez );
+    pvLowRez.getPlane().rotateY( Math.PI / 2);
+    pvLowRez.getPlane().rotateZ( Math.PI / 2);
+    this._mainObjectContainer.add( pvLowRez.getPlane() );
+
   }
 
 
@@ -443,6 +475,12 @@ class QuadScene{
 
       that._projectionPlanes.forEach(function(plane){
         plane.setLevelManager(that._levelManager);
+      });
+
+      // low rez plane
+      that._projectionPlanesLowRez.forEach(function(plane){
+        plane.setLevelManager(that._levelManager);
+        plane.updateScaleFromRezLvl( 1 );
       });
 
       that._levelManager.setResolutionLevel( that._resolutionLevel );
@@ -486,7 +524,6 @@ class QuadScene{
     this._levelManager.setResolutionLevel( this._resolutionLevel );
 
     this._updateAllPlanesScaleFromRezLvl();
-    this._updateAllPlanesShaderUniforms();  // TODO: should be uncommented!!
     this._syncOrientationHelperScale();
     this._guiVar.resolutionLevel = lvl;
     this._updateOthoCamFrustrum();
@@ -498,18 +535,7 @@ class QuadScene{
 
 
   /**
-  * [DEBUG]
-  * Prints the world coordinates of each subplanes of each ortho planes.
-  */
-  printSubPlaneCenterWorld(){
-    this._projectionPlanes.forEach( function(plane){
-      plane.printSubPlaneCenterWorld();
-    });
-  }
-
-
-  /**
-  * When the resolution level is changing, the scale of each plane has to change accordingly before the texture chunks are fetched ( = before _updateAllPlanesShaderUniforms is called).
+  * When the resolution level is changing, the scale of each plane has to change accordingly before the texture chunks are fetched. I also updates the uniforms from the inside.
   */
   _updateAllPlanesScaleFromRezLvl(){
     var that = this;
@@ -519,6 +545,8 @@ class QuadScene{
       plane.updateScaleFromRezLvl( that._resolutionLevel );
     });
     console.log("<< Plane scale updated!");
+
+
   }
 
 
@@ -528,6 +556,11 @@ class QuadScene{
   _updateAllPlanesShaderUniforms(){
     //console.log(">> Updating uniforms...");
     this._projectionPlanes.forEach( function(plane){
+      plane.updateUniforms();
+    });
+
+    // idem for low rez
+    this._projectionPlanesLowRez.forEach( function(plane){
       plane.updateUniforms();
     });
   }
@@ -628,7 +661,13 @@ class QuadScene{
     this._cubeHull3D.position.x = this._cubeHullSize[0] / 2;
     this._cubeHull3D.position.y = this._cubeHullSize[1] / 2;
     this._cubeHull3D.position.z = this._cubeHullSize[2] / 2;
+
+    this._cubeHull3D.layers.enable(1);
+    this._cubeHull3D.layers.disable(0);
+    
     this._scene.add( this._cubeHull3D );
+
+
   }
 
 

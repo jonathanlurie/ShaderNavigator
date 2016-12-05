@@ -178,12 +178,27 @@ class LevelManager{
   }
 
 
+  getChunkSizeWcByLvl(lvl){
+    return this._chunkCollections[ lvl ].getSizeChunkWc();
+  }
+
+
   /**
   * @param {Array} position - world coord position as an array [x, y, z]
   * @return the texture data of the 8 chunks that are the closest to the position.
   */
   get8ClosestTextureData(position){
     var the8ClosestTextureData = this._chunkCollections[ this._resolutionLevel ]
+              .get8ClosestTextureData(position);
+
+    //console.log(this._resolutionLevel + " " + position[0] + " " + position[1] + " " +position[2]);
+
+    return the8ClosestTextureData;
+  }
+
+
+  get8ClosestTextureDataByLvl(position, lvl){
+    var the8ClosestTextureData = this._chunkCollections[ lvl ]
               .get8ClosestTextureData(position);
 
     //console.log(this._resolutionLevel + " " + position[0] + " " + position[1] + " " +position[2]);

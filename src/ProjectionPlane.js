@@ -52,8 +52,6 @@ class ProjectionPlane{
   _buildSubPlanes(){
     var that = this;
 
-
-
     var subPlaneGeometry = new THREE.PlaneBufferGeometry( this._subPlaneSize, this._subPlaneSize, 1 );
 
     // a fake texture is a texture used instead of a real one, just because
@@ -65,9 +63,6 @@ class ProjectionPlane{
         THREE.LuminanceFormat,  // format, luminance is for 1-band image
         THREE.UnsignedByteType  // type for our Uint8Array
       );
-
-
-
 
     var fakeOrigin = new THREE.Vector3(0, 0, 0);
 
@@ -154,8 +149,13 @@ class ProjectionPlane{
       var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
       //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
 
-      textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
-      this.updateSubPlaneUniform(i, textureData);
+      //textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
+      textureData = this._levelManager.get8ClosestTextureDataByLvl(
+        [center.x, center.y, center.z],
+        this._resolutionLevel
+      );
+
+      this._updateSubPlaneUniform(i, textureData);
     }
 
   }
@@ -171,12 +171,15 @@ class ProjectionPlane{
 
 
   /**
+  * [PRIVATE]
   * Update the uniform of a specific sub-plane using the texture data. This will automatically update the related fragment shader.
   * @param {Number} i - index of the subplane to update.
   * @textureData {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
   */
-  updateSubPlaneUniform(i, textureData){
-    var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
+  _updateSubPlaneUniform(i, textureData){
+    //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
+    var chunkSizeWC = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
+
     var uniforms = this._shaderMaterials[i].uniforms;
     uniforms.nbChunks.value = textureData.nbValid;
     uniforms.textures.value = textureData.textures;
@@ -206,6 +209,12 @@ class ProjectionPlane{
   * @param {Number} lvl - zoom level, most likely in [0, 6] (integer)
   */
   updateScaleFromRezLvl( lvl ){
+
+    // safety measure
+    if(lvl < 0){
+      lvl = 0;
+    }
+
     this._resolutionLevel = lvl;
     var scale = 1 / Math.pow( 2, this._resolutionLevel );
 
@@ -219,6 +228,9 @@ class ProjectionPlane{
 
     // this one is not supposed to be necessary
     //this._plane.updateMatrix();
+
+    // now the size is updated, we update the texture
+    this.updateUniforms();
   }
 
 
@@ -260,6 +272,19 @@ class ProjectionPlane{
     var diago = Math.sqrt( Math.pow(this._subPlaneDim.row, 2) + Math.pow(this._subPlaneDim.col, 2) ) * this._plane.scale.x;
 
     return diago;
+  }
+
+
+  enableLayer( l ){
+    this._subPlanes.forEach(function(sp){
+      sp.layers.enable(l);
+    });
+  }
+
+  disableLayer( l ){
+    this._subPlanes.forEach(function(sp){
+      sp.layers.disable(l);
+    });
   }
 
 

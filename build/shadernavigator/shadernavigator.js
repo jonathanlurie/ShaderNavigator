@@ -782,12 +782,27 @@ class LevelManager{
   }
 
 
+  getChunkSizeWcByLvl(lvl){
+    return this._chunkCollections[ lvl ].getSizeChunkWc();
+  }
+
+
   /**
   * @param {Array} position - world coord position as an array [x, y, z]
   * @return the texture data of the 8 chunks that are the closest to the position.
   */
   get8ClosestTextureData(position){
     var the8ClosestTextureData = this._chunkCollections[ this._resolutionLevel ]
+              .get8ClosestTextureData(position);
+
+    //console.log(this._resolutionLevel + " " + position[0] + " " + position[1] + " " +position[2]);
+
+    return the8ClosestTextureData;
+  }
+
+
+  get8ClosestTextureDataByLvl(position, lvl){
+    var the8ClosestTextureData = this._chunkCollections[ lvl ]
               .get8ClosestTextureData(position);
 
     //console.log(this._resolutionLevel + " " + position[0] + " " + position[1] + " " +position[2]);
@@ -1309,7 +1324,13 @@ class QuadView{
   }
 
 
+  enableLayer( layerNum ){
+    this._camera.layers.enable( layerNum );
+  }
 
+  disableLayer( layerNum ){
+    this._camera.layers.enable( layerNum );
+  }
 
 
 } /* END QuadView */
@@ -1373,8 +1394,6 @@ class ProjectionPlane{
   _buildSubPlanes(){
     var that = this;
 
-
-
     var subPlaneGeometry = new THREE.PlaneBufferGeometry( this._subPlaneSize, this._subPlaneSize, 1 );
 
     // a fake texture is a texture used instead of a real one, just because
@@ -1386,9 +1405,6 @@ class ProjectionPlane{
         THREE.LuminanceFormat,  // format, luminance is for 1-band image
         THREE.UnsignedByteType  // type for our Uint8Array
       );
-
-
-
 
     var fakeOrigin = new THREE.Vector3(0, 0, 0);
 
@@ -1475,8 +1491,13 @@ class ProjectionPlane{
       var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
       //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
 
-      textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
-      this.updateSubPlaneUniform(i, textureData);
+      //textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
+      textureData = this._levelManager.get8ClosestTextureDataByLvl(
+        [center.x, center.y, center.z],
+        this._resolutionLevel
+      );
+
+      this._updateSubPlaneUniform(i, textureData);
     }
 
   }
@@ -1492,12 +1513,15 @@ class ProjectionPlane{
 
 
   /**
+  * [PRIVATE]
   * Update the uniform of a specific sub-plane using the texture data. This will automatically update the related fragment shader.
   * @param {Number} i - index of the subplane to update.
   * @textureData {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
   */
-  updateSubPlaneUniform(i, textureData){
-    var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
+  _updateSubPlaneUniform(i, textureData){
+    //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
+    var chunkSizeWC = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
+
     var uniforms = this._shaderMaterials[i].uniforms;
     uniforms.nbChunks.value = textureData.nbValid;
     uniforms.textures.value = textureData.textures;
@@ -1527,6 +1551,12 @@ class ProjectionPlane{
   * @param {Number} lvl - zoom level, most likely in [0, 6] (integer)
   */
   updateScaleFromRezLvl( lvl ){
+
+    // safety measure
+    if(lvl < 0){
+      lvl = 0;
+    }
+
     this._resolutionLevel = lvl;
     var scale = 1 / Math.pow( 2, this._resolutionLevel );
 
@@ -1540,6 +1570,9 @@ class ProjectionPlane{
 
     // this one is not supposed to be necessary
     //this._plane.updateMatrix();
+
+    // now the size is updated, we update the texture
+    this.updateUniforms();
   }
 
 
@@ -1581,6 +1614,19 @@ class ProjectionPlane{
     var diago = Math.sqrt( Math.pow(this._subPlaneDim.row, 2) + Math.pow(this._subPlaneDim.col, 2) ) * this._plane.scale.x;
 
     return diago;
+  }
+
+
+  enableLayer( l ){
+    this._subPlanes.forEach(function(sp){
+      sp.layers.enable(l);
+    });
+  }
+
+  disableLayer( l ){
+    this._subPlanes.forEach(function(sp){
+      sp.layers.disable(l);
+    });
   }
 
 
@@ -1701,6 +1747,19 @@ class OrientationHelper{
     this._sphere.add(postSprite);
     this._sphere.add(supSprite);
     this._sphere.add(infSprite);
+
+    this._sphere.children.forEach( function(child){
+      //child.layers.enable( 0 );
+      //child.layers.enable( 1 );
+    });
+
+
+    console.log(this._sphere.layers.mask);
+    this._sphere.layers.enable(0);
+    console.log(this._sphere.layers.mask);
+    this._sphere.layers.enable(1);
+
+
   }
 
 
@@ -2291,6 +2350,7 @@ class QuadScene{
 
     // all the planes to intersect the chunks. They will all lie into _mainObjectContainer
     this._projectionPlanes = [];
+    this._projectionPlanesLowRez = [];
 
     // visible bounding box for the dataset
     this._cubeHull3D = null;
@@ -2370,20 +2430,25 @@ class QuadScene{
     topLeftView.initTopLeft();
     topLeftView.initOrthoCamera();
     topLeftView.useRelativeCoordinatesOf(this._mainObjectContainer);
+    topLeftView.enableLayer( 0 );
 
     var topRightView = new QuadView(this._scene, this._renderer, this._cameraDistance);
     topRightView.initTopRight();
     topRightView.initOrthoCamera();
     topRightView.useRelativeCoordinatesOf(this._mainObjectContainer);
+    topRightView.enableLayer( 0 );
 
     var bottomLeft = new QuadView(this._scene, this._renderer, this._cameraDistance);
     bottomLeft.initBottomLeft();
     bottomLeft.initOrthoCamera();
     bottomLeft.useRelativeCoordinatesOf(this._mainObjectContainer);
+    bottomLeft.enableLayer( 0 );
 
     var bottomRight = new QuadView(this._scene, this._renderer, this._cameraDistance);
     bottomRight.initBottomRight();
     bottomRight.initPerspectiveCamera();
+    bottomRight.enableLayer( 1 );
+    bottomRight.disableLayer(0);
     //bottomRight.addOrbitControl();
     bottomRight.addTrackballControl(this._render, this);
 
@@ -2649,10 +2714,6 @@ class QuadScene{
     this._mainObjectContainer.rotation.y = y;
     this._mainObjectContainer.rotation.z = z;
 
-    //this._projectionPlanes[0].getPlane().rotation.z = z;
-    //this._projectionPlanes[1].getPlane().rotation.x = x;
-    //this._projectionPlanes[2].getPlane().rotation.x = x;
-
     // already done if called by the renderer and using DAT.gui
     this._guiVar.rotx = x;
     this._guiVar.roty = y;
@@ -2668,21 +2729,51 @@ class QuadScene{
   _addProjectionPlane(){
     var pn = new ProjectionPlane(1, this._colormapManager);
     pn.setMeshColor(new THREE.Color(0x000099) );
+    pn.enableLayer( 0 );
     this._projectionPlanes.push( pn );
     this._mainObjectContainer.add( pn.getPlane() );
 
     var pu = new ProjectionPlane(1, this._colormapManager);
     pu.setMeshColor(new THREE.Color(0x009900) );
+    pu.enableLayer( 0 );
     this._projectionPlanes.push( pu );
     pu.getPlane().rotateX( Math.PI / 2);
     this._mainObjectContainer.add( pu.getPlane() );
 
     var pv = new ProjectionPlane(1, this._colormapManager);
     pv.setMeshColor(new THREE.Color(0x990000) );
+    pv.enableLayer( 0 );
     this._projectionPlanes.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
     pv.getPlane().rotateZ( Math.PI / 2);
     this._mainObjectContainer.add( pv.getPlane() );
+
+
+    // same for low rez
+    var pnLowRez = new ProjectionPlane(1, this._colormapManager);
+    pnLowRez.setMeshColor(new THREE.Color(0x000099) );
+    pnLowRez.enableLayer( 1 );
+    pnLowRez.disableLayer(0);
+    this._projectionPlanesLowRez.push( pnLowRez );
+    this._mainObjectContainer.add( pnLowRez.getPlane() );
+
+    var puLowRez = new ProjectionPlane(1, this._colormapManager);
+    puLowRez.setMeshColor(new THREE.Color(0x009900) );
+    puLowRez.enableLayer( 1 );
+    puLowRez.disableLayer(0);
+    this._projectionPlanesLowRez.push( puLowRez );
+    puLowRez.getPlane().rotateX( Math.PI / 2);
+    this._mainObjectContainer.add( puLowRez.getPlane() );
+
+    var pvLowRez = new ProjectionPlane(1, this._colormapManager);
+    pvLowRez.setMeshColor(new THREE.Color(0x990000) );
+    pvLowRez.enableLayer( 1 );
+    pvLowRez.disableLayer(0);
+    this._projectionPlanesLowRez.push( pvLowRez );
+    pvLowRez.getPlane().rotateY( Math.PI / 2);
+    pvLowRez.getPlane().rotateZ( Math.PI / 2);
+    this._mainObjectContainer.add( pvLowRez.getPlane() );
+
   }
 
 
@@ -2700,6 +2791,12 @@ class QuadScene{
 
       that._projectionPlanes.forEach(function(plane){
         plane.setLevelManager(that._levelManager);
+      });
+
+      // low rez plane
+      that._projectionPlanesLowRez.forEach(function(plane){
+        plane.setLevelManager(that._levelManager);
+        plane.updateScaleFromRezLvl( 1 );
       });
 
       that._levelManager.setResolutionLevel( that._resolutionLevel );
@@ -2743,7 +2840,6 @@ class QuadScene{
     this._levelManager.setResolutionLevel( this._resolutionLevel );
 
     this._updateAllPlanesScaleFromRezLvl();
-    this._updateAllPlanesShaderUniforms();  // TODO: should be uncommented!!
     this._syncOrientationHelperScale();
     this._guiVar.resolutionLevel = lvl;
     this._updateOthoCamFrustrum();
@@ -2755,18 +2851,7 @@ class QuadScene{
 
 
   /**
-  * [DEBUG]
-  * Prints the world coordinates of each subplanes of each ortho planes.
-  */
-  printSubPlaneCenterWorld(){
-    this._projectionPlanes.forEach( function(plane){
-      plane.printSubPlaneCenterWorld();
-    });
-  }
-
-
-  /**
-  * When the resolution level is changing, the scale of each plane has to change accordingly before the texture chunks are fetched ( = before _updateAllPlanesShaderUniforms is called).
+  * When the resolution level is changing, the scale of each plane has to change accordingly before the texture chunks are fetched. I also updates the uniforms from the inside.
   */
   _updateAllPlanesScaleFromRezLvl(){
     var that = this;
@@ -2776,6 +2861,8 @@ class QuadScene{
       plane.updateScaleFromRezLvl( that._resolutionLevel );
     });
     console.log("<< Plane scale updated!");
+
+
   }
 
 
@@ -2785,6 +2872,11 @@ class QuadScene{
   _updateAllPlanesShaderUniforms(){
     //console.log(">> Updating uniforms...");
     this._projectionPlanes.forEach( function(plane){
+      plane.updateUniforms();
+    });
+
+    // idem for low rez
+    this._projectionPlanesLowRez.forEach( function(plane){
       plane.updateUniforms();
     });
   }
@@ -2885,7 +2977,13 @@ class QuadScene{
     this._cubeHull3D.position.x = this._cubeHullSize[0] / 2;
     this._cubeHull3D.position.y = this._cubeHullSize[1] / 2;
     this._cubeHull3D.position.z = this._cubeHullSize[2] / 2;
+
+    this._cubeHull3D.layers.enable(1);
+    this._cubeHull3D.layers.disable(0);
+    
     this._scene.add( this._cubeHull3D );
+
+
   }
 
 
