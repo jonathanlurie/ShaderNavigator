@@ -901,9 +901,19 @@ class HashIO{
   * Write the hash part of the url
   * @param {Object} objectInfo - should have this structure:
   *   { resolutionLvl, position {x, y, z}, rotation {x, y, z} }
+  * If one of the parameter is NaN, the URL hash is not updated
+  * (some low level bug tend to produce NaN Euler angle).
   *
   */
   setHashInfo( objectInfo ){
+
+    // dont refresh if we get a NaN
+    if( isNaN(objectInfo.position.x) || isNaN(objectInfo.position.y) || isNaN(objectInfo.position.z) ||
+        isNaN(objectInfo.rotation.x) || isNaN(objectInfo.rotation.y) || isNaN(objectInfo.rotation.z) )
+    {
+      return;
+    }
+
     window.location.hash = objectInfo.resolutionLvl + "/"+
       objectInfo.position.x + "," +
       objectInfo.position.y + "," +
