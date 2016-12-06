@@ -1,5 +1,7 @@
 'use strict'
 
+import { ProjectionPlane } from './ProjectionPlane.js';
+
 /**
 * An instance of PlaneManager creates ans give some access to 2 small collections of ProjectionPlane instances. Each "collection" contains 3 ProjectionPlane instances (that are orthogonal to each other in the 3D space) and there is a collection for Hi resolution and a collection for Low resolution.
 *
@@ -40,7 +42,7 @@ class PlaneManager{
 
     var pv = new ProjectionPlane(1, this._colormapManager);
     pv.setMeshColor(new THREE.Color(0x990000) );
-    arrayToAdds.push( pv );
+    arrayToAdd.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
     pv.getPlane().rotateZ( Math.PI / 2);
     this._parent.add( pv.getPlane() );
@@ -138,8 +140,8 @@ class PlaneManager{
   * @param {Number} lvl - level or resolution, most likely in [0, 6]
   */
   updateScaleFromRezLvl(lvl){
-    this._updateSacleFromRezLvlPlaneArray(lvl, this._projectionPlanesHiRez);
-    this._updateSacleFromRezLvlPlaneArray(lvl - 2, this._projectionPlanesLoRez);
+    this._updateScaleFromRezLvlPlaneArray(lvl, this._projectionPlanesHiRez);
+    this._updateScaleFromRezLvlPlaneArray(lvl - 2, this._projectionPlanesLoRez);
   }
 
 
@@ -181,7 +183,7 @@ class PlaneManager{
   * @return the size of the plane diagonal in world dimensions.
   */
   getWorldDiagonalHiRez(){
-    this._projectionPlanesHiRez[0].getWorldDiagonal();
+    return this._projectionPlanesHiRez[0].getWorldDiagonal();
   }
 
 
@@ -190,7 +192,7 @@ class PlaneManager{
   * @returns {THREE.Vector3} the normal vector to the plane with such index.
   */
   getWorldVectorN(planeIndex){
-    this._projectionPlanesHiRez[planeIndex].getWorldNormal();
+    return this._projectionPlanesHiRez[planeIndex].getWorldNormal();
   }
 
 
@@ -199,7 +201,7 @@ class PlaneManager{
   * @returns {THREE.Vector3} the U vector to the plane with such index.
   */
   getWorldVectorU(planeIndex){
-    this._projectionPlanesHiRez[planeIndex].getWorldVectorU();
+    return this._projectionPlanesHiRez[planeIndex].getWorldVectorU();
   }
 
 
@@ -208,7 +210,7 @@ class PlaneManager{
   * @returns {THREE.Vector3} the V vector to the plane with such index.
   */
   getWorldVectorV(planeIndex){
-    this._projectionPlanesHiRez[planeIndex].getWorldVectorV();
+    return this._projectionPlanesHiRez[planeIndex].getWorldVectorV();
   }
 
 

@@ -1336,314 +1336,6 @@ class QuadView{
 
 } /* END QuadView */
 
-var texture3d_frag = "const int maxNbChunks = 8;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying vec4 worldCoord;\nvarying vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||\n            chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||\n            chunkPosition.z<0.0 || chunkPosition.z>=1.0 );\n}\nvoid getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){\n  float numberOfImagePerStripY = 64.0;\n  float numberOfPixelPerSide = 64.0;\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY;\n  float stripX = chunkPosition.x;\n  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  colorFromTexture = texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){\n  vec3 chunkSystemCoordinate = vec3( (textureOrigin.x - world.x)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.z - world.z)*(-1.0)/chunkSize);\n  return chunkSystemCoordinate;\n}\nvoid main( void ) {\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(0.0, 0.0 , 0.0, 0.0);\n  vec3 chunkPosition;\n  bool mustWrite = false;\n  if(nbChunks >= 1){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);\n    if( isInsideChunk(chunkPosition) ){\n      getColorFrom3DTexture(textures[0], chunkPosition, color);\n      mustWrite = true;\n    }\n    if(nbChunks >= 2){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);\n      if( isInsideChunk(chunkPosition) ){\n        getColorFrom3DTexture(textures[1], chunkPosition, color);\n        mustWrite = true;\n      }\n      if(nbChunks >= 3){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);\n        if( isInsideChunk(chunkPosition) ){\n          getColorFrom3DTexture(textures[2], chunkPosition, color);\n          mustWrite = true;\n        }\n        if(nbChunks >= 4){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);\n          if( isInsideChunk(chunkPosition) ){\n            getColorFrom3DTexture(textures[3], chunkPosition, color);\n            mustWrite = true;\n          }\n          if(nbChunks >= 5){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);\n            if( isInsideChunk(chunkPosition) ){\n              getColorFrom3DTexture(textures[4], chunkPosition, color);\n              mustWrite = true;\n            }\n            if(nbChunks >= 6){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);\n              if( isInsideChunk(chunkPosition) ){\n                getColorFrom3DTexture(textures[5], chunkPosition, color);\n                mustWrite = true;\n              }\n              if(nbChunks >= 7){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);\n                if( isInsideChunk(chunkPosition) ){\n                  getColorFrom3DTexture(textures[6], chunkPosition, color);\n                  mustWrite = true;\n                }\n                if(nbChunks == 8){\n                  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);\n                  if( isInsideChunk(chunkPosition) ){\n                    getColorFrom3DTexture(textures[7], chunkPosition, color);\n                    mustWrite = true;\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(mustWrite){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a == 0.0){\n        discard;\n      }else{\n        gl_FragColor = colorFromColorMap;\n      }\n    }else{\n      gl_FragColor = color;\n    }\n  }else{\n    discard;\n  }\n}\n";
-
-var texture3d_vert = "uniform float chunkSize;\nuniform sampler2D colorMap;\nvarying vec2 vUv;\nvarying vec4 worldCoord;\nvoid main()\n{\n  vUv = uv;\n  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );\n  gl_Position = projectionMatrix * mvPosition;\n  worldCoord = modelMatrix * vec4( position, 1.0 );\n}\n";
-
-var ShaderImporter = {
-	texture3d_frag: texture3d_frag,
-  texture3d_vert: texture3d_vert 
-};
-
-/**
-* A ProjectionPlane instance is a portion of a 3D plane, defined as a rectangular surface. It is subdivided in a certain amount of sub-planes that are square-shaped. Each sub-plane is the size of half a texture chunk of the current resolution level.
-* Example: if a texture chunk at level 3 is of size 1/8 x 1/8 x 1/8 in world coordinates, the csub-planes will be 1/16 x 1/16.
-* This ensure that we dont have to many texture (Sampler2D) to send the the fragment shader of each sub-planes because, even in critical cases, a sub-plane of this size wont intersect more than 8 texture chunks.
-*
-*/
-class ProjectionPlane$1{
-
-  /**
-  * @param {Number} chunkSize - The size of a texture chunk at the current level of resolution (in world coordinates)
-  *
-  */
-  constructor( chunkSize, colormapManager ){
-    var that = this;
-
-    this._plane = new THREE.Object3D();
-
-    //this._subPlaneSize = chunkSize / 2; // ORIG
-    //this._subPlaneSize = chunkSize * 0.7; // OPTIM
-    this._subPlaneSize = chunkSize / Math.sqrt(2);
-
-    // list of subplanes
-    this._subPlanes = [];
-
-    // one shader material per sub-plane
-    this._shaderMaterials = [];
-
-    // number of rows and cols of sub-planes to compose the _plane
-    //this._subPlaneDim = {row: 10, col: 21}; // ORIG
-    this._subPlaneDim = {row: 7, col: 15}; // OPTIM
-    //this._subPlaneDim = {row: 4, col: 4}; // TEST
-
-    // to be aggregated
-    this._colormapManager = colormapManager;
-
-    // given by aggregation
-    this._levelManager = null;
-
-    this._resolutionLevel = 0;
-
-    this._buildSubPlanes();
-  }
-
-
-  /**
-  * Build all the subplanes with fake textures and fake origins. The purpose is just to create a compatible data structure able to receive relevant texture data when time comes.
-  */
-  _buildSubPlanes(){
-    var that = this;
-
-    var subPlaneGeometry = new THREE.PlaneBufferGeometry( this._subPlaneSize, this._subPlaneSize, 1 );
-
-    // a fake texture is a texture used instead of a real one, just because
-    // we have to send something to the shader even if we dont have data
-    var fakeTexture = new THREE.DataTexture(
-        new Uint8Array(1),
-        1,
-        1,
-        THREE.LuminanceFormat,  // format, luminance is for 1-band image
-        THREE.UnsignedByteType  // type for our Uint8Array
-      );
-
-    var fakeOrigin = new THREE.Vector3(0, 0, 0);
-
-    var subPlaneMaterial_original = new THREE.ShaderMaterial( {
-      uniforms: {
-        // the textures
-        nbChunks: {
-          type: "i",
-          value: 0
-        },
-        textures: {
-          type: "t",
-          value: [  fakeTexture, fakeTexture, fakeTexture, fakeTexture,
-                    fakeTexture, fakeTexture, fakeTexture, fakeTexture]
-        },
-        // the texture origins (in the same order)
-        textureOrigins: {
-          type: "v3v",
-          value: [  fakeOrigin, fakeOrigin, fakeOrigin, fakeOrigin,
-                    fakeOrigin, fakeOrigin, fakeOrigin, fakeOrigin]
-        },
-        chunkSize : {
-          type: "f",
-          value: 1
-        },
-        colorMap : {
-          type: "t",
-          value: that._colormapManager.getCurrentColorMap().colormap
-        },
-        useColorMap : {
-          type: "b",
-          value: that._colormapManager.isColormappingEnabled()
-        }
-      }
-      ,
-      vertexShader: ShaderImporter.texture3d_vert,
-      fragmentShader: ShaderImporter.texture3d_frag,
-      side: THREE.DoubleSide,
-      transparent: true
-    });
-
-    for(var j=0; j<this._subPlaneDim.row; j++){
-      for(var i=0; i<this._subPlaneDim.col; i++){
-        var subPlaneMaterial = subPlaneMaterial_original.clone();
-        var mesh = new THREE.Mesh( subPlaneGeometry, subPlaneMaterial );
-
-        mesh.position.set(-this._subPlaneDim.col*this._subPlaneSize/2 + i*this._subPlaneSize + this._subPlaneSize/2, -this._subPlaneDim.row*this._subPlaneSize/2 + j*this._subPlaneSize + this._subPlaneSize/2, 0.0);
-
-        this._plane.add( mesh );
-        this._subPlanes.push( mesh );
-        this._shaderMaterials.push( subPlaneMaterial );
-      }
-    }
-
-  }
-
-
-  /**
-  * Defines the level manager so that the texture chunks can be fetched for each sub-plane.
-  * @param {LevelManager} lm - the level manager
-  */
-  setLevelManager(lm){
-    this._levelManager = lm;
-  }
-
-
-  /**
-  * Debugging. Chanfe the color of the mesh of the plane, bit first, the plane material has to be set as a mesh.
-  */
-  setMeshColor(c){
-    this._subPlanes[0].material.color = c;
-  }
-
-
-  /**
-  * fetch each texture info, build a uniform and
-  */
-  updateUniforms(){
-    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
-    var textureData = 0;
-
-    for(var i=0; i<nbSubPlanes; i++){
-      // center of the sub-plane in world coordinates
-      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
-      //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
-
-      //textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
-      textureData = this._levelManager.get8ClosestTextureDataByLvl(
-        [center.x, center.y, center.z],
-        this._resolutionLevel
-      );
-
-      this._updateSubPlaneUniform(i, textureData);
-    }
-
-  }
-
-
-  printSubPlaneCenterWorld(){
-    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
-    for(var i=0; i<nbSubPlanes; i++){
-      // center of the sub-plane in world coordinates
-      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
-    }
-  }
-
-
-  /**
-  * [PRIVATE]
-  * Update the uniform of a specific sub-plane using the texture data. This will automatically update the related fragment shader.
-  * @param {Number} i - index of the subplane to update.
-  * @textureData {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
-  */
-  _updateSubPlaneUniform(i, textureData){
-    //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
-    var chunkSizeWC = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
-
-    var uniforms = this._shaderMaterials[i].uniforms;
-    uniforms.nbChunks.value = textureData.nbValid;
-    uniforms.textures.value = textureData.textures;
-    uniforms.textureOrigins.value = textureData.origins;
-    uniforms.chunkSize.value = chunkSizeWC;
-
-    uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
-    uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
-
-
-    //uniforms.colorMap.value = THREE.ImageUtils.loadTexture( "colormaps/rainbow.png" );
-    //this._shaderMaterials[i].needsUpdate = true;  // apparently useless
-
-  }
-
-
-  /**
-  * @return the main plane, containing all the sub-planes
-  */
-  getPlane(){
-    return this._plane;
-  }
-
-
-  /**
-  * Update the internal resolution level and scale the plane accordingly.
-  * @param {Number} lvl - zoom level, most likely in [0, 6] (integer)
-  */
-  updateScaleFromRezLvl( lvl ){
-
-    // safety measure
-    if(lvl < 0){
-      lvl = 0;
-    }
-
-    this._resolutionLevel = lvl;
-    var scale = 1 / Math.pow( 2, this._resolutionLevel );
-
-    this._plane.scale.x = scale;
-    this._plane.scale.y = scale;
-    this._plane.scale.z = scale;
-
-    // explicitely call to update the matrix, otherwise it would be called at the next render
-    // and in the meantime, we need to have proper position to load the chunks.
-    this._plane.updateMatrixWorld();
-
-    // this one is not supposed to be necessary
-    //this._plane.updateMatrix();
-
-    // now the size is updated, we update the texture
-    this.updateUniforms();
-  }
-
-
-  /**
-  * Compute and return the normal vector of this plane in world coordinates using the local quaternion.
-  * @returns {THREE.Vector3} a normalized vector.
-  */
-  getWorldNormal(){
-    return this._getWorldVectorNormalized( new THREE.Vector3(0, 0, 1) );
-  }
-
-
-  getWorldVectorU(){
-    return this._getWorldVectorNormalized( new THREE.Vector3(1, 0, 0) );
-  }
-
-
-  getWorldVectorV(){
-    return this._getWorldVectorNormalized( new THREE.Vector3(0, 1, 0) );
-  }
-
-
-  /**
-  * [PRIVATE]
-  * Transform a local vector (local to the plane) into a world coodinate vector.
-  * @param {THREE.Vector3} v - a local vector
-  * @returns {THREE.Vector3} a vector in world coodinates
-  */
-  _getWorldVectorNormalized( v ){
-    var ParentQuaternion = new THREE.Quaternion().copy(this._plane.quaternion);
-    var vector = v.clone();
-    vector.applyQuaternion(ParentQuaternion).normalize();
-    return vector;
-  }
-
-
-  /**
-  * @return {Number} the size of this plane diagonal in world coordinates.
-  */
-  getWorldDiagonal(){
-    var diago = Math.sqrt( Math.pow(this._subPlaneDim.row, 2) + Math.pow(this._subPlaneDim.col, 2) ) * this._plane.scale.x;
-
-    return diago;
-  }
-
-
-  /**
-  * Enable a given layer in the visibility mask, so that it's visible by a camera with the same layer activated.
-  */
-  enableLayer( l ){
-    this._subPlanes.forEach(function(sp){
-      sp.layers.enable(l);
-    });
-  }
-
-
-  /**
-  * Disable a given layer in the visibility mask, so that it's not visible by a camera with a different layer activated.
-  */
-  disableLayer( l ){
-    this._subPlanes.forEach(function(sp){
-      sp.layers.disable(l);
-    });
-  }
-
-
-
-
-} /* END class ProjectionPlane */
-
 /**
 * A OrientationHelper is a sphere surrounding the orthogonal planes that will show the direction of left/right, posterior/anterior and inferior/superior.
 *
@@ -2337,6 +2029,528 @@ class ColorMapManager{
 
 } /* ColorMapManager */
 
+var texture3d_frag = "const int maxNbChunks = 8;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying vec4 worldCoord;\nvarying vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||\n            chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||\n            chunkPosition.z<0.0 || chunkPosition.z>=1.0 );\n}\nvoid getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){\n  float numberOfImagePerStripY = 64.0;\n  float numberOfPixelPerSide = 64.0;\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY;\n  float stripX = chunkPosition.x;\n  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  colorFromTexture = texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){\n  vec3 chunkSystemCoordinate = vec3( (textureOrigin.x - world.x)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.z - world.z)*(-1.0)/chunkSize);\n  return chunkSystemCoordinate;\n}\nvoid main( void ) {\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(0.0, 0.0 , 0.0, 0.0);\n  vec3 chunkPosition;\n  bool mustWrite = false;\n  if(nbChunks >= 1){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);\n    if( isInsideChunk(chunkPosition) ){\n      getColorFrom3DTexture(textures[0], chunkPosition, color);\n      mustWrite = true;\n    }\n    if(nbChunks >= 2){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);\n      if( isInsideChunk(chunkPosition) ){\n        getColorFrom3DTexture(textures[1], chunkPosition, color);\n        mustWrite = true;\n      }\n      if(nbChunks >= 3){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);\n        if( isInsideChunk(chunkPosition) ){\n          getColorFrom3DTexture(textures[2], chunkPosition, color);\n          mustWrite = true;\n        }\n        if(nbChunks >= 4){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);\n          if( isInsideChunk(chunkPosition) ){\n            getColorFrom3DTexture(textures[3], chunkPosition, color);\n            mustWrite = true;\n          }\n          if(nbChunks >= 5){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);\n            if( isInsideChunk(chunkPosition) ){\n              getColorFrom3DTexture(textures[4], chunkPosition, color);\n              mustWrite = true;\n            }\n            if(nbChunks >= 6){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);\n              if( isInsideChunk(chunkPosition) ){\n                getColorFrom3DTexture(textures[5], chunkPosition, color);\n                mustWrite = true;\n              }\n              if(nbChunks >= 7){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);\n                if( isInsideChunk(chunkPosition) ){\n                  getColorFrom3DTexture(textures[6], chunkPosition, color);\n                  mustWrite = true;\n                }\n                if(nbChunks == 8){\n                  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);\n                  if( isInsideChunk(chunkPosition) ){\n                    getColorFrom3DTexture(textures[7], chunkPosition, color);\n                    mustWrite = true;\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(mustWrite){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a == 0.0){\n        discard;\n      }else{\n        gl_FragColor = colorFromColorMap;\n      }\n    }else{\n      gl_FragColor = color;\n    }\n  }else{\n    discard;\n  }\n}\n";
+
+var texture3d_vert = "uniform float chunkSize;\nuniform sampler2D colorMap;\nvarying vec2 vUv;\nvarying vec4 worldCoord;\nvoid main()\n{\n  vUv = uv;\n  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );\n  gl_Position = projectionMatrix * mvPosition;\n  worldCoord = modelMatrix * vec4( position, 1.0 );\n}\n";
+
+var ShaderImporter = {
+	texture3d_frag: texture3d_frag,
+  texture3d_vert: texture3d_vert 
+};
+
+/**
+* A ProjectionPlane instance is a portion of a 3D plane, defined as a rectangular surface. It is subdivided in a certain amount of sub-planes that are square-shaped. Each sub-plane is the size of half a texture chunk of the current resolution level.
+* Example: if a texture chunk at level 3 is of size 1/8 x 1/8 x 1/8 in world coordinates, the csub-planes will be 1/16 x 1/16.
+* This ensure that we dont have to many texture (Sampler2D) to send the the fragment shader of each sub-planes because, even in critical cases, a sub-plane of this size wont intersect more than 8 texture chunks.
+*
+*/
+class ProjectionPlane{
+
+  /**
+  * @param {Number} chunkSize - The size of a texture chunk at the current level of resolution (in world coordinates)
+  *
+  */
+  constructor( chunkSize, colormapManager ){
+    var that = this;
+
+    this._plane = new THREE.Object3D();
+
+    //this._subPlaneSize = chunkSize / 2; // ORIG
+    //this._subPlaneSize = chunkSize * 0.7; // OPTIM
+    this._subPlaneSize = chunkSize / Math.sqrt(2);
+
+    // list of subplanes
+    this._subPlanes = [];
+
+    // one shader material per sub-plane
+    this._shaderMaterials = [];
+
+    // number of rows and cols of sub-planes to compose the _plane
+    //this._subPlaneDim = {row: 10, col: 21}; // ORIG
+    this._subPlaneDim = {row: 7, col: 15}; // OPTIM
+    //this._subPlaneDim = {row: 4, col: 4}; // TEST
+
+    // to be aggregated
+    this._colormapManager = colormapManager;
+
+    // given by aggregation
+    this._levelManager = null;
+
+    this._resolutionLevel = 0;
+
+    this._buildSubPlanes();
+  }
+
+
+  /**
+  * Build all the subplanes with fake textures and fake origins. The purpose is just to create a compatible data structure able to receive relevant texture data when time comes.
+  */
+  _buildSubPlanes(){
+    var that = this;
+
+    var subPlaneGeometry = new THREE.PlaneBufferGeometry( this._subPlaneSize, this._subPlaneSize, 1 );
+
+    // a fake texture is a texture used instead of a real one, just because
+    // we have to send something to the shader even if we dont have data
+    var fakeTexture = new THREE.DataTexture(
+        new Uint8Array(1),
+        1,
+        1,
+        THREE.LuminanceFormat,  // format, luminance is for 1-band image
+        THREE.UnsignedByteType  // type for our Uint8Array
+      );
+
+    var fakeOrigin = new THREE.Vector3(0, 0, 0);
+
+    var subPlaneMaterial_original = new THREE.ShaderMaterial( {
+      uniforms: {
+        // the textures
+        nbChunks: {
+          type: "i",
+          value: 0
+        },
+        textures: {
+          type: "t",
+          value: [  fakeTexture, fakeTexture, fakeTexture, fakeTexture,
+                    fakeTexture, fakeTexture, fakeTexture, fakeTexture]
+        },
+        // the texture origins (in the same order)
+        textureOrigins: {
+          type: "v3v",
+          value: [  fakeOrigin, fakeOrigin, fakeOrigin, fakeOrigin,
+                    fakeOrigin, fakeOrigin, fakeOrigin, fakeOrigin]
+        },
+        chunkSize : {
+          type: "f",
+          value: 1
+        },
+        colorMap : {
+          type: "t",
+          value: that._colormapManager.getCurrentColorMap().colormap
+        },
+        useColorMap : {
+          type: "b",
+          value: that._colormapManager.isColormappingEnabled()
+        }
+      }
+      ,
+      vertexShader: ShaderImporter.texture3d_vert,
+      fragmentShader: ShaderImporter.texture3d_frag,
+      side: THREE.DoubleSide,
+      transparent: true
+    });
+
+    for(var j=0; j<this._subPlaneDim.row; j++){
+      for(var i=0; i<this._subPlaneDim.col; i++){
+        var subPlaneMaterial = subPlaneMaterial_original.clone();
+        var mesh = new THREE.Mesh( subPlaneGeometry, subPlaneMaterial );
+
+        mesh.position.set(-this._subPlaneDim.col*this._subPlaneSize/2 + i*this._subPlaneSize + this._subPlaneSize/2, -this._subPlaneDim.row*this._subPlaneSize/2 + j*this._subPlaneSize + this._subPlaneSize/2, 0.0);
+
+        this._plane.add( mesh );
+        this._subPlanes.push( mesh );
+        this._shaderMaterials.push( subPlaneMaterial );
+      }
+    }
+
+  }
+
+
+  /**
+  * Defines the level manager so that the texture chunks can be fetched for each sub-plane.
+  * @param {LevelManager} lm - the level manager
+  */
+  setLevelManager(lm){
+    this._levelManager = lm;
+  }
+
+
+  /**
+  * Debugging. Chanfe the color of the mesh of the plane, bit first, the plane material has to be set as a mesh.
+  */
+  setMeshColor(c){
+    this._subPlanes[0].material.color = c;
+  }
+
+
+  /**
+  * fetch each texture info, build a uniform and
+  */
+  updateUniforms(){
+    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+    var textureData = 0;
+
+    for(var i=0; i<nbSubPlanes; i++){
+      // center of the sub-plane in world coordinates
+      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
+      //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
+
+      //textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
+      textureData = this._levelManager.get8ClosestTextureDataByLvl(
+        [center.x, center.y, center.z],
+        this._resolutionLevel
+      );
+
+      this._updateSubPlaneUniform(i, textureData);
+    }
+
+  }
+
+
+  printSubPlaneCenterWorld(){
+    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+    for(var i=0; i<nbSubPlanes; i++){
+      // center of the sub-plane in world coordinates
+      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
+    }
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Update the uniform of a specific sub-plane using the texture data. This will automatically update the related fragment shader.
+  * @param {Number} i - index of the subplane to update.
+  * @textureData {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
+  */
+  _updateSubPlaneUniform(i, textureData){
+    //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
+    var chunkSizeWC = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
+
+    var uniforms = this._shaderMaterials[i].uniforms;
+    uniforms.nbChunks.value = textureData.nbValid;
+    uniforms.textures.value = textureData.textures;
+    uniforms.textureOrigins.value = textureData.origins;
+    uniforms.chunkSize.value = chunkSizeWC;
+
+    uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
+    uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
+
+
+    //uniforms.colorMap.value = THREE.ImageUtils.loadTexture( "colormaps/rainbow.png" );
+    //this._shaderMaterials[i].needsUpdate = true;  // apparently useless
+
+  }
+
+
+  /**
+  * @return the main plane, containing all the sub-planes
+  */
+  getPlane(){
+    return this._plane;
+  }
+
+
+  /**
+  * Update the internal resolution level and scale the plane accordingly.
+  * @param {Number} lvl - zoom level, most likely in [0, 6] (integer)
+  */
+  updateScaleFromRezLvl( lvl ){
+
+    // safety measure
+    if(lvl < 0){
+      lvl = 0;
+    }
+
+    this._resolutionLevel = lvl;
+    var scale = 1 / Math.pow( 2, this._resolutionLevel );
+
+    this._plane.scale.x = scale;
+    this._plane.scale.y = scale;
+    this._plane.scale.z = scale;
+
+    // explicitely call to update the matrix, otherwise it would be called at the next render
+    // and in the meantime, we need to have proper position to load the chunks.
+    this._plane.updateMatrixWorld();
+
+    // this one is not supposed to be necessary
+    //this._plane.updateMatrix();
+
+    // now the size is updated, we update the texture
+    this.updateUniforms();
+  }
+
+
+  /**
+  * Compute and return the normal vector of this plane in world coordinates using the local quaternion.
+  * @returns {THREE.Vector3} a normalized vector.
+  */
+  getWorldNormal(){
+    return this._getWorldVectorNormalized( new THREE.Vector3(0, 0, 1) );
+  }
+
+
+  getWorldVectorU(){
+    return this._getWorldVectorNormalized( new THREE.Vector3(1, 0, 0) );
+  }
+
+
+  getWorldVectorV(){
+    return this._getWorldVectorNormalized( new THREE.Vector3(0, 1, 0) );
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Transform a local vector (local to the plane) into a world coodinate vector.
+  * @param {THREE.Vector3} v - a local vector
+  * @returns {THREE.Vector3} a vector in world coodinates
+  */
+  _getWorldVectorNormalized( v ){
+    var ParentQuaternion = new THREE.Quaternion().copy(this._plane.quaternion);
+    var vector = v.clone();
+    vector.applyQuaternion(ParentQuaternion).normalize();
+    return vector;
+  }
+
+
+  /**
+  * @return {Number} the size of this plane diagonal in world coordinates.
+  */
+  getWorldDiagonal(){
+    var diago = Math.sqrt( Math.pow(this._subPlaneDim.row, 2) + Math.pow(this._subPlaneDim.col, 2) ) * this._plane.scale.x;
+
+    return diago;
+  }
+
+
+  /**
+  * Enable a given layer in the visibility mask, so that it's visible by a camera with the same layer activated.
+  */
+  enableLayer( l ){
+    this._subPlanes.forEach(function(sp){
+      sp.layers.enable(l);
+    });
+  }
+
+
+  /**
+  * Disable a given layer in the visibility mask, so that it's not visible by a camera with a different layer activated.
+  */
+  disableLayer( l ){
+    this._subPlanes.forEach(function(sp){
+      sp.layers.disable(l);
+    });
+  }
+
+
+
+
+} /* END class ProjectionPlane */
+
+/**
+* An instance of PlaneManager creates ans give some access to 2 small collections of ProjectionPlane instances. Each "collection" contains 3 ProjectionPlane instances (that are orthogonal to each other in the 3D space) and there is a collection for Hi resolution and a collection for Low resolution.
+*
+*/
+class PlaneManager{
+
+  /**
+  * @param {ColorMapManager} colorMapManager - a built instance of ColorMapManager
+  * @param {THREE.Object3D} parent - a parent object to place the planes in.
+  */
+  constructor(colorMapManager, parent){
+    this._colormapManager = colorMapManager;
+    this._parent = parent;
+
+    this._projectionPlanesHiRez = [];
+    this._projectionPlanesLoRez = [];
+
+    // So far, the Hi rez and Lo rez set of planes are exactelly the same
+    this._addOrthoPlanes(this._projectionPlanesHiRez);
+    this._addOrthoPlanes(this._projectionPlanesLoRez);
+
+  }
+
+  /**
+  * Build 3 orthogonal planes, add them to the array in argument arrayToAdd and add them to the parent.
+  * @param {Array} arrayToAdd - array to push the 3 ProjectionPlane instances that are about to be created.
+  */
+  _addOrthoPlanes( arrayToAdd ){
+    var pn = new ProjectionPlane(1, this._colormapManager);
+    pn.setMeshColor(new THREE.Color(0x000099) );
+    arrayToAdd.push( pn );
+    this._parent.add( pn.getPlane() );
+
+    var pu = new ProjectionPlane(1, this._colormapManager);
+    arrayToAdd.push( pu );
+    pu.getPlane().rotateX( Math.PI / 2);
+    this._parent.add( pu.getPlane() );
+
+    var pv = new ProjectionPlane(1, this._colormapManager);
+    pv.setMeshColor(new THREE.Color(0x990000) );
+    arrayToAdd.push( pv );
+    pv.getPlane().rotateY( Math.PI / 2);
+    pv.getPlane().rotateZ( Math.PI / 2);
+    this._parent.add( pv.getPlane() );
+  }
+
+
+  /**
+  * Enable a layer mask for the low rez planes, so that the planes are visible from a camera with the same enabled layer.
+  * @param {Number} layerIndex - layer to enable, must be in [0, 31]
+  */
+  enableLayerHiRez(layerIndex){
+    this._enableLayerPlaneArray(layerIndex, this._projectionPlanesHiRez);
+  }
+
+
+  /**
+  * Enable a layer mask for the hi rez planes, so that the planes are visible from a camera with the same enabled layer.
+  * @param {Number} layerIndex - layer to enable, must be in [0, 31]
+  */
+  enableLayerLoRez(layerIndex){
+    this._enableLayerPlaneArray(layerIndex, this._projectionPlanesLoRez);
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Generic method to enable a layer. Should no be used, use enableLayerHiRez or enableLayerLoRez instead.
+  * @param {Number} layerIndex - index of the layer to enable
+  * @param {Array} arrayOfPlanes - array of ProjectionPlane instances to which we want to enable a layer
+  */
+  _enableLayerPlaneArray(layerIndex, arrayOfPlanes){
+    arrayOfPlanes.forEach(function(plane){
+      plane.enableLayer(layerIndex);
+    });
+  }
+
+
+  /**
+  * Disable a layer mask for the low rez planes, so that the planes are invisible from a camera that does not have the same enabled layer.
+  * @param {Number} layerIndex - layer to enable, must be in [0, 31]
+  */
+  disableLayerHiRez(layerIndex){
+    this._disableLayerPlaneArray(layerIndex, this._projectionPlanesHiRez);
+  }
+
+
+  /**
+  * Disable a layer mask for the hi rez planes, so that the planes are invisible from a camera that does not have the same enabled layer.
+  * @param {Number} layerIndex - layer to enable, must be in [0, 31]
+  */
+  disableLayerLoRez(layerIndex){
+    this._disableLayerPlaneArray(layerIndex, this._projectionPlanesLoRez);
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Generic method to disable a layer. Should no be used, use enableLayerHiRez or enableLayerLoRez instead.
+  * @param {Number} layerIndex - index of the layer to enable
+  * @param {Array} arrayOfPlanes - array of ProjectionPlane instances to which we want to enable a layer
+  */
+  _disableLayerPlaneArray(layerIndex, arrayOfPlanes){
+    arrayOfPlanes.forEach(function(plane){
+      plane.disableLayer(layerIndex);
+    });
+  }
+
+
+  /**
+  * Defines a LevelManager instance for all the ProjectionPlane of all sub collection (hi rez + lo rez)
+  * @param {LevelManager} lvlMgr - a built instance of LevelManager.
+  */
+  setLevelManager(lvlMgr){
+    this._setLevelManagerPlaneArray(lvlMgr, this._projectionPlanesHiRez);
+    this._setLevelManagerPlaneArray(lvlMgr, this._projectionPlanesLoRez);
+  }
+
+
+  /**
+  * [PRIVATE]
+  * A rather generic method to set the LevelManager instance to an whole array of ProjectionPlane instances.
+  * Written in case more collection of ProjectionPlanes would be added.
+  * @param {LevelManager} lvlMgr - a built instance of LevelManager.
+  * @param {Array} arrayOfPlanes - array of ProjectionPlane instances to which we want to set the level manager.
+  */
+  _setLevelManagerPlaneArray(lvlMgr, arrayOfPlanes){
+    arrayOfPlanes.forEach(function(plane){
+      plane.setLevelManager(lvlMgr);
+    });
+  }
+
+
+  /**
+  * Update the scale of all instance of all ProjectionPlanes. Still, the lo-rez plane will be updated at (lvl - 2).
+  * @param {Number} lvl - level or resolution, most likely in [0, 6]
+  */
+  updateScaleFromRezLvl(lvl){
+    this._updateScaleFromRezLvlPlaneArray(lvl, this._projectionPlanesHiRez);
+    this._updateScaleFromRezLvlPlaneArray(lvl - 2, this._projectionPlanesLoRez);
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Generic function for whatever array of ProjectionPlane instances to update its scale.
+  * @param {Number} lvl - level or resolution, most likely in [0, 6]
+  * @param {Array} arrayOfPlanes - array of ProjectionPlane instances to which we want to update the scale.
+  */
+  _updateScaleFromRezLvlPlaneArray(lvl, arrayOfPlanes){
+    arrayOfPlanes.forEach( function(plane){
+      plane.updateScaleFromRezLvl( lvl );
+    });
+  }
+
+
+  /**
+  * Update the uniform of all the ProjectionPlane instances.
+  */
+  updateUniforms(){
+    this._updateUniformsPlaneArray(this._projectionPlanesHiRez);
+    this._updateUniformsPlaneArray(this._projectionPlanesLoRez);
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Generic function to updates all the ProjectionPlane instances' uniforms.
+  * @param {Array} arrayOfPlanes - array of ProjectionPlane instances to which we want to update the uniforms.
+  */
+  _updateUniformsPlaneArray(arrayOfPlanes){
+    arrayOfPlanes.forEach( function(plane){
+      plane.updateUniforms();
+    });
+  }
+
+
+  /**
+  * @return the size of the plane diagonal in world dimensions.
+  */
+  getWorldDiagonalHiRez(){
+    return this._projectionPlanesHiRez[0].getWorldDiagonal();
+  }
+
+
+  /**
+  * @param {Number} planeIndex - index of the plane (Hi-rez) we want the normal vector of.
+  * @returns {THREE.Vector3} the normal vector to the plane with such index.
+  */
+  getWorldVectorN(planeIndex){
+    return this._projectionPlanesHiRez[planeIndex].getWorldNormal();
+  }
+
+
+  /**
+  * @param {Number} planeIndex - index of the plane (Hi-rez) we want the U vector of.
+  * @returns {THREE.Vector3} the U vector to the plane with such index.
+  */
+  getWorldVectorU(planeIndex){
+    return this._projectionPlanesHiRez[planeIndex].getWorldVectorU();
+  }
+
+
+  /**
+  * @param {Number} planeIndex - index of the plane (Hi-rez) we want the V vector of.
+  * @returns {THREE.Vector3} the V vector to the plane with such index.
+  */
+  getWorldVectorV(planeIndex){
+    return this._projectionPlanesHiRez[planeIndex].getWorldVectorV();
+  }
+
+
+} /* END CLASS PlaneManager */
+
 // take some inspiration here:
 // https://threejs.org/examples/webgl_multiple_views.html
 
@@ -2360,8 +2574,7 @@ class QuadScene{
     this._quadViewInteraction = null;
 
     // all the planes to intersect the chunks. They will all lie into _mainObjectContainer
-    this._projectionPlanes = [];
-    this._projectionPlanesLowRez = [];
+    this._planeManager = null;
 
     // visible bounding box for the dataset
     this._cubeHull3D = null;
@@ -2425,8 +2638,11 @@ class QuadScene{
     // some help!
     //this._scene.add( new THREE.AxisHelper( 1 ) );
 
-    this._levelManager = new SHAD.LevelManager();
-    this._addProjectionPlane();
+    this._levelManager = new LevelManager();
+
+
+    this._initPlaneManager();
+    //this._addProjectionPlane();
     this._initLevelManager();
     this._animate();
   }
@@ -2475,6 +2691,15 @@ class QuadScene{
 
     // the quadviewinteraction instance deals with mouse things
     this._quadViewInteraction = new QuadViewInteraction( this._quadViews );
+  }
+
+
+  _initPlaneManager(){
+    this._planeManager = new PlaneManager(this._colormapManager, this._mainObjectContainer);
+    this._planeManager.enableLayerHiRez(0);
+    this._planeManager.disableLayerHiRez(1);
+    this._planeManager.enableLayerLoRez(1);
+    this._planeManager.disableLayerLoRez(0);
   }
 
 
@@ -2738,62 +2963,6 @@ class QuadScene{
   }
 
 
-  /**
-  *
-  */
-  _addProjectionPlane(){
-    var pn = new ProjectionPlane$1(1, this._colormapManager);
-    pn.setMeshColor(new THREE.Color(0x000099) );
-    pn.enableLayer( 0 );
-    pn.disableLayer( 1 );
-    this._projectionPlanes.push( pn );
-    this._mainObjectContainer.add( pn.getPlane() );
-
-    var pu = new ProjectionPlane$1(1, this._colormapManager);
-    pu.setMeshColor(new THREE.Color(0x009900) );
-    pu.enableLayer( 0 );
-    pu.disableLayer( 1 );
-    this._projectionPlanes.push( pu );
-    pu.getPlane().rotateX( Math.PI / 2);
-    this._mainObjectContainer.add( pu.getPlane() );
-
-    var pv = new ProjectionPlane$1(1, this._colormapManager);
-    pv.setMeshColor(new THREE.Color(0x990000) );
-    pv.enableLayer( 0 );
-    pv.disableLayer( 1 );
-    this._projectionPlanes.push( pv );
-    pv.getPlane().rotateY( Math.PI / 2);
-    pv.getPlane().rotateZ( Math.PI / 2);
-    this._mainObjectContainer.add( pv.getPlane() );
-
-
-    // same for low rez
-    var pnLowRez = new ProjectionPlane$1(1, this._colormapManager);
-    pnLowRez.setMeshColor(new THREE.Color(0x000099) );
-    pnLowRez.enableLayer( 1 );
-    pnLowRez.disableLayer(0);
-    this._projectionPlanesLowRez.push( pnLowRez );
-    this._mainObjectContainer.add( pnLowRez.getPlane() );
-
-    var puLowRez = new ProjectionPlane$1(1, this._colormapManager);
-    puLowRez.setMeshColor(new THREE.Color(0x009900) );
-    puLowRez.enableLayer( 1 );
-    puLowRez.disableLayer(0);
-    this._projectionPlanesLowRez.push( puLowRez );
-    puLowRez.getPlane().rotateX( Math.PI / 2);
-    this._mainObjectContainer.add( puLowRez.getPlane() );
-
-    var pvLowRez = new ProjectionPlane$1(1, this._colormapManager);
-    pvLowRez.setMeshColor(new THREE.Color(0x990000) );
-    pvLowRez.enableLayer( 1 );
-    pvLowRez.disableLayer(0);
-    this._projectionPlanesLowRez.push( pvLowRez );
-    pvLowRez.getPlane().rotateY( Math.PI / 2);
-    pvLowRez.getPlane().rotateZ( Math.PI / 2);
-    this._mainObjectContainer.add( pvLowRez.getPlane() );
-
-  }
-
 
   /**
   * [PRIVATE]
@@ -2807,15 +2976,7 @@ class QuadScene{
 
     this._levelManager.onReady(function(){
 
-      that._projectionPlanes.forEach(function(plane){
-        plane.setLevelManager(that._levelManager);
-      });
-
-      // low rez plane
-      that._projectionPlanesLowRez.forEach(function(plane){
-        plane.setLevelManager(that._levelManager);
-        //plane.updateScaleFromRezLvl( 4 );
-      });
+      that._planeManager.setLevelManager( that._levelManager );
 
       that._levelManager.setResolutionLevel( that._resolutionLevel );
       that._buildCubeHull();
@@ -2857,7 +3018,9 @@ class QuadScene{
     this._resolutionLevel = lvl;
     this._levelManager.setResolutionLevel( this._resolutionLevel );
 
-    this._updateAllPlanesScaleFromRezLvl();
+    this._planeManager.updateScaleFromRezLvl( this._resolutionLevel );
+
+
     this._syncOrientationHelperScale();
     this._guiVar.resolutionLevel = lvl;
     this._updateOthoCamFrustrum();
@@ -2868,40 +3031,12 @@ class QuadScene{
   }
 
 
-  /**
-  * When the resolution level is changing, the scale of each plane has to change accordingly before the texture chunks are fetched. I also updates the uniforms from the inside.
-  */
-  _updateAllPlanesScaleFromRezLvl(){
-    var that = this;
-
-    console.log(">> Updating plane scale to lvl " + this._resolutionLevel + " ...");
-    this._projectionPlanes.forEach( function(plane){
-      plane.updateScaleFromRezLvl( that._resolutionLevel );
-    });
-
-    this._projectionPlanesLowRez.forEach(function(plane){
-      plane.updateScaleFromRezLvl(that._resolutionLevel - 2);
-      //plane.updateScaleFromRezLvl( 4 );
-    });
-    console.log("<< Plane scale updated!");
-
-
-  }
-
 
   /**
   * Updates the uniforms to send to the shader of the plane. Will trigger chunk loading for those which are not already in memory.
   */
   _updateAllPlanesShaderUniforms(){
-    //console.log(">> Updating uniforms...");
-    this._projectionPlanes.forEach( function(plane){
-      plane.updateUniforms();
-    });
-
-    // idem for low rez
-    this._projectionPlanesLowRez.forEach( function(plane){
-      plane.updateUniforms();
-    });
+    this._planeManager.updateUniforms();
   }
 
 
@@ -3018,7 +3153,7 @@ class QuadScene{
   */
   _initOrientationHelper(){
     this._orientationHelper = new OrientationHelper(
-      this._projectionPlanes[0].getWorldDiagonal() / 13
+      this._planeManager.getWorldDiagonalHiRez() / 13
       //1.5
     );
 
@@ -3076,7 +3211,7 @@ class QuadScene{
   * @param {Number} rad - angle in radian
   */
   _rotateNativePlane(planeIndex, rad){
-    var normalPlane = this._projectionPlanes[planeIndex].getWorldNormal();
+    var normalPlane = this._planeManager.getWorldVectorN(planeIndex);
     this._mainObjectContainer.rotateOnAxis ( normalPlane, rad );
     this._updateAllPlanesShaderUniforms();
 
@@ -3127,8 +3262,9 @@ class QuadScene{
   * @param {Number} vDistance - distance to move the main object along v vector. signed float.
   */
   _translateNativePlane(planeIndex, uDistance, vDistance){
-    var uVector = this._projectionPlanes[planeIndex].getWorldVectorU();
-    var vVector = this._projectionPlanes[planeIndex].getWorldVectorV();
+    var uVector = this._planeManager.getWorldVectorU(planeIndex);
+    var vVector = this._planeManager.getWorldVectorV(planeIndex);
+
     this._mainObjectContainer.translateOnAxis( uVector, uDistance );
     this._mainObjectContainer.translateOnAxis( vVector, vDistance );
 
