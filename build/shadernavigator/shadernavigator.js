@@ -1351,7 +1351,7 @@ var ShaderImporter = {
 * This ensure that we dont have to many texture (Sampler2D) to send the the fragment shader of each sub-planes because, even in critical cases, a sub-plane of this size wont intersect more than 8 texture chunks.
 *
 */
-class ProjectionPlane{
+class ProjectionPlane$1{
 
   /**
   * @param {Number} chunkSize - The size of a texture chunk at the current level of resolution (in world coordinates)
@@ -1610,27 +1610,36 @@ class ProjectionPlane{
   }
 
 
+  /**
+  * @return {Number} the size of this plane diagonal in world coordinates.
+  */
   getWorldDiagonal(){
-    //console.log('hello');
     var diago = Math.sqrt( Math.pow(this._subPlaneDim.row, 2) + Math.pow(this._subPlaneDim.col, 2) ) * this._plane.scale.x;
 
     return diago;
   }
 
 
+  /**
+  * Enable a given layer in the visibility mask, so that it's visible by a camera with the same layer activated.
+  */
   enableLayer( l ){
-    //this._plane.layers.enable(l);
     this._subPlanes.forEach(function(sp){
       sp.layers.enable(l);
     });
   }
 
+
+  /**
+  * Disable a given layer in the visibility mask, so that it's not visible by a camera with a different layer activated.
+  */
   disableLayer( l ){
-    //this._plane.layers.disable(l);
     this._subPlanes.forEach(function(sp){
       sp.layers.disable(l);
     });
   }
+
+
 
 
 } /* END class ProjectionPlane */
@@ -2733,14 +2742,14 @@ class QuadScene{
   *
   */
   _addProjectionPlane(){
-    var pn = new ProjectionPlane(1, this._colormapManager);
+    var pn = new ProjectionPlane$1(1, this._colormapManager);
     pn.setMeshColor(new THREE.Color(0x000099) );
     pn.enableLayer( 0 );
     pn.disableLayer( 1 );
     this._projectionPlanes.push( pn );
     this._mainObjectContainer.add( pn.getPlane() );
 
-    var pu = new ProjectionPlane(1, this._colormapManager);
+    var pu = new ProjectionPlane$1(1, this._colormapManager);
     pu.setMeshColor(new THREE.Color(0x009900) );
     pu.enableLayer( 0 );
     pu.disableLayer( 1 );
@@ -2748,7 +2757,7 @@ class QuadScene{
     pu.getPlane().rotateX( Math.PI / 2);
     this._mainObjectContainer.add( pu.getPlane() );
 
-    var pv = new ProjectionPlane(1, this._colormapManager);
+    var pv = new ProjectionPlane$1(1, this._colormapManager);
     pv.setMeshColor(new THREE.Color(0x990000) );
     pv.enableLayer( 0 );
     pv.disableLayer( 1 );
@@ -2759,14 +2768,14 @@ class QuadScene{
 
 
     // same for low rez
-    var pnLowRez = new ProjectionPlane(1, this._colormapManager);
+    var pnLowRez = new ProjectionPlane$1(1, this._colormapManager);
     pnLowRez.setMeshColor(new THREE.Color(0x000099) );
     pnLowRez.enableLayer( 1 );
     pnLowRez.disableLayer(0);
     this._projectionPlanesLowRez.push( pnLowRez );
     this._mainObjectContainer.add( pnLowRez.getPlane() );
 
-    var puLowRez = new ProjectionPlane(1, this._colormapManager);
+    var puLowRez = new ProjectionPlane$1(1, this._colormapManager);
     puLowRez.setMeshColor(new THREE.Color(0x009900) );
     puLowRez.enableLayer( 1 );
     puLowRez.disableLayer(0);
@@ -2774,7 +2783,7 @@ class QuadScene{
     puLowRez.getPlane().rotateX( Math.PI / 2);
     this._mainObjectContainer.add( puLowRez.getPlane() );
 
-    var pvLowRez = new ProjectionPlane(1, this._colormapManager);
+    var pvLowRez = new ProjectionPlane$1(1, this._colormapManager);
     pvLowRez.setMeshColor(new THREE.Color(0x990000) );
     pvLowRez.enableLayer( 1 );
     pvLowRez.disableLayer(0);

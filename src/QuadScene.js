@@ -8,6 +8,8 @@ import { ProjectionPlane } from './ProjectionPlane.js';
 import { OrientationHelper } from './OrientationHelper.js';
 import { QuadViewInteraction } from './QuadViewInteraction.js';
 import { ColorMapManager } from './ColorMapManager.js';
+import { PlaneManager } from './PlaneManager.js';
+
 
 
 

@@ -267,27 +267,36 @@ class ProjectionPlane{
   }
 
 
+  /**
+  * @return {Number} the size of this plane diagonal in world coordinates.
+  */
   getWorldDiagonal(){
-    //console.log('hello');
     var diago = Math.sqrt( Math.pow(this._subPlaneDim.row, 2) + Math.pow(this._subPlaneDim.col, 2) ) * this._plane.scale.x;
 
     return diago;
   }
 
 
+  /**
+  * Enable a given layer in the visibility mask, so that it's visible by a camera with the same layer activated.
+  */
   enableLayer( l ){
-    //this._plane.layers.enable(l);
     this._subPlanes.forEach(function(sp){
       sp.layers.enable(l);
     });
   }
 
+
+  /**
+  * Disable a given layer in the visibility mask, so that it's not visible by a camera with a different layer activated.
+  */
   disableLayer( l ){
-    //this._plane.layers.disable(l);
     this._subPlanes.forEach(function(sp){
       sp.layers.disable(l);
     });
   }
+
+
 
 
 } /* END class ProjectionPlane */
