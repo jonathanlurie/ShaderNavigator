@@ -119,16 +119,15 @@ class OrientationHelper{
     this._sphere.add(infSprite);
 
     this._sphere.children.forEach( function(child){
-      //child.layers.enable( 0 );
-      //child.layers.enable( 1 );
+      child.layers.enable( 0 );
+      child.layers.enable( 1 );
     });
 
 
-    console.log(this._sphere.layers.mask);
-    this._sphere.layers.enable(0);
-    console.log(this._sphere.layers.mask);
-    this._sphere.layers.enable(1);
 
+    //this._sphere.layers.enable(0);
+    //this._sphere.layers.enable(1);
+    console.log("Orientaion Helper mask: " + this._sphere.layers.mask);
 
   }
 

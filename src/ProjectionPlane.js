@@ -276,12 +276,14 @@ class ProjectionPlane{
 
 
   enableLayer( l ){
+    //this._plane.layers.enable(l);
     this._subPlanes.forEach(function(sp){
       sp.layers.enable(l);
     });
   }
 
   disableLayer( l ){
+    //this._plane.layers.disable(l);
     this._subPlanes.forEach(function(sp){
       sp.layers.disable(l);
     });

@@ -385,10 +385,11 @@ class QuadView{
 
   enableLayer( layerNum ){
     this._camera.layers.enable( layerNum );
+
   }
 
   disableLayer( layerNum ){
-    this._camera.layers.enable( layerNum );
+    this._camera.layers.disable( layerNum );
   }
 
 

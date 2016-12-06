@@ -1326,10 +1326,11 @@ class QuadView{
 
   enableLayer( layerNum ){
     this._camera.layers.enable( layerNum );
+
   }
 
   disableLayer( layerNum ){
-    this._camera.layers.enable( layerNum );
+    this._camera.layers.disable( layerNum );
   }
 
 
@@ -1618,12 +1619,14 @@ class ProjectionPlane{
 
 
   enableLayer( l ){
+    //this._plane.layers.enable(l);
     this._subPlanes.forEach(function(sp){
       sp.layers.enable(l);
     });
   }
 
   disableLayer( l ){
+    //this._plane.layers.disable(l);
     this._subPlanes.forEach(function(sp){
       sp.layers.disable(l);
     });
@@ -1749,16 +1752,15 @@ class OrientationHelper{
     this._sphere.add(infSprite);
 
     this._sphere.children.forEach( function(child){
-      //child.layers.enable( 0 );
-      //child.layers.enable( 1 );
+      child.layers.enable( 0 );
+      child.layers.enable( 1 );
     });
 
 
-    console.log(this._sphere.layers.mask);
-    this._sphere.layers.enable(0);
-    console.log(this._sphere.layers.mask);
-    this._sphere.layers.enable(1);
 
+    //this._sphere.layers.enable(0);
+    //this._sphere.layers.enable(1);
+    console.log("Orientaion Helper mask: " + this._sphere.layers.mask);
 
   }
 
@@ -2431,18 +2433,21 @@ class QuadScene{
     topLeftView.initOrthoCamera();
     topLeftView.useRelativeCoordinatesOf(this._mainObjectContainer);
     topLeftView.enableLayer( 0 );
+    console.log("topLeftView cam mask: " + topLeftView._camera.layers.mask);
 
     var topRightView = new QuadView(this._scene, this._renderer, this._cameraDistance);
     topRightView.initTopRight();
     topRightView.initOrthoCamera();
     topRightView.useRelativeCoordinatesOf(this._mainObjectContainer);
     topRightView.enableLayer( 0 );
+    console.log("topRightView cam mask: " + topRightView._camera.layers.mask);
 
     var bottomLeft = new QuadView(this._scene, this._renderer, this._cameraDistance);
     bottomLeft.initBottomLeft();
     bottomLeft.initOrthoCamera();
     bottomLeft.useRelativeCoordinatesOf(this._mainObjectContainer);
     bottomLeft.enableLayer( 0 );
+    console.log("bottomLeft cam mask: " + bottomLeft._camera.layers.mask);
 
     var bottomRight = new QuadView(this._scene, this._renderer, this._cameraDistance);
     bottomRight.initBottomRight();
@@ -2451,6 +2456,7 @@ class QuadScene{
     bottomRight.disableLayer(0);
     //bottomRight.addOrbitControl();
     bottomRight.addTrackballControl(this._render, this);
+    console.log("bottomRight cam mask: " + bottomRight._camera.layers.mask);
 
     // adding the views
     this._quadViews.push(topLeftView);
@@ -2730,12 +2736,14 @@ class QuadScene{
     var pn = new ProjectionPlane(1, this._colormapManager);
     pn.setMeshColor(new THREE.Color(0x000099) );
     pn.enableLayer( 0 );
+    pn.disableLayer( 1 );
     this._projectionPlanes.push( pn );
     this._mainObjectContainer.add( pn.getPlane() );
 
     var pu = new ProjectionPlane(1, this._colormapManager);
     pu.setMeshColor(new THREE.Color(0x009900) );
     pu.enableLayer( 0 );
+    pu.disableLayer( 1 );
     this._projectionPlanes.push( pu );
     pu.getPlane().rotateX( Math.PI / 2);
     this._mainObjectContainer.add( pu.getPlane() );
@@ -2743,6 +2751,7 @@ class QuadScene{
     var pv = new ProjectionPlane(1, this._colormapManager);
     pv.setMeshColor(new THREE.Color(0x990000) );
     pv.enableLayer( 0 );
+    pv.disableLayer( 1 );
     this._projectionPlanes.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
     pv.getPlane().rotateZ( Math.PI / 2);
@@ -2796,7 +2805,7 @@ class QuadScene{
       // low rez plane
       that._projectionPlanesLowRez.forEach(function(plane){
         plane.setLevelManager(that._levelManager);
-        plane.updateScaleFromRezLvl( 1 );
+        //plane.updateScaleFromRezLvl( 4 );
       });
 
       that._levelManager.setResolutionLevel( that._resolutionLevel );
@@ -2859,6 +2868,11 @@ class QuadScene{
     console.log(">> Updating plane scale to lvl " + this._resolutionLevel + " ...");
     this._projectionPlanes.forEach( function(plane){
       plane.updateScaleFromRezLvl( that._resolutionLevel );
+    });
+
+    this._projectionPlanesLowRez.forEach(function(plane){
+      plane.updateScaleFromRezLvl(that._resolutionLevel - 2);
+      //plane.updateScaleFromRezLvl( 4 );
     });
     console.log("<< Plane scale updated!");
 
@@ -2978,9 +2992,12 @@ class QuadScene{
     this._cubeHull3D.position.y = this._cubeHullSize[1] / 2;
     this._cubeHull3D.position.z = this._cubeHullSize[2] / 2;
 
-    this._cubeHull3D.layers.enable(1);
-    this._cubeHull3D.layers.disable(0);
-    
+    this._cubeHull3D.children.forEach( function(child){
+      child.layers.disable( 0 );
+      child.layers.enable( 1 );
+    });
+
+
     this._scene.add( this._cubeHull3D );
 
 
