@@ -16,6 +16,7 @@ class ColorMapManager{
 
     // default colormaps filename
     this._defaultMaps = [
+      "plum.png",
       "thermal.png",
       "blue_klein.png",
       "blue_teal.png",

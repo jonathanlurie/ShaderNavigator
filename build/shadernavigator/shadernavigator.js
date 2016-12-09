@@ -77,6 +77,7 @@ class TextureChunk{
     // try to load only if never tried
     if( !this._triedToLoad){
       this._loadTexture();
+      //this._loadTextureDecode();
     }
 
     this._isBuilt = true;
@@ -120,19 +121,6 @@ class TextureChunk{
                   sagitalRangeStart + "-" + (sagitalRangeStart + this._voxelPerSide) + "/" +
                   coronalRangeStart + "-" + (coronalRangeStart + this._voxelPerSide) + "/" +
                   axialRangeStart   + "-" + (axialRangeStart + this._voxelPerSide);
-
-
-    /*
-    console.log("---------------------------------");
-    console.log("_filepath:");
-    console.log(this._filepath);
-    console.log("_index3D:");
-    console.log(this._index3D);
-    console.log("_sizeWC:");
-    console.log(this._sizeWC);
-    console.log("_originWC:");
-    console.log(this._originWC);
-    */
   }
 
 
@@ -175,6 +163,83 @@ class TextureChunk{
 
     this._threeJsTexture.magFilter = THREE.NearestFilter;
     this._threeJsTexture.minFilter = THREE.NearestFilter;
+
+  }
+
+
+  /**
+  * Alternative to _loadTexture but decode the jpeg strip in JS using a JS lib.
+  * It's pretty slow and should maybe be put in a webworker -- to be tested!
+  */
+  _loadTextureDecode(){
+    var that = this;
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', this._filepath);
+    xhr.responseType = 'arraybuffer';
+
+    xhr.onload = function () {
+
+      var encoded = new Uint8Array(xhr.response);
+      var numComponents, width, height, decoded, parser;
+
+      parser = new JpegDecoder();
+      parser.parse(encoded);
+      width = parser.width;
+      height = parser.height;
+      numComponents = parser.numComponents;
+      decoded = parser.getData(width, height);
+
+      that._threeJsTexture = new THREE.DataTexture(
+        decoded,
+        width,
+        height,
+        //THREE.RGBFormat
+        THREE.LuminanceFormat
+        //THREE.UnsignedByteType
+      );
+
+      that._threeJsTexture.magFilter = THREE.NearestFilter;
+      that._threeJsTexture.minFilter = THREE.NearestFilter;
+      that._threeJsTexture.flipY = true;
+      that._threeJsTexture.needsUpdate = true;
+
+      //console.log('SUCCESS LOAD: ' + that._filepath );
+      that._textureLoadingError = false;
+      that._triedToLoad = true;
+
+      // calling the success callback if defined
+      if( that._onTextureLoadedCallback ){
+        //console.log("call the callback");
+        that._onTextureLoadedCallback( that._chunkID );
+      }
+
+    };
+
+    xhr.onerror = function(){
+      //console.log('ERROR LOAD: ' + that._filepath );
+      that._threeJsTexture = null;
+      that._textureLoadingError = true;
+      that._triedToLoad = true;
+
+      // call the fallure callback if exists
+      if( that._onTextureLoadErrorCallback ){
+        that._onTextureLoadErrorCallback( that._chunkID );
+      }
+    };
+
+    xhr.send();
+
+
+
+
+
+
+
+
+
+
+
 
   }
 
@@ -1866,6 +1931,7 @@ class ColorMapManager{
 
     // default colormaps filename
     this._defaultMaps = [
+      "plum.png",
       "thermal.png",
       "blue_klein.png",
       "blue_teal.png",
@@ -2551,9 +2617,6 @@ class PlaneManager{
 
 } /* END CLASS PlaneManager */
 
-// take some inspiration here:
-// https://threejs.org/examples/webgl_multiple_views.html
-
 /**
 * A QuadScene is a THREE js context where the viewport is split in 4 windows, for each window comes a QuadView.
 * Originally, the purpose of the QuadScene is to display 3 orthogonal views usin othometric cameras, and one additional view using a perspective camera. The later is supposed to be more free of movement, giving an flexible global point of view. The 3 ortho cam are more likely to be in object coordinate so that rotating the main object wont affect what is shown on this views.
@@ -2603,8 +2666,6 @@ class QuadScene{
     this._datGui = new dat.GUI();
     this._initUI();
 
-
-
     // Container on the DOM tree, most likely a div
     this._domContainer = document.getElementById( DomContainer );
 
@@ -2635,11 +2696,7 @@ class QuadScene{
 
     this._initViews();
 
-    // some help!
-    //this._scene.add( new THREE.AxisHelper( 1 ) );
-
     this._levelManager = new LevelManager();
-
 
     this._initPlaneManager();
     //this._addProjectionPlane();
@@ -2658,30 +2715,25 @@ class QuadScene{
     topLeftView.initOrthoCamera();
     topLeftView.useRelativeCoordinatesOf(this._mainObjectContainer);
     topLeftView.enableLayer( 0 );
-    console.log("topLeftView cam mask: " + topLeftView._camera.layers.mask);
 
     var topRightView = new QuadView(this._scene, this._renderer, this._cameraDistance);
     topRightView.initTopRight();
     topRightView.initOrthoCamera();
     topRightView.useRelativeCoordinatesOf(this._mainObjectContainer);
     topRightView.enableLayer( 0 );
-    console.log("topRightView cam mask: " + topRightView._camera.layers.mask);
 
     var bottomLeft = new QuadView(this._scene, this._renderer, this._cameraDistance);
     bottomLeft.initBottomLeft();
     bottomLeft.initOrthoCamera();
     bottomLeft.useRelativeCoordinatesOf(this._mainObjectContainer);
     bottomLeft.enableLayer( 0 );
-    console.log("bottomLeft cam mask: " + bottomLeft._camera.layers.mask);
 
     var bottomRight = new QuadView(this._scene, this._renderer, this._cameraDistance);
     bottomRight.initBottomRight();
     bottomRight.initPerspectiveCamera();
     bottomRight.enableLayer( 1 );
     bottomRight.disableLayer(0);
-    //bottomRight.addOrbitControl();
     bottomRight.addTrackballControl(this._render, this);
-    console.log("bottomRight cam mask: " + bottomRight._camera.layers.mask);
 
     // adding the views
     this._quadViews.push(topLeftView);
@@ -2694,6 +2746,10 @@ class QuadScene{
   }
 
 
+  /**
+  * [PRIVATE]
+  * Initialize the planeManager, so that we eventually have something to display here!
+  */
   _initPlaneManager(){
     this._planeManager = new PlaneManager(this._colormapManager, this._mainObjectContainer);
     this._planeManager.enableLayerHiRez(0);
@@ -2966,7 +3022,7 @@ class QuadScene{
 
   /**
   * [PRIVATE]
-  *
+  * Initialize the level manager and run some local init method when the lvl manager is ready.
   */
   _initLevelManager(){
     var that = this;
@@ -2977,10 +3033,10 @@ class QuadScene{
     this._levelManager.onReady(function(){
 
       that._planeManager.setLevelManager( that._levelManager );
-
       that._levelManager.setResolutionLevel( that._resolutionLevel );
       that._buildCubeHull();
 
+      // Place the plane intersection at the center of the data
       that.setMainObjectPosition(
         that._cubeHullSize[0] / 2,
         that._cubeHullSize[1] / 2,
@@ -3017,9 +3073,7 @@ class QuadScene{
     console.log("--------- LVL " + lvl + " ---------------");
     this._resolutionLevel = lvl;
     this._levelManager.setResolutionLevel( this._resolutionLevel );
-
     this._planeManager.updateScaleFromRezLvl( this._resolutionLevel );
-
 
     this._syncOrientationHelperScale();
     this._guiVar.resolutionLevel = lvl;
@@ -3082,7 +3136,7 @@ class QuadScene{
 
 
   /**
-  *
+  * Make the cube hull visible or not (reverses the current state)
   */
   toggleCubeHull(){
     if(this._cubeHull3D){
@@ -3141,10 +3195,7 @@ class QuadScene{
       child.layers.enable( 1 );
     });
 
-
     this._scene.add( this._cubeHull3D );
-
-
   }
 
 
@@ -3154,7 +3205,6 @@ class QuadScene{
   _initOrientationHelper(){
     this._orientationHelper = new OrientationHelper(
       this._planeManager.getWorldDiagonalHiRez() / 13
-      //1.5
     );
 
     this._orientationHelper.addTo( this._scene );
@@ -3172,6 +3222,9 @@ class QuadScene{
   }
 
 
+  /**
+  * Triggered when the resolution level changes to keep the orientation helper the right size.
+  */
   _syncOrientationHelperScale(){
     this._orientationHelper.rescaleFromResolutionLvl( this._resolutionLevel );
   }
@@ -3214,12 +3267,6 @@ class QuadScene{
     var normalPlane = this._planeManager.getWorldVectorN(planeIndex);
     this._mainObjectContainer.rotateOnAxis ( normalPlane, rad );
     this._updateAllPlanesShaderUniforms();
-
-    /*
-    if(this._onChangeCallback){
-      this._onChangeCallback( this.getMainObjectInfo() );
-    }
-    */
   }
 
 
@@ -3312,7 +3359,6 @@ class QuadScene{
 
     });
 
-
     // callback def: regular rotation (using R key)
     this._quadViewInteraction.onGrabViewRotate( function(angleRad, angleDir, viewIndex){
       switch (viewIndex) {
@@ -3329,7 +3375,6 @@ class QuadScene{
           return;
       }
     });
-
 
     // callback def: transverse rotation (using T key)
     this._quadViewInteraction.onGrabViewTransverseRotate( function(distance, viewIndex){
@@ -3354,7 +3399,6 @@ class QuadScene{
       }
     });
 
-
     // callback def: arrow down
     this._quadViewInteraction.onArrowDown( function(viewIndex){
       var factor = 0.01 / Math.pow(2, that._resolutionLevel);
@@ -3373,7 +3417,6 @@ class QuadScene{
           return;
       }
     });
-
 
     // callback def: arrow up
     this._quadViewInteraction.onArrowUp( function(viewIndex){
@@ -3394,14 +3437,11 @@ class QuadScene{
       }
     });
 
-
     this._quadViewInteraction.onDonePlaying(function(){
       if(that._onUpdateViewCallback){
         that._onUpdateViewCallback( that.getMainObjectInfo() );
       }
     });
-
-
   }
 
 
@@ -3435,6 +3475,9 @@ class QuadScene{
   }
 
 
+  /**
+  * Defines a function if an error occures when loading the config file has some trouble to load (but not necessary an error). Function called with 2 args: url and status code. The status code will define if it corresponds to an error or not.
+  */
   onConfigFileError(cb){
     this._onConfigFileErrorCallback = cb;
   }
