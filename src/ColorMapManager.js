@@ -178,6 +178,6 @@ class ColorMapManager{
   }
 
 
-} /* ColorMapManager */
+} /* END class ColorMapManager */
 
 export { ColorMapManager };

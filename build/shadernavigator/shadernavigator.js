@@ -4,12 +4,68 @@
 	(factory((global.SHAD = global.SHAD || {})));
 }(this, (function (exports) { 'use strict';
 
+class TextureLoaderOctreeTiles{
+
+  constructor( textureChunk ){
+    this._textureChunk = textureChunk;
+
+    this._filepath = null;
+  }
+
+
+  _buildFileName(){
+    let index3D = this._textureChunk.getIndex3D();
+    let voxelPerSide = this._textureChunk.getVoxelPerSide();
+    let workingDir = this._textureChunk.getWorkingDir();
+    let resolutionLevel = this._textureChunk.getResolutionLevel();
+
+    let sagitalRangeStart = index3D[0] * voxelPerSide;
+    let coronalRangeStart = index3D[1] * voxelPerSide;
+    let axialRangeStart   = index3D[2] * voxelPerSide;
+
+    /** Texture file, build from its index3D and resolutionLevel */
+
+    // former
+    this._filepath =  workingDir + "/" + resolutionLevel + "/" +
+                  sagitalRangeStart + "-" + (sagitalRangeStart + voxelPerSide) + "/" +
+                  coronalRangeStart + "-" + (coronalRangeStart + voxelPerSide) + "/" +
+                  axialRangeStart   + "-" + (axialRangeStart + voxelPerSide);
+  }
+
+
+  loadTexture(){
+    // first, we need it's filename to get it from the octree
+    this._buildFileName();
+    var that = this;
+
+    var threeJsTexture = new THREE.TextureLoader().load(
+      this._filepath, // url
+      function(){
+        that._textureChunk.setTexture(threeJsTexture);
+        that._textureChunk.onTextureSuccessToLoad();
+      }, // on load
+      function(){}, // on progress
+
+      function(){ // on error
+        that._textureChunk.onTextureFailedToLoad();
+      }
+    );
+
+    threeJsTexture.magFilter = THREE.NearestFilter;
+    threeJsTexture.minFilter = THREE.NearestFilter;
+
+  }
+
+} /* END class TextureLoaderOctreeTiles */
+
 /*
 
   TODO: give the possibility to clean/remove the texture object, and with a flag,
   getting to know if it's still loaded or not. It can be interesting to do it for
   an entire zoom level to free some memory when we are currently using another
   zoom level.
+
+  NOTE: take into consideration that other zoom levels than the main/current are possibly in use due to minimap display.
 
 */
 
@@ -26,8 +82,9 @@ class TextureChunk{
   * @param {Number} sizeWC - Size of the chunk in world coordinates. Most likely 1/2^resolutionLevel.
   * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder.
   * @param {String} chunkID - the string ID this chunk has within the ChunkCollection. This is used by the callbacks when succeding or failing to load the texture file.
+  * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok
   */
-  constructor(resolutionLevel, voxelPerSide, sizeWC, workingDir, chunkID){
+  constructor(resolutionLevel, voxelPerSide, sizeWC, workingDir, chunkID, datatype){
     /** the string ID this chunk has within the ChunkCollection. This is used by the callbacks when succeding or failing to load the texture file */
     this._chunkID = chunkID;
 
@@ -59,6 +116,54 @@ class TextureChunk{
 
     /** callback when a texture failled to be loaded. Defined using onTextureLoadError( ... ) */
     this._onTextureLoadErrorCallback = null;
+
+    /** The texture loader takes _this_ in argument because it will need some local info but depending on the datatype, different info may be asked */
+    this._textureLoader = null;
+
+    // the data is stored as an octree 3D tiling structure
+    if(datatype == "octree_tiles")
+      this._textureLoader = new TextureLoaderOctreeTiles( this );
+
+  }
+
+
+  /**
+  * @return this._voxelPerSide
+  */
+  getVoxelPerSide(){
+    return this._voxelPerSide;
+  }
+
+  /**
+  * @return a copy of the this_index3D (Array)
+  */
+  getIndex3D(){
+    return this._index3D.slice();
+  }
+
+
+  /**
+  * @return the working directory
+  */
+  getWorkingDir(){
+    return this._workingDir;
+  }
+
+
+  /**
+  * @return the resolution level
+  */
+  getResolutionLevel(){
+    return this._resolutionLevel;
+  }
+
+
+  /**
+  * Set the texture
+  * @param {THREE.Texture} t - Texture loaded by a TextureLoader
+  */
+  setTexture(t){
+    this._threeJsTexture = t;
   }
 
 
@@ -76,7 +181,7 @@ class TextureChunk{
 
     // try to load only if never tried
     if( !this._triedToLoad){
-      this._loadTexture();
+      this._textureLoader.loadTexture();
       //this._loadTextureDecode();
     }
 
@@ -101,70 +206,37 @@ class TextureChunk{
     );
 
     //console.log(this._index3D[1]);
-
   }
 
 
   /**
-  * [PRIVATE] Build the string of the chunk path to load.
+  * Called by a TextureLoader when the texture is loaded successfully
   */
-  _buildFileName(){
+  onTextureSuccessToLoad(){
+    //console.log('SUCCESS LOAD: ' + this._filepath );
+    this._textureLoadingError = false;
+    this._triedToLoad = true;
 
-    let sagitalRangeStart = this._index3D[0] * this._voxelPerSide;
-    let coronalRangeStart = this._index3D[1] * this._voxelPerSide;
-    let axialRangeStart   = this._index3D[2] * this._voxelPerSide;
-
-    /** Texture file, build from its index3D and resolutionLevel */
-
-    // former
-    this._filepath =  this._workingDir + "/" + this._resolutionLevel + "/" +
-                  sagitalRangeStart + "-" + (sagitalRangeStart + this._voxelPerSide) + "/" +
-                  coronalRangeStart + "-" + (coronalRangeStart + this._voxelPerSide) + "/" +
-                  axialRangeStart   + "-" + (axialRangeStart + this._voxelPerSide);
+    // calling the success callback if defined
+    if( this._onTextureLoadedCallback ){
+      this._onTextureLoadedCallback( this._chunkID );
+    }
   }
 
 
   /**
-  * [PRIVATE] Loads the actual image file as a THREE js texture.
+  * called by a TextureLoader when the texture fails to load
   */
-  _loadTexture(){
-    var that = this;
-    this._buildFileName();
+  onTextureFailedToLoad(){
+    //console.log('ERROR LOAD: ' + this._filepath );
+    this._threeJsTexture = null;
+    this._textureLoadingError = true;
+    this._triedToLoad = true;
 
-    //console.log("LOADING " + this._filepath + " ...");
-
-    this._threeJsTexture = new THREE.TextureLoader().load(
-      this._filepath, // url
-      function(){
-        //console.log('SUCCESS LOAD: ' + that._filepath );
-        that._textureLoadingError = false;
-        that._triedToLoad = true;
-
-        // calling the success callback if defined
-        if( that._onTextureLoadedCallback ){
-          that._onTextureLoadedCallback( that._chunkID );
-        }
-
-      }, // on load
-      function(){}, // on progress
-
-      function(){ // on error
-        //console.log('ERROR LOAD: ' + that._filepath );
-        that._threeJsTexture = null;
-        that._textureLoadingError = true;
-        that._triedToLoad = true;
-
-        // call the fallure callback if exists
-        if( that._onTextureLoadErrorCallback ){
-          that._onTextureLoadErrorCallback( that._chunkID );
-        }
-
-      }
-    );
-
-    this._threeJsTexture.magFilter = THREE.NearestFilter;
-    this._threeJsTexture.minFilter = THREE.NearestFilter;
-
+    // call the fallure callback if exists
+    if( this._onTextureLoadErrorCallback ){
+      this._onTextureLoadErrorCallback( this._chunkID );
+    }
   }
 
 
@@ -310,12 +382,15 @@ class ChunkCollection{
   * @param {number} resolutionLevel - The level of resolution, the lower the level, the lower the resolution. Level n has a metric resolution per voxel twice lower/poorer than level n+1, as a result, level n has 8 time less chunks than level n+1, remember we are in 3D!.
   * @param {Array} matrix3DSize - Number of chunks in each dimension [x, y, z] that are supposedly available.
   * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder
+  * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok.
   */
   constructor(resolutionLevel, matrix3DSize, workingDir, datatype){
     /**
     * The chunks of the same level. A map is used instead of an array because the chunks are loaded as they need to display, so we prefer to use an key (string built from the index3D) rather than a 1D array index.
     */
     this._chunks = {};
+
+    this._datatype = datatype;
 
     /** The folder containing the config file (JSON) and the resolution level folder */
     this._workingDir = workingDir;
@@ -366,7 +441,8 @@ class ChunkCollection{
       this._voxelPerSide,
       this._sizeChunkWC,
       this._workingDir,
-      k
+      k,
+      this._datatype
     );
 
     // callback on the texture when succesfully loaded
@@ -2099,7 +2175,7 @@ class ColorMapManager{
   }
 
 
-} /* ColorMapManager */
+} /* END class ColorMapManager */
 
 var texture3d_frag = "const int maxNbChunks = 8;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying vec4 worldCoord;\nvarying vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||\n            chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||\n            chunkPosition.z<0.0 || chunkPosition.z>=1.0 );\n}\nvoid getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){\n  float numberOfImagePerStripY = 64.0;\n  float numberOfPixelPerSide = 64.0;\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY;\n  float stripX = chunkPosition.x;\n  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  colorFromTexture = texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){\n  vec3 chunkSystemCoordinate = vec3( (textureOrigin.x - world.x)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.z - world.z)*(-1.0)/chunkSize);\n  return chunkSystemCoordinate;\n}\nvoid main( void ) {\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(0.0, 0.0 , 0.0, 0.0);\n  vec3 chunkPosition;\n  bool mustWrite = false;\n  if(nbChunks >= 1){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);\n    if( isInsideChunk(chunkPosition) ){\n      getColorFrom3DTexture(textures[0], chunkPosition, color);\n      mustWrite = true;\n    }\n    if(nbChunks >= 2){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);\n      if( isInsideChunk(chunkPosition) ){\n        getColorFrom3DTexture(textures[1], chunkPosition, color);\n        mustWrite = true;\n      }\n      if(nbChunks >= 3){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);\n        if( isInsideChunk(chunkPosition) ){\n          getColorFrom3DTexture(textures[2], chunkPosition, color);\n          mustWrite = true;\n        }\n        if(nbChunks >= 4){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);\n          if( isInsideChunk(chunkPosition) ){\n            getColorFrom3DTexture(textures[3], chunkPosition, color);\n            mustWrite = true;\n          }\n          if(nbChunks >= 5){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);\n            if( isInsideChunk(chunkPosition) ){\n              getColorFrom3DTexture(textures[4], chunkPosition, color);\n              mustWrite = true;\n            }\n            if(nbChunks >= 6){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);\n              if( isInsideChunk(chunkPosition) ){\n                getColorFrom3DTexture(textures[5], chunkPosition, color);\n                mustWrite = true;\n              }\n              if(nbChunks >= 7){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);\n                if( isInsideChunk(chunkPosition) ){\n                  getColorFrom3DTexture(textures[6], chunkPosition, color);\n                  mustWrite = true;\n                }\n                if(nbChunks == 8){\n                  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);\n                  if( isInsideChunk(chunkPosition) ){\n                    getColorFrom3DTexture(textures[7], chunkPosition, color);\n                    mustWrite = true;\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(mustWrite){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a == 0.0){\n        discard;\n      }else{\n        gl_FragColor = colorFromColorMap;\n      }\n    }else{\n      gl_FragColor = color;\n    }\n  }else{\n    discard;\n  }\n}\n";
 

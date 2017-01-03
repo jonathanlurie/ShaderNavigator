@@ -1,5 +1,6 @@
 'use strict';
 
+import { TextureLoaderOctreeTiles } from './TextureLoaderOctreeTiles.js';
 
 /*
 
@@ -7,6 +8,8 @@
   getting to know if it's still loaded or not. It can be interesting to do it for
   an entire zoom level to free some memory when we are currently using another
   zoom level.
+
+  NOTE: take into consideration that other zoom levels than the main/current are possibly in use due to minimap display.
 
 */
 
@@ -23,8 +26,9 @@ class TextureChunk{
   * @param {Number} sizeWC - Size of the chunk in world coordinates. Most likely 1/2^resolutionLevel.
   * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder.
   * @param {String} chunkID - the string ID this chunk has within the ChunkCollection. This is used by the callbacks when succeding or failing to load the texture file.
+  * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok
   */
-  constructor(resolutionLevel, voxelPerSide, sizeWC, workingDir, chunkID){
+  constructor(resolutionLevel, voxelPerSide, sizeWC, workingDir, chunkID, datatype){
     /** the string ID this chunk has within the ChunkCollection. This is used by the callbacks when succeding or failing to load the texture file */
     this._chunkID = chunkID;
 
@@ -56,6 +60,54 @@ class TextureChunk{
 
     /** callback when a texture failled to be loaded. Defined using onTextureLoadError( ... ) */
     this._onTextureLoadErrorCallback = null;
+
+    /** The texture loader takes _this_ in argument because it will need some local info but depending on the datatype, different info may be asked */
+    this._textureLoader = null;
+
+    // the data is stored as an octree 3D tiling structure
+    if(datatype == "octree_tiles")
+      this._textureLoader = new TextureLoaderOctreeTiles( this );
+
+  }
+
+
+  /**
+  * @return this._voxelPerSide
+  */
+  getVoxelPerSide(){
+    return this._voxelPerSide;
+  }
+
+  /**
+  * @return a copy of the this_index3D (Array)
+  */
+  getIndex3D(){
+    return this._index3D.slice();
+  }
+
+
+  /**
+  * @return the working directory
+  */
+  getWorkingDir(){
+    return this._workingDir;
+  }
+
+
+  /**
+  * @return the resolution level
+  */
+  getResolutionLevel(){
+    return this._resolutionLevel;
+  }
+
+
+  /**
+  * Set the texture
+  * @param {THREE.Texture} t - Texture loaded by a TextureLoader
+  */
+  setTexture(t){
+    this._threeJsTexture = t;
   }
 
 
@@ -73,7 +125,7 @@ class TextureChunk{
 
     // try to load only if never tried
     if( !this._triedToLoad){
-      this._loadTexture();
+      this._textureLoader.loadTexture();
       //this._loadTextureDecode();
     }
 
@@ -97,71 +149,37 @@ class TextureChunk{
       this._index3D[2] * this._sizeWC
     );
 
-    //console.log(this._index3D[1]);
-
   }
 
 
   /**
-  * [PRIVATE] Build the string of the chunk path to load.
+  * Called by a TextureLoader when the texture is loaded successfully
   */
-  _buildFileName(){
+  onTextureSuccessToLoad(){
+    //console.log('SUCCESS LOAD: ' + this._filepath );
+    this._textureLoadingError = false;
+    this._triedToLoad = true;
 
-    let sagitalRangeStart = this._index3D[0] * this._voxelPerSide;
-    let coronalRangeStart = this._index3D[1] * this._voxelPerSide;
-    let axialRangeStart   = this._index3D[2] * this._voxelPerSide;
-
-    /** Texture file, build from its index3D and resolutionLevel */
-
-    // former
-    this._filepath =  this._workingDir + "/" + this._resolutionLevel + "/" +
-                  sagitalRangeStart + "-" + (sagitalRangeStart + this._voxelPerSide) + "/" +
-                  coronalRangeStart + "-" + (coronalRangeStart + this._voxelPerSide) + "/" +
-                  axialRangeStart   + "-" + (axialRangeStart + this._voxelPerSide);
+    // calling the success callback if defined
+    if( this._onTextureLoadedCallback ){
+      this._onTextureLoadedCallback( this._chunkID );
+    }
   }
 
 
   /**
-  * [PRIVATE] Loads the actual image file as a THREE js texture.
+  * called by a TextureLoader when the texture fails to load
   */
-  _loadTexture(){
-    var that = this;
-    this._buildFileName();
+  onTextureFailedToLoad(){
+    //console.log('ERROR LOAD: ' + this._filepath );
+    this._threeJsTexture = null;
+    this._textureLoadingError = true;
+    this._triedToLoad = true;
 
-    //console.log("LOADING " + this._filepath + " ...");
-
-    this._threeJsTexture = new THREE.TextureLoader().load(
-      this._filepath, // url
-      function(){
-        //console.log('SUCCESS LOAD: ' + that._filepath );
-        that._textureLoadingError = false;
-        that._triedToLoad = true;
-
-        // calling the success callback if defined
-        if( that._onTextureLoadedCallback ){
-          that._onTextureLoadedCallback( that._chunkID );
-        }
-
-      }, // on load
-      function(){}, // on progress
-
-      function(){ // on error
-        //console.log('ERROR LOAD: ' + that._filepath );
-        that._threeJsTexture = null;
-        that._textureLoadingError = true;
-        that._triedToLoad = true;
-
-        // call the fallure callback if exists
-        if( that._onTextureLoadErrorCallback ){
-          that._onTextureLoadErrorCallback( that._chunkID );
-        }
-
-      }
-    );
-
-    this._threeJsTexture.magFilter = THREE.NearestFilter;
-    this._threeJsTexture.minFilter = THREE.NearestFilter;
-
+    // call the fallure callback if exists
+    if( this._onTextureLoadErrorCallback ){
+      this._onTextureLoadErrorCallback( this._chunkID );
+    }
   }
 
 
