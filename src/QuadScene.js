@@ -13,12 +13,13 @@ import { PlaneManager } from './PlaneManager.js';
 * Originally, the purpose of the QuadScene is to display 3 orthogonal views usin othometric cameras, and one additional view using a perspective camera. The later is supposed to be more free of movement, giving an flexible global point of view. The 3 ortho cam are more likely to be in object coordinate so that rotating the main object wont affect what is shown on this views.
 *
 * @param {String} DomContainer - ID of div to show the QuadScene
+* @param {Object} config - {datatype: String, configURL: String} where datatype is the input data type ("octree_tiles" is the only available for the moment) and configURL is the URL of the JSON config file.
 *
 */
 class QuadScene{
 
-  constructor(DomContainer, configFile, rez=0){
-    this._configFile = configFile;
+  constructor(DomContainer, config, rez=0){
+    this._config = config;
     this._ready = false;
     this._counterRefresh = 0;
     this._resolutionLevel = rez;
@@ -419,7 +420,7 @@ class QuadScene{
     var that = this;
 
     // the config file was succesfully loaded
-    this._levelManager.loadConfig(this._configFile);
+    this._levelManager.loadConfig(this._config);
 
     this._levelManager.onReady(function(){
 

@@ -47,10 +47,11 @@ class LevelManager{
 
   /**
   * Load the json config file with an XMLHttpRequest.
-  * @param {String} filepath - A valid path to a valid JSON config file.
+  * @param {Object} config - {datatype: String, configURL: String} where datatype is the input data type ("octree_tiles" is the only available for the moment) and configURL is the URL of the JSON config file.
   */
-  loadConfig(filepath){
+  loadConfig(config){
     var that = this;
+    var filepath = config.configURL;
 
     var xobj = new XMLHttpRequest();
     xobj.overrideMimeType("application/json");
@@ -62,7 +63,7 @@ class LevelManager{
         that._workingDir = filepath.substring(0, Math.max(filepath.lastIndexOf("/"), filepath.lastIndexOf("\\")));
 
         // Rading the config object
-        that._loadConfigDescription(JSON.parse(xobj.responseText));
+        that._loadConfigDescription(config.datatype , JSON.parse(xobj.responseText));
       }else{
         console.error("Could not load config file " + filepath + "\nCode: " + xobj.readyState);
 
@@ -83,9 +84,10 @@ class LevelManager{
   * Load the config description object, sort its multiple resolution levels
   * so that the poorer goes first and the finer goes last. Then, for each level
   * calls _addChunkCollectionLevel().
+  * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok.
   * @param {Object} description - parsed from the JSON decription file.
   */
-  _loadConfigDescription(description){
+  _loadConfigDescription(datatype, description){
     var that = this;
 
     var levels = description.scales;
@@ -102,14 +104,14 @@ class LevelManager{
       });
     }
 
-    this._determineChunkSize(levels);
+    this._determineChunkSize(levels); // most likely 64 for every config anyway
 
     // Compute the cube hull, that will give some sense of boundaries to the dataset
     this._computeCubeHull(levels);
 
     // add a chunk collection for each level
     levels.forEach(function(elem, index){
-      that._addChunkCollectionLevel(index, elem.size);
+      that._addChunkCollectionLevel(index, elem.size, datatype);
     });
 
     if(this.onReadyCallback){
@@ -125,8 +127,9 @@ class LevelManager{
   * the resolution level in argument.
   * @param {Number} resolutionLevel - positive integer (or zero)
   * @param {Array} voxelSize - Entire number of voxel to form the whole 3D dataset at this level of resolution. This will be translated into the size of the 3D matrix of chunk (basically divided by 64 and rounded to ceil).
+  * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok.
   */
-  _addChunkCollectionLevel(resolutionLevel, voxelSize){
+  _addChunkCollectionLevel(resolutionLevel, voxelSize, datatype){
     // translating voxelSize into matrix3DSize
     // aka number of chunks (64x64x64) in each dimension
     var matrix3DSize = [
@@ -139,7 +142,9 @@ class LevelManager{
     this._chunkCollections.push( new ChunkCollection(
       resolutionLevel,
       matrix3DSize,
-      this._workingDir));
+      this._workingDir,
+      datatype
+    ));
   }
 
 

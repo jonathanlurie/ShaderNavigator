@@ -19,7 +19,7 @@ class ChunkCollection{
   * @param {Array} matrix3DSize - Number of chunks in each dimension [x, y, z] that are supposedly available.
   * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder
   */
-  constructor(resolutionLevel, matrix3DSize, workingDir){
+  constructor(resolutionLevel, matrix3DSize, workingDir, datatype){
     /**
     * The chunks of the same level. A map is used instead of an array because the chunks are loaded as they need to display, so we prefer to use an key (string built from the index3D) rather than a 1D array index.
     */

@@ -69,7 +69,7 @@ class TextureChunk{
     */
     this._index3D = index3D.slice();
     this._findChunkOrigin();
-    this._buildFileName();
+
 
     // try to load only if never tried
     if( !this._triedToLoad){
@@ -126,6 +126,7 @@ class TextureChunk{
   */
   _loadTexture(){
     var that = this;
+    this._buildFileName();
 
     //console.log("LOADING " + this._filepath + " ...");
 
