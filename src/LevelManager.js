@@ -1,6 +1,7 @@
 'use strict';
 
 import { ChunkCollection } from './ChunkCollection.js';
+import { AjaxFileLoader } from './AjaxFileLoader.js';
 
 /**
 * The LevelManager is above the {@link ChunkCollection} and contain them all, one for each resolution level. LevelManager also acts like an interface to query chunk data.
@@ -53,28 +54,29 @@ class LevelManager{
     var that = this;
     var filepath = config.configURL;
 
-    var xobj = new XMLHttpRequest();
-    xobj.overrideMimeType("application/json");
-    xobj.open('GET', filepath, true);
-    xobj.onreadystatechange = function () {
-      if (xobj.readyState == 4 && xobj.status == "200") {
+    AjaxFileLoader.loadTextFile(
+      // file URL
+      filepath,
 
+      // success callback
+      function(data){
         // the directory of the config file is the working directory
         that._workingDir = filepath.substring(0, Math.max(filepath.lastIndexOf("/"), filepath.lastIndexOf("\\")));
 
         // Rading the config object
-        that._loadConfigDescription(config.datatype , JSON.parse(xobj.responseText));
-      }else{
-        console.error("Could not load config file " + filepath + "\nCode: " + xobj.readyState);
+        that._loadConfigDescription(config.datatype , JSON.parse(data));
+      },
+
+      // error callback
+      function(error){
+        console.error("Could not load config file " + filepath);
 
         // if loading the config file failed, we have a callback for that.
         if(that._onConfigErrorCallback){
-          that._onConfigErrorCallback(filepath, xobj.status);
+          that._onConfigErrorCallback(filepath, 0);
         }
-
       }
-    };
-    xobj.send(null);
+    )
 
   }
 

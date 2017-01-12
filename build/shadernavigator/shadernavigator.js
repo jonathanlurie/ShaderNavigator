@@ -4,6 +4,9 @@
 	(factory((global.SHAD = global.SHAD || {})));
 }(this, (function (exports) { 'use strict';
 
+/**
+* Generic interface to load texture and give them to the TextureChunk
+*/
 class TextureLoaderInterface{
 
   constructor( textureChunk ){
@@ -12,6 +15,9 @@ class TextureLoaderInterface{
 
 } /* END class TextureLoaderInterface */
 
+/**
+* A TextureLoaderOctreeTiles is a specialization of TextureLoaderInterface. It loads a texture for a texture chunk directly from a image file in an octree 3D tiling architecture.
+*/
 class TextureLoaderOctreeTiles extends TextureLoaderInterface{
 
   constructor( textureChunk ){
@@ -766,6 +772,111 @@ class ChunkCollection{
 } /* END CLASS ChunkCollection */
 
 /**
+* Contains only static methods to load various kind of data with an AJAX request.
+*/
+class AjaxFileLoader{
+
+  /**
+  * Loads a text file and makes its content available thru a String.
+  * @param {String} url - URL of the file to load
+  * @param {callback} successCallback - function to call when the file is loaded. Called with one String argument.
+  * @param {callback} errorCallback - function to call when the file failed to load. Called with a Number argument (http status).
+  */
+  static loadTextFile(url, successCallback, errorCallback) {
+    var xhr = typeof XMLHttpRequest != 'undefined'
+      ? new XMLHttpRequest()
+      : new ActiveXObject('Microsoft.XMLHTTP');
+
+    xhr.open('GET', url, true);
+
+    xhr.onload = function() {
+      var status;
+      var data;
+
+      if (xhr.readyState == 4) { // `DONE`
+        status = xhr.status;
+        if (status == 200) {
+          successCallback && successCallback(xhr.responseText);
+        } else {
+          errorCallback && errorCallback(status);
+        }
+      }
+    };
+
+    xhr.onerror = function(e){
+      errorCallback && errorCallback(status);
+    };
+
+    xhr.send();
+  }
+
+
+
+  static loadCompressedTextFile(url, successCallback, errorCallback) {
+    if(! AjaxFileLoader.isPakoAvailable()){
+      errorCallback("Pako lib is not available, please include it to your project.");
+      return;
+    }
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.responseType = "arraybuffer";
+
+    xhr.onload = function (oEvent) {
+
+      var status = xhr.status;
+      var arrayBuffer = xhr.response;
+
+      if (arrayBuffer) {
+        var unzipped = pako.inflate(arrayBuffer);
+        var result = unzipped.buffer;
+        var blob = new Blob([result]);
+        var fileReader = new FileReader();
+
+        fileReader.onload = function(event) {
+          //console.log(event.target.result.length);
+          successCallback && successCallback(event.target.result);
+        };
+
+        fileReader.onerror = function(event){
+          errorCallback && errorCallback(event);
+        };
+
+        fileReader.readAsText(blob);
+      }
+    };
+
+    xhr.onerror = function(e){
+      console.error("Can't find the file " + url);
+      errorCallback && errorCallback(status);
+    };
+
+    xhr.send(null);
+
+  }
+
+
+  /**
+  * Check if Pako lib (for reading gz files) is available.
+  * @return true if available, or false if not
+  */
+  static isPakoAvailable(){
+    var isIt = true;
+
+    try{
+      pako;
+    }catch(e){
+      console.warn(e);
+      isIt = false;
+    }
+
+    return isIt;
+  }
+
+
+}/* END CLASS AjaxFileLoader */
+
+/**
 * The LevelManager is above the {@link ChunkCollection} and contain them all, one for each resolution level. LevelManager also acts like an interface to query chunk data.
 */
 class LevelManager{
@@ -816,28 +927,29 @@ class LevelManager{
     var that = this;
     var filepath = config.configURL;
 
-    var xobj = new XMLHttpRequest();
-    xobj.overrideMimeType("application/json");
-    xobj.open('GET', filepath, true);
-    xobj.onreadystatechange = function () {
-      if (xobj.readyState == 4 && xobj.status == "200") {
+    AjaxFileLoader.loadTextFile(
+      // file URL
+      filepath,
 
+      // success callback
+      function(data){
         // the directory of the config file is the working directory
         that._workingDir = filepath.substring(0, Math.max(filepath.lastIndexOf("/"), filepath.lastIndexOf("\\")));
 
         // Rading the config object
-        that._loadConfigDescription(config.datatype , JSON.parse(xobj.responseText));
-      }else{
-        console.error("Could not load config file " + filepath + "\nCode: " + xobj.readyState);
+        that._loadConfigDescription(config.datatype , JSON.parse(data));
+      },
+
+      // error callback
+      function(error){
+        console.error("Could not load config file " + filepath);
 
         // if loading the config file failed, we have a callback for that.
         if(that._onConfigErrorCallback){
-          that._onConfigErrorCallback(filepath, xobj.status);
+          that._onConfigErrorCallback(filepath, 0);
         }
-
       }
-    };
-    xobj.send(null);
+    );
 
   }
 
@@ -2726,8 +2838,8 @@ class PlaneManager{
 */
 class QuadScene{
 
-  constructor(DomContainer, config, rez=0){
-    this._config = config;
+  constructor(DomContainer, rez=0){
+    //this._config = config;
     this._ready = false;
     this._counterRefresh = 0;
     this._resolutionLevel = rez;
@@ -2800,7 +2912,7 @@ class QuadScene{
 
     this._initPlaneManager();
     //this._addProjectionPlane();
-    this._initLevelManager();
+    //this._initLevelManager();
     this._animate();
   }
 
@@ -3119,16 +3231,20 @@ class QuadScene{
   }
 
 
+  loadVoxelData( config ){
+    //this._config = config;
+    this._initLevelManager(config);
+  }
 
   /**
   * [PRIVATE]
   * Initialize the level manager and run some local init method when the lvl manager is ready.
   */
-  _initLevelManager(){
+  _initLevelManager( config ){
     var that = this;
 
     // the config file was succesfully loaded
-    this._levelManager.loadConfig(this._config);
+    this._levelManager.loadConfig(config);
 
     this._levelManager.onReady(function(){
 

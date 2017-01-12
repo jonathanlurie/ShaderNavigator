@@ -18,8 +18,7 @@ import { PlaneManager } from './PlaneManager.js';
 */
 class QuadScene{
 
-  constructor(DomContainer, config, rez=0){
-    this._config = config;
+  constructor(DomContainer, rez=0){
     this._ready = false;
     this._counterRefresh = 0;
     this._resolutionLevel = rez;
@@ -84,15 +83,13 @@ class QuadScene{
       height: 0
     };
 
+    // a future instance of MeshCollection, to deal with meshes (obviously)
+    this._meshCollection = null;
+
     this._stats = null;
-
     this._initViews();
-
     this._levelManager = new LevelManager();
-
     this._initPlaneManager();
-    //this._addProjectionPlane();
-    this._initLevelManager();
     this._animate();
   }
 
@@ -411,16 +408,38 @@ class QuadScene{
   }
 
 
+  /**
+  * Entry point to load data (texture chunk octree or mesh collection)
+  */
+  loadData( config ){
+    if( config.datatype == "precomputed_octree_tiles"){
+      this._initLevelManager(config);
+    }else if(config.datatype == "mesh_collection"){
+      this._initMeshCollection(config);
+    }else{
+      console.warn("The data to load has an unknown format.");
+    }
+
+  }
+
+
+  /**
+  * [PRIVATE]
+  */
+  _initMeshCollection( config ){
+    this._meshCollection = new MeshCollection( config );
+    this._meshCollection.setScene( this._scene ); 
+  }
 
   /**
   * [PRIVATE]
   * Initialize the level manager and run some local init method when the lvl manager is ready.
   */
-  _initLevelManager(){
+  _initLevelManager( config ){
     var that = this;
 
     // the config file was succesfully loaded
-    this._levelManager.loadConfig(this._config);
+    this._levelManager.loadConfig(config);
 
     this._levelManager.onReady(function(){
 

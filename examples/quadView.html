@@ -80,12 +80,13 @@
 
 		<script>
 
-    var quadScene = new SHAD.QuadScene(
-      "container",
-      //"http://132.216.122.238/jpeg/info2.json",
-      {datatype: "octree_tiles", configURL: "../data/info2.json"},
-      0
-    );
+    var quadScene = new SHAD.QuadScene("container", 0);
+
+    // loads the octree of texture chunks
+    quadScene.loadData({
+        datatype: "precomputed_octree_tiles",
+        configURL: "http://132.216.122.238/jpeg/info2.json"
+    });
 
     // optional: display some performances
     quadScene.initStat();
