@@ -1,7 +1,8 @@
 'use strict';
 
-import { ChunkCollection } from './ChunkCollection.js';
 import { AjaxFileLoader } from './AjaxFileLoader.js';
+import { ChunkCollection } from './ChunkCollection.js';
+
 
 /**
 * The LevelManager is above the {@link ChunkCollection} and contain them all, one for each resolution level. LevelManager also acts like an interface to query chunk data.
@@ -31,7 +32,7 @@ class LevelManager{
     this._cubeHull = null;
 
     /** size of a chunk, considering it's always cubic */
-    this._chunkSize = 64; // will be overwritten using the config file, but it will be 64 anyway.
+    this._chunkSize = [64, 64, 64]; // will be overwritten using the config file, but it will be 64 anyway.
 
     this._onConfigErrorCallback = null;
   }
@@ -48,11 +49,11 @@ class LevelManager{
 
   /**
   * Load the json config file with an XMLHttpRequest.
-  * @param {Object} config - {datatype: String, configURL: String} where datatype is the input data type ("octree_tiles" is the only available for the moment) and configURL is the URL of the JSON config file.
+  * @param {Object} config - {datatype: String, url: String} where datatype is the input data type ("octree_tiles" is the only available for the moment) and url is the URL of the JSON config file.
   */
   loadConfig(config){
     var that = this;
-    var filepath = config.configURL;
+    var filepath = config.url;
 
     AjaxFileLoader.loadTextFile(
       // file URL
@@ -135,9 +136,9 @@ class LevelManager{
     // translating voxelSize into matrix3DSize
     // aka number of chunks (64x64x64) in each dimension
     var matrix3DSize = [
-      Math.ceil( voxelSize[0] / this._chunkSize ),
-      Math.ceil( voxelSize[1] / this._chunkSize ),
-      Math.ceil( voxelSize[2] / this._chunkSize )
+      Math.ceil( voxelSize[0] / this._chunkSize[0] ),
+      Math.ceil( voxelSize[1] / this._chunkSize[1] ),
+      Math.ceil( voxelSize[2] / this._chunkSize[2] )
     ];
 
     // creating a new chunk collection for this specific level

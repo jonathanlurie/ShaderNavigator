@@ -78,7 +78,8 @@ class ChunkCollection{
       this._sizeChunkWC,
       this._workingDir,
       k,
-      this._datatype
+      this._datatype,
+      this._matrix3DSize
     );
 
     // callback on the texture when succesfully loaded
@@ -156,11 +157,25 @@ class ChunkCollection{
   * TODO: if we add an offset, it's here!
   */
   getIndex3DFromWorldPosition(position){
+
     var index3D = [
       Math.floor(position[0] / this._sizeChunkWC),
       Math.floor(position[1] / this._sizeChunkWC),
       Math.floor(position[2] / this._sizeChunkWC)
     ];
+
+    /*
+    if(position[0] >=0 && position[1] >=0 && position[2] >=0 &&
+       position[0]<1.609 && position[1]<1.81 && position[2]<1.406 &&
+       this._sizeChunkWC == 0.5){
+
+      console.log("------------------------------------");
+      console.log(this._sizeChunkWC);
+      console.log(this._matrix3DSize);
+      console.log(position);
+      console.log(index3D);
+    }
+    */
 
     return index3D;
   }
@@ -208,6 +223,7 @@ class ChunkCollection{
   * @return {Boolean} - true if within bounds, false if not.
   */
   isWithinBounds(index3D){
+
     if( index3D[0] < 0 || index3D[0] >= this._matrix3DSize[0] ||
         index3D[1] < 0 || index3D[1] >= this._matrix3DSize[1] ||
         index3D[2] < 0 || index3D[2] >= this._matrix3DSize[2] ){

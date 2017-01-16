@@ -27,10 +27,13 @@ class TextureChunk{
   * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder.
   * @param {String} chunkID - the string ID this chunk has within the ChunkCollection. This is used by the callbacks when succeding or failing to load the texture file.
   * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok
+  * @param {Array} matrix3DSize - Number of chunks in each dimension [x, y, z] that are supposedly available.
   */
-  constructor(resolutionLevel, voxelPerSide, sizeWC, workingDir, chunkID, datatype){
+  constructor(resolutionLevel, voxelPerSide, sizeWC, workingDir, chunkID, datatype, matrix3DSize){
     /** the string ID this chunk has within the ChunkCollection. This is used by the callbacks when succeding or failing to load the texture file */
     this._chunkID = chunkID;
+
+    this._matrix3DSize = matrix3DSize;
 
     /** Number of voxel per side of the chunk (suposedly cube shaped). Used as a constant.*/
     this._voxelPerSide = voxelPerSide;//64;
@@ -65,7 +68,7 @@ class TextureChunk{
     this._textureLoader = null;
 
     // the data is stored as an octree 3D tiling structure
-    if(datatype == "octree_tiles")
+    if(datatype == "precomputed_octree_tiles")
       this._textureLoader = new TextureLoaderOctreeTiles( this );
 
   }

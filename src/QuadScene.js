@@ -6,6 +6,7 @@ import { OrientationHelper } from './OrientationHelper.js';
 import { QuadViewInteraction } from './QuadViewInteraction.js';
 import { ColorMapManager } from './ColorMapManager.js';
 import { PlaneManager } from './PlaneManager.js';
+import { MeshCollection } from './MeshCollection.js';
 
 
 /**
@@ -13,7 +14,7 @@ import { PlaneManager } from './PlaneManager.js';
 * Originally, the purpose of the QuadScene is to display 3 orthogonal views usin othometric cameras, and one additional view using a perspective camera. The later is supposed to be more free of movement, giving an flexible global point of view. The 3 ortho cam are more likely to be in object coordinate so that rotating the main object wont affect what is shown on this views.
 *
 * @param {String} DomContainer - ID of div to show the QuadScene
-* @param {Object} config - {datatype: String, configURL: String} where datatype is the input data type ("octree_tiles" is the only available for the moment) and configURL is the URL of the JSON config file.
+* @param {Object} config - {datatype: String, url: String} where datatype is the input data type ("octree_tiles" is the only available for the moment) and url is the URL of the JSON config file.
 *
 */
 class QuadScene{
@@ -62,6 +63,35 @@ class QuadScene{
 
     // scene, where everything goes
     this._scene = new THREE.Scene();
+
+    var axisHelper = new THREE.AxisHelper( 1 );
+    axisHelper.layers.enable(1);
+
+    this._scene.add( axisHelper );
+
+    this._scene.add( new THREE.AmbientLight( 0x444444 ) );
+
+    var light1 = new THREE.DirectionalLight( 0xffffff, 0.75 );
+		light1.position.set( 200, 200, 200 );
+    light1.layers.enable( 0 );
+    light1.layers.enable( 1 );
+		this._scene.add( light1 );
+
+    // container of annotations and meshes, this is rotated/scaled/repositioned
+    // so that the items are in the proper places compared to the images
+    this._adjustedContainer = new THREE.Object3D();
+
+    // contains the annotations (that are not meshes)
+    this._annotationContainer = new THREE.Object3D();
+
+    // contains the meshes
+    this._meshContainer = new THREE.Object3D();
+
+    // what is inside what:
+    this._adjustedContainer.add(this._meshContainer);
+    this._adjustedContainer.add(this._annotationContainer);
+    this._scene.add(this._adjustedContainer);
+
 
     // renderer construction and setting
     this._renderer = new THREE.WebGLRenderer( { antialias: true } );
@@ -257,7 +287,7 @@ class QuadScene{
       },
 
       debug: function(){
-        console.log(that._colormapManager.getCurrentColorMap());
+        that._adjustedContainer.visible = !that._adjustedContainer.visible;
       }
 
     }
@@ -427,8 +457,7 @@ class QuadScene{
   * [PRIVATE]
   */
   _initMeshCollection( config ){
-    this._meshCollection = new MeshCollection( config );
-    this._meshCollection.setScene( this._scene ); 
+    this._meshCollection = new MeshCollection( config, this._meshContainer );
   }
 
   /**
@@ -566,6 +595,9 @@ class QuadScene{
 
     this._cubeHullSize = this._levelManager.getCubeHull();
 
+    console.log( this._cubeHullSize );
+
+
     var cubeHullMaterial = new THREE.MeshBasicMaterial( {
       transparent: true,
       opacity: 0.8,
@@ -580,16 +612,16 @@ class QuadScene{
       this._cubeHullSize[2]
     );
 
-    cubeHullGeometry.faces[0].color.setHex( 0xFF7A7A ); // Sagittal
-    cubeHullGeometry.faces[1].color.setHex( 0xFF7A7A );
-    cubeHullGeometry.faces[2].color.setHex( 0xff3333 );
-    cubeHullGeometry.faces[3].color.setHex( 0xff3333 );
-    cubeHullGeometry.faces[4].color.setHex( 0x61FA94 ); // Coronal
-    cubeHullGeometry.faces[5].color.setHex( 0x61FA94 );
-    cubeHullGeometry.faces[6].color.setHex( 0xA7FAC3 );
-    cubeHullGeometry.faces[7].color.setHex( 0xA7FAC3 );
-    cubeHullGeometry.faces[8].color.setHex( 0x95CCFC ); // Axial
-    cubeHullGeometry.faces[9].color.setHex( 0x95CCFC );
+    cubeHullGeometry.faces[0].color.setHex(  0xFF7A7A ); // Sagittal
+    cubeHullGeometry.faces[1].color.setHex(  0xFF7A7A );
+    cubeHullGeometry.faces[2].color.setHex(  0xff3333 );
+    cubeHullGeometry.faces[3].color.setHex(  0xff3333 );
+    cubeHullGeometry.faces[4].color.setHex(  0x61FA94 ); // Coronal
+    cubeHullGeometry.faces[5].color.setHex(  0x61FA94 );
+    cubeHullGeometry.faces[6].color.setHex(  0xA7FAC3 );
+    cubeHullGeometry.faces[7].color.setHex(  0xA7FAC3 );
+    cubeHullGeometry.faces[8].color.setHex(  0x95CCFC ); // Axial
+    cubeHullGeometry.faces[9].color.setHex(  0x95CCFC );
     cubeHullGeometry.faces[10].color.setHex( 0x0088ff );
     cubeHullGeometry.faces[11].color.setHex( 0x0088ff );
 

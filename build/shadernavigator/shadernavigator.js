@@ -107,10 +107,13 @@ class TextureChunk{
   * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder.
   * @param {String} chunkID - the string ID this chunk has within the ChunkCollection. This is used by the callbacks when succeding or failing to load the texture file.
   * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok
+  * @param {Array} matrix3DSize - Number of chunks in each dimension [x, y, z] that are supposedly available.
   */
-  constructor(resolutionLevel, voxelPerSide, sizeWC, workingDir, chunkID, datatype){
+  constructor(resolutionLevel, voxelPerSide, sizeWC, workingDir, chunkID, datatype, matrix3DSize){
     /** the string ID this chunk has within the ChunkCollection. This is used by the callbacks when succeding or failing to load the texture file */
     this._chunkID = chunkID;
+
+    this._matrix3DSize = matrix3DSize;
 
     /** Number of voxel per side of the chunk (suposedly cube shaped). Used as a constant.*/
     this._voxelPerSide = voxelPerSide;//64;
@@ -145,7 +148,7 @@ class TextureChunk{
     this._textureLoader = null;
 
     // the data is stored as an octree 3D tiling structure
-    if(datatype == "octree_tiles")
+    if(datatype == "precomputed_octree_tiles")
       this._textureLoader = new TextureLoaderOctreeTiles( this );
 
   }
@@ -465,7 +468,8 @@ class ChunkCollection{
       this._sizeChunkWC,
       this._workingDir,
       k,
-      this._datatype
+      this._datatype,
+      this._matrix3DSize
     );
 
     // callback on the texture when succesfully loaded
@@ -543,11 +547,25 @@ class ChunkCollection{
   * TODO: if we add an offset, it's here!
   */
   getIndex3DFromWorldPosition(position){
+
     var index3D = [
       Math.floor(position[0] / this._sizeChunkWC),
       Math.floor(position[1] / this._sizeChunkWC),
       Math.floor(position[2] / this._sizeChunkWC)
     ];
+
+    /*
+    if(position[0] >=0 && position[1] >=0 && position[2] >=0 &&
+       position[0]<1.609 && position[1]<1.81 && position[2]<1.406 &&
+       this._sizeChunkWC == 0.5){
+
+      console.log("------------------------------------");
+      console.log(this._sizeChunkWC);
+      console.log(this._matrix3DSize);
+      console.log(position);
+      console.log(index3D);
+    }
+    */
 
     return index3D;
   }
@@ -595,6 +613,7 @@ class ChunkCollection{
   * @return {Boolean} - true if within bounds, false if not.
   */
   isWithinBounds(index3D){
+
     if( index3D[0] < 0 || index3D[0] >= this._matrix3DSize[0] ||
         index3D[1] < 0 || index3D[1] >= this._matrix3DSize[1] ||
         index3D[2] < 0 || index3D[2] >= this._matrix3DSize[2] ){
@@ -904,7 +923,7 @@ class LevelManager{
     this._cubeHull = null;
 
     /** size of a chunk, considering it's always cubic */
-    this._chunkSize = 64; // will be overwritten using the config file, but it will be 64 anyway.
+    this._chunkSize = [64, 64, 64]; // will be overwritten using the config file, but it will be 64 anyway.
 
     this._onConfigErrorCallback = null;
   }
@@ -921,11 +940,11 @@ class LevelManager{
 
   /**
   * Load the json config file with an XMLHttpRequest.
-  * @param {Object} config - {datatype: String, configURL: String} where datatype is the input data type ("octree_tiles" is the only available for the moment) and configURL is the URL of the JSON config file.
+  * @param {Object} config - {datatype: String, url: String} where datatype is the input data type ("octree_tiles" is the only available for the moment) and url is the URL of the JSON config file.
   */
   loadConfig(config){
     var that = this;
-    var filepath = config.configURL;
+    var filepath = config.url;
 
     AjaxFileLoader.loadTextFile(
       // file URL
@@ -1008,9 +1027,9 @@ class LevelManager{
     // translating voxelSize into matrix3DSize
     // aka number of chunks (64x64x64) in each dimension
     var matrix3DSize = [
-      Math.ceil( voxelSize[0] / this._chunkSize ),
-      Math.ceil( voxelSize[1] / this._chunkSize ),
-      Math.ceil( voxelSize[2] / this._chunkSize )
+      Math.ceil( voxelSize[0] / this._chunkSize[0] ),
+      Math.ceil( voxelSize[1] / this._chunkSize[1] ),
+      Math.ceil( voxelSize[2] / this._chunkSize[2] )
     ];
 
     // creating a new chunk collection for this specific level
@@ -2306,7 +2325,7 @@ class ColorMapManager{
 
 } /* END class ColorMapManager */
 
-var texture3d_frag = "const int maxNbChunks = 8;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying vec4 worldCoord;\nvarying vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||\n            chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||\n            chunkPosition.z<0.0 || chunkPosition.z>=1.0 );\n}\nvoid getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){\n  float numberOfImagePerStripY = 64.0;\n  float numberOfPixelPerSide = 64.0;\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY;\n  float stripX = chunkPosition.x;\n  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  colorFromTexture = texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){\n  vec3 chunkSystemCoordinate = vec3( (textureOrigin.x - world.x)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.z - world.z)*(-1.0)/chunkSize);\n  return chunkSystemCoordinate;\n}\nvoid main( void ) {\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(0.0, 0.0 , 0.0, 0.0);\n  vec3 chunkPosition;\n  bool mustWrite = false;\n  if(nbChunks >= 1){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);\n    if( isInsideChunk(chunkPosition) ){\n      getColorFrom3DTexture(textures[0], chunkPosition, color);\n      mustWrite = true;\n    }\n    if(nbChunks >= 2){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);\n      if( isInsideChunk(chunkPosition) ){\n        getColorFrom3DTexture(textures[1], chunkPosition, color);\n        mustWrite = true;\n      }\n      if(nbChunks >= 3){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);\n        if( isInsideChunk(chunkPosition) ){\n          getColorFrom3DTexture(textures[2], chunkPosition, color);\n          mustWrite = true;\n        }\n        if(nbChunks >= 4){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);\n          if( isInsideChunk(chunkPosition) ){\n            getColorFrom3DTexture(textures[3], chunkPosition, color);\n            mustWrite = true;\n          }\n          if(nbChunks >= 5){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);\n            if( isInsideChunk(chunkPosition) ){\n              getColorFrom3DTexture(textures[4], chunkPosition, color);\n              mustWrite = true;\n            }\n            if(nbChunks >= 6){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);\n              if( isInsideChunk(chunkPosition) ){\n                getColorFrom3DTexture(textures[5], chunkPosition, color);\n                mustWrite = true;\n              }\n              if(nbChunks >= 7){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);\n                if( isInsideChunk(chunkPosition) ){\n                  getColorFrom3DTexture(textures[6], chunkPosition, color);\n                  mustWrite = true;\n                }\n                if(nbChunks == 8){\n                  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);\n                  if( isInsideChunk(chunkPosition) ){\n                    getColorFrom3DTexture(textures[7], chunkPosition, color);\n                    mustWrite = true;\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(mustWrite){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a == 0.0){\n        discard;\n      }else{\n        gl_FragColor = colorFromColorMap;\n      }\n    }else{\n      gl_FragColor = color;\n    }\n  }else{\n    discard;\n  }\n}\n";
+var texture3d_frag = "const int maxNbChunks = 8;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying vec4 worldCoord;\nvarying vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||\n            chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||\n            chunkPosition.z<0.0 || chunkPosition.z>=1.0 );\n}\nvoid getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){\n  float numberOfImagePerStripY = 64.0;\n  float numberOfPixelPerSide = 64.0;\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY;\n  float stripX = chunkPosition.x;\n  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  colorFromTexture = texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){\n  vec3 chunkSystemCoordinate = vec3((textureOrigin.x - world.x)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.z - world.z)*(-1.0)/chunkSize);\n  return chunkSystemCoordinate;\n}\nvoid main( void ) {\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(0.0, 0.0 , 0.0, 0.0);\n  vec3 chunkPosition;\n  bool mustWrite = false;\n  if(nbChunks >= 1){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);\n    if( isInsideChunk(chunkPosition) ){\n      getColorFrom3DTexture(textures[0], chunkPosition, color);\n      mustWrite = true;\n    }\n    if(nbChunks >= 2){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);\n      if( isInsideChunk(chunkPosition) ){\n        getColorFrom3DTexture(textures[1], chunkPosition, color);\n        mustWrite = true;\n      }\n      if(nbChunks >= 3){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);\n        if( isInsideChunk(chunkPosition) ){\n          getColorFrom3DTexture(textures[2], chunkPosition, color);\n          mustWrite = true;\n        }\n        if(nbChunks >= 4){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);\n          if( isInsideChunk(chunkPosition) ){\n            getColorFrom3DTexture(textures[3], chunkPosition, color);\n            mustWrite = true;\n          }\n          if(nbChunks >= 5){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);\n            if( isInsideChunk(chunkPosition) ){\n              getColorFrom3DTexture(textures[4], chunkPosition, color);\n              mustWrite = true;\n            }\n            if(nbChunks >= 6){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);\n              if( isInsideChunk(chunkPosition) ){\n                getColorFrom3DTexture(textures[5], chunkPosition, color);\n                mustWrite = true;\n              }\n              if(nbChunks >= 7){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);\n                if( isInsideChunk(chunkPosition) ){\n                  getColorFrom3DTexture(textures[6], chunkPosition, color);\n                  mustWrite = true;\n                }\n                if(nbChunks == 8){\n                  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);\n                  if( isInsideChunk(chunkPosition) ){\n                    getColorFrom3DTexture(textures[7], chunkPosition, color);\n                    mustWrite = true;\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(mustWrite){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a == 0.0){\n        discard;\n      }else{\n        gl_FragColor = colorFromColorMap;\n      }\n    }else{\n      gl_FragColor = color;\n    }\n  }else{\n    discard;\n  }\n}\n";
 
 var texture3d_vert = "uniform float chunkSize;\nuniform sampler2D colorMap;\nvarying vec2 vUv;\nvarying vec4 worldCoord;\nvoid main()\n{\n  vUv = uv;\n  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );\n  gl_Position = projectionMatrix * mvPosition;\n  worldCoord = modelMatrix * vec4( position, 1.0 );\n}\n";
 
@@ -2829,17 +2848,655 @@ class PlaneManager{
 } /* END CLASS PlaneManager */
 
 /**
+* MniObjReader is a parser of mniobj surface files. This version is an atempt of
+* making a free from dependency independant module. It is based on the code witten
+* by Nicolas Kassis and Tarek Sherif for BrainBrowser
+* (https://brainbrowser.cbrain.mcgill.ca).
+*
+* Since mniobj file can be huge, it may be a good idea to call that froma worker.
+*
+* @author: Jonathan Lurie (github.com/jonathanlurie)
+* @author: Nicolas Kassis
+* @author: Tarek Sherif
+*/
+
+class MniObjReader{
+
+  /**
+  * Constructor of the MniObjReader.
+  */
+  constructor(){
+    this._stack = null;
+    this._stackIndex = null;
+    this._tempResult = null;
+    this._shapeData = null;
+  }
+
+
+  /**
+  * Copy an existing MniObjReader instance.
+  * This is particularly usefull in the context of a worker, if an MniObjReader
+  * is returned, it is using a JSON format to transfer, meaning all the methods
+  * are lost and only remains the data. This is to rebuild a proper MniObjReader.
+  * @param {MniObjReader} MniObjReaderInstance - the instance to copy the data from.
+  */
+  copy(MniObjReaderInstance){
+    this._stack = MniObjReaderInstance._stack;
+    this._stackIndex = MniObjReaderInstance._stackIndex;
+    this._tempResult = MniObjReaderInstance._tempResult;
+    this._shapeData = MniObjReaderInstance._shapeData;
+  }
+
+
+  /**
+  * Parse the nmiobj string.
+  * @param {String} objString - This string is obviously taken out of a obj file
+  */
+  parse(objString) {
+    this._parseRawData( objString );
+    this._arrangeData();
+  }
+
+
+  /**
+  * Parse a obj string
+  * @param {String} objString - content of the obj file
+  */
+  _parseRawData( objString ){
+    this._stack = objString.trim().split(/\s+/).reverse();
+    this._stackIndex = this._stack.length - 1;
+    this._tempResult = {};
+
+    var splitHemispheres = false;  //TODO remove that and the code that depends on that
+    var objectClass = this._popStack();
+    var start, end, nitems;
+    var indices, endIndices;
+    var lineIndices = null;
+    var lineIndexSize, lineIndexCounter;
+
+    // By default models are not split
+    // (this option allows us to split hemispheres
+    // into two separate models.)
+    this._tempResult.split = false;
+
+    this._tempResult.type = objectClass === "P" ? "polygon" :
+                  objectClass === "L" ? "line" :
+                  objectClass;
+
+    if(this._tempResult.type === "polygon") {
+      this._parseSurfProp();
+      this._tempResult.numVertices = parseInt(this._popStack(), 10);
+      this._parseVertices();
+      this._parseNormals();
+      this._tempResult.nitems = parseInt(this._popStack(), 10);
+    } else if (this._tempResult.type === "line") {
+      this._parseSurfProp();
+      this._tempResult.numVertices = parseInt(this._popStack(), 10);
+      this._parseVertices();
+      this._tempResult.nitems = parseInt(this._popStack(), 10);
+    } else {
+      this._tempResult.error = true;
+      this._tempResult.errorMessage = 'Invalid MNI Object class: must be "polygon" or "line"';
+      return;
+    }
+
+    this._parseColors();
+    this._parseEndIndices();
+    this._parseIndices();
+
+    if (this._tempResult.type === "polygon" ) {
+      if (splitHemispheres){
+        this._tempResult.split = true;
+        this._splitHemispheres();
+      }
+    } else if (this._tempResult.type === "line") {
+      indices = this._tempResult.indices;
+      endIndices = this._tempResult.endIndices;
+      nitems = this._tempResult.nitems;
+      lineIndexSize = lineIndexCounter = 0;
+
+      for (var i = 0; i < nitems; i++){
+        if (i === 0){
+          start = 0;
+        } else {
+          start = endIndices[i - 1];
+        }
+
+        end = endIndices[i];
+        lineIndexSize += (end - start - 1) * 2;
+      }
+
+      lineIndices = new Uint32Array(lineIndexSize);
+
+      for (var i = 0; i < nitems; i++){
+        if (i === 0){
+          start = 0;
+        } else {
+          start = endIndices[i - 1];
+        }
+
+        lineIndices[lineIndexCounter++] = indices[start];
+        end = endIndices[i];
+
+        for (var j = start + 1; j < end - 1; j++) {
+          lineIndices[lineIndexCounter++] = indices[j];
+          lineIndices[lineIndexCounter++] = indices[j];
+        }
+
+        lineIndices[lineIndexCounter++] = indices[end - 1];
+      }
+
+      this._tempResult.indices = lineIndices;
+    }
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Rearange the data from _tempResult to _shapeData
+  */
+  _arrangeData() {
+
+      this._shapeData = {
+        type: this._tempResult.type,
+        vertices: this._tempResult.vertices,
+        normals: this._tempResult.normals,
+        colors: this._tempResult.colors,
+        surfaceProperties: this._tempResult.surfaceProperties,
+        split: this._tempResult.split,
+        error: this._tempResult.error,
+        errorMessage: this._tempResult.errorMessage
+      };
+
+      var transfer = [
+        this._shapeData.vertices.buffer,
+        this._shapeData.colors.buffer
+      ];
+
+      if (this._shapeData.normals) {
+        transfer.push(this._shapeData.normals.buffer);
+      }
+
+      if (this._shapeData.split) {
+        this._shapeData.shapes = [
+          { indices: this._tempResult.left.indices },
+          { indices: this._tempResult.right.indices }
+        ];
+
+        transfer.push(
+          this._tempResult.left.indices.buffer,
+          this._tempResult.right.indices.buffer
+        );
+      } else {
+        this._shapeData.shapes = [
+          { indices: this._tempResult.indices }
+        ];
+        transfer.push(
+          this._tempResult.indices.buffer
+        );
+      }
+
+      // unroll colors if necessary
+      if(this._shapeData.colors.length === 4) {
+        this._unrollColors();
+      }
+  }
+
+
+  /**
+  * [PRIVATE]
+  * From a single color, make a typed array (Uint8) of colors.
+  */
+  _unrollColors(){
+    var dataColor0, dataColor1, dataColor2, dataColor3;
+    var count;
+    var nbTriangles = this._shapeData.vertices.length / 3;
+    var arraySize = nbTriangles * 4;
+    var unrolledColors = new Uint8Array(arraySize);
+
+    dataColor0 = this._shapeData.colors[0];
+    dataColor1 = this._shapeData.colors[1];
+    dataColor2 = this._shapeData.colors[2];
+    dataColor3 = this._shapeData.colors[3];
+
+    for(var i=0; i<arraySize; i+=4){
+      unrolledColors[i]     = dataColor0 * 255;
+      unrolledColors[i + 1] = dataColor1 * 255;
+      unrolledColors[i + 2] = dataColor2 * 255;
+      unrolledColors[i + 3] = dataColor3 * 255;
+    }
+
+    this._shapeData.colors = unrolledColors;
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Parse surface properties from the raw data.
+  */
+  _parseSurfProp() {
+    if (this._tempResult.type === "polygon") {
+      this._tempResult.surfaceProperties = {
+        ambient: parseFloat(this._popStack()),
+        diffuse: parseFloat(this._popStack()),
+        specularReflectance: parseFloat(this._popStack()),
+        specularScattering: parseFloat(this._popStack()),
+        transparency: parseFloat(this._popStack())
+      };
+
+    }else if (this._tempResult.type === "line") {
+      this._tempResult.surfaceProperties = {
+        width: this._popStack()
+      };
+    }
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Parse the vertices from the raw data.
+  */
+  _parseVertices() {
+    var count = this._tempResult.numVertices * 3;
+    var vertices = new Float32Array(count);
+    var that = this;
+
+    for (var i = 0; i < count; i++) {
+      vertices[i] = parseFloat(this._popStack());
+    }
+
+    this._tempResult.vertices = vertices;
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Parse the normal vector from the raw data.
+  */
+  _parseNormals() {
+    var count = this._tempResult.numVertices * 3;
+    var normals = new Float32Array(count);
+
+    for (var i = 0; i < count; i++) {
+      normals[i] = parseFloat(this._popStack());
+    }
+
+    this._tempResult.normals = normals;
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Parse the color from the raw data.
+  */
+  _parseColors() {
+    var colorFlag = parseInt(this._popStack(), 10);
+    var colors;
+    var count;
+
+    if (colorFlag === 0) {
+      colors = new Float32Array(4);
+      for (var i = 0; i < 4; i++){
+        colors[i] = parseFloat(this._popStack());
+      }
+    } else if (colorFlag === 1) {
+      count = this._tempResult.num_polygons * 4;
+      colors = new Float32Array(count);
+      for (var i = 0; i < count; i++){
+        colors[i] = parseFloat(this._popStack());
+      }
+    } else if (colorFlag === 2) {
+      count = this._tempResult.numVertices * 4;
+      colors = new Float32Array(count);
+      for (var i = 0; i < count; i++){
+        colors[i] = parseFloat(this._popStack());
+      }
+    } else {
+      this._tempResult.error = true;
+      this._tempResult.errorMessage = "Invalid color flag: " + colorFlag;
+    }
+
+    this._tempResult.colorFlag = colorFlag;
+    this._tempResult.colors = colors;
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Not sure how useful endIndices are, it was used in BrainBrowser so I kept them.
+  * (is that useful?)
+  */
+  _parseEndIndices(){
+    var count = this._tempResult.nitems;
+    var endIndices = new Uint32Array(count);
+
+    for(var i = 0; i < count; i++){
+      endIndices[i] = parseInt(this._popStack(), 10);
+    }
+
+    this._tempResult.endIndices = endIndices;
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Reads the vertices indices to use to make triangles.
+  */
+  _parseIndices() {
+    var count = this._stackIndex + 1;
+    var indices = new Uint32Array(count);
+
+    for (var i = 0; i < count; i++) {
+      indices[i] = parseInt(this._popStack(), 10);
+    }
+
+    this._tempResult.indices = indices;
+  }
+
+
+  /**
+  * [NOT USED]
+  * This is legacy code I left from the reader in BrainBrowser. Since splitHemispheres is
+  * hardcoded to false, this is not called.
+  */
+  _splitHemispheres() {
+    var numIndices = this._tempResult.indices.length;
+
+    this._tempResult.left = {
+      indices: new Uint32Array(Array.prototype.slice.call(this._tempResult.indices, 0, numIndices / 2))
+    };
+
+    this._tempResult.right = {
+      indices: new Uint32Array(Array.prototype.slice.call(this._tempResult.indices, numIndices / 2))
+    };
+  }
+
+
+  /**
+  * [PRIVATE]
+  * pop the raw data (big string file)
+  * @return {String}
+  */
+  _popStack() {
+    return this._stack[this._stackIndex--];
+  }
+
+
+  /**
+  * [DEBUGGING]
+  * @return {Object} the entire shapeData object.
+  */
+  getShapeData () {
+    return this._shapeData;
+  }
+
+
+  /**
+  * @return the number of shapes encoded in the file
+  */
+  getNumberOfShapes() {
+    return this._shapeData.shapes.length;
+  }
+
+
+  /**
+  * Returns the index of vertices to be used to make triangles, as a typed array.
+  * @return {Uint32Array} Since triangles have 3 vertices, the array contains index such as
+  * [i0, i1, i2, i0, i1, i2, ...].
+  */
+  getShapeRawIndices(shapeNum) {
+    if(shapeNum >= 0 && shapeNum<this._shapeData.shapes.length){
+      return this._shapeData.shapes[shapeNum].indices;
+    }else{
+      return null;
+    }
+  }
+
+
+  /**
+  * Returns the vertice position as a typed array.
+  * @return {Float32Array} of points encoded like [x, y, z, x, y, z, ...]
+  */
+  getRawVertices() {
+    return this._shapeData.vertices;
+  }
+
+
+  /**
+  * Returns the normal vectors as a typed array.
+  * @return {Float32Array} of normal vector encoded like [x, y, z, x, y, z, ...]
+  */
+  getRawNormals() {
+    return this._shapeData.normals;
+  }
+
+
+  /**
+  * Get the colors encoded like [r, g, b, a, r, g, b, a, ...]
+  * @return {Float32Array} of size 4 or of size 4xnumOfVertices
+  */
+  getRawColors(){
+    return this._shapeData.colors;
+  }
+
+
+  /**
+  * The surface properties contains transparency info about specularity transparency
+  * and other nice light-related behaviour thingies.
+  * May be used when building a material, but this is not mandatory.
+  * @return {Object}
+  */
+  getSurfaceProperties(){
+    return this._shapeData.surfaceProperties;
+  }
+
+
+}/* END CLASS MniObjReader */
+
+class MeshCollection{
+
+  /**
+  * Constructor of the MeshCollection instance.
+  *
+  */
+  constructor( config, container ){
+
+    // THREE js container (object3D) for all the meshes
+    this._container = container;
+
+
+    // rather than an arrya because all mesh have an ID
+    this._meshes = {};
+
+    // the folder that contains the json config file (that is at config.url).
+    // depending on the option of the file, the mesh files can have a
+    // relative address to this folder, making the folder portable.
+    this._configFileDir = null;
+
+    this._collectionBox = null;
+
+    this._readConfig( config );
+  }
+
+
+
+  /**
+  * [PRIVATE]
+  * Start to read the configuration, containing an extensive list of mesh
+  * with their description.
+  * @param {Object} config - a small config object {datatype: String, url: String}
+  */
+  _readConfig( config ){
+    var that = this;
+    var filepath = config.url;
+
+    AjaxFileLoader.loadTextFile(
+      // file URL
+      filepath,
+
+      // success callback
+      function(data){
+        // the directory of the config file is the working directory
+        that._configFileDir = filepath.substring(0, Math.max(filepath.lastIndexOf("/"), filepath.lastIndexOf("\\"))) + "/";
+
+        // Rading the config object
+        that._loadConfigDescription(JSON.parse(data));
+      },
+
+      // error callback
+      function(error){
+        console.error("Could not load config file " + filepath);
+
+        // if loading the config file failed, we have a callback for that.
+        if(that._onConfigErrorCallback){
+          that._onConfigErrorCallback(filepath, 0);
+        }
+      }
+    );
+  }
+
+
+  /**
+  * [PRIVATE]
+  *
+  */
+  _loadConfigDescription( meshConfig ){
+    var that = this;
+
+    meshConfig.forEach( function(meshInfo){
+      var url = meshInfo.url;
+
+      // "near" means files are in a folder relative to the config file.
+      // This can be local or distant.
+      if( meshInfo.urlType == "near" ){
+        url = that._configFileDir + url;
+
+      // "local" means the specified url is relative to the web app
+      }else if(meshInfo.urlType == "local"){
+        // nothing to do
+
+      // "absolute" means the path should start by http
+      }else if(meshInfo.urlType == "absolute"){
+        // nothing to do
+      }
+
+
+
+      AjaxFileLoader.loadTextFile(
+        // file URL
+        url,
+
+        // success callback
+        function(data){
+          var objReader = new MniObjReader();
+          objReader.parse( data );
+          var mesh = that._buildMeshFromObjReader( objReader );
+          mesh.geometry.computeBoundingBox();
+          mesh.name = meshInfo.id;
+          mesh.userData.longName = meshInfo.name;
+          mesh.userData.description = meshInfo.description;
+
+          // shows on all cam
+          //mesh.layers.enable( 0 );
+          //mesh.layers.enable( 1 );
+
+          // show only on perspective cam
+          mesh.layers.disable( 0 );
+          mesh.layers.enable( 1 );
+
+          that._meshes[meshInfo.id] = mesh;
+          that._container.add( mesh );
+
+          console.log(mesh);
+          that._updateCollectionBox( mesh );
+        },
+
+        // error callback
+        function(error){
+          console.error("Could not load mesh file " + url);
+
+        }
+      );
+
+
+
+    });
+
+    console.log( meshConfig );
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Creates a three mesh out of a mniObjReader instance
+  * @param {MniObjReader} mniObjReader - must have called parse() on it first
+  * @return {THREE.Mesh} - a mesh based on the mni obj parsed data
+  */
+  _buildMeshFromObjReader( mniObjReader ){
+    var geometry = new THREE.BufferGeometry();
+    var indices = mniObjReader.getShapeRawIndices(0);
+    var positions = mniObjReader.getRawVertices();
+    var normals = mniObjReader.getRawNormals();
+    var colors = mniObjReader.getRawColors();
+    geometry.setIndex( new THREE.BufferAttribute( indices, 1 ) );
+    geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+    geometry.addAttribute( 'normal', new THREE.BufferAttribute( normals, 3, true ) );
+    geometry.addAttribute( 'color', new THREE.BufferAttribute( colors, 4, true ) );
+    geometry.computeBoundingSphere();
+
+    var material = new THREE.MeshPhongMaterial( {
+      specular: 0xffffff,
+      shininess: 250,
+      side: THREE.DoubleSide,
+      vertexColors: THREE.VertexColors,
+      transparent: true,
+      opacity: 0.2,//mniObjReader.getSurfaceProperties().transparency,
+    } );
+
+    var mesh = new THREE.Mesh( geometry, material );
+    return mesh;
+  }
+
+
+  _updateCollectionBox( mesh ){
+
+    // first mesh we load, we take its bb
+    if(!this._collectionBox){
+      this._collectionBox = mesh.geometry.boundingBox.clone();
+
+    // additionnal mes: we expand the collection bb
+    }else{
+      this._collectionBox.union( mesh.geometry.boundingBox );
+
+      console.log("bounding box:");
+      console.log(this._collectionBox.getCenter());
+      console.log(this._collectionBox.getSize());
+
+      //this._container.applyMatrix(new THREE.Matrix4().makeScale(-1, 1, 1));
+
+      var factor = 85;
+      this._container.scale.set(1/factor, 1/factor, 1/factor);
+      this._container.rotateY( Math.PI);
+      this._container.position.set(1.609/2, 1.81/2, 1.406/2);
+
+    }
+
+
+  }
+
+} /* END class MeshCollection */
+
+/**
 * A QuadScene is a THREE js context where the viewport is split in 4 windows, for each window comes a QuadView.
 * Originally, the purpose of the QuadScene is to display 3 orthogonal views usin othometric cameras, and one additional view using a perspective camera. The later is supposed to be more free of movement, giving an flexible global point of view. The 3 ortho cam are more likely to be in object coordinate so that rotating the main object wont affect what is shown on this views.
 *
 * @param {String} DomContainer - ID of div to show the QuadScene
-* @param {Object} config - {datatype: String, configURL: String} where datatype is the input data type ("octree_tiles" is the only available for the moment) and configURL is the URL of the JSON config file.
+* @param {Object} config - {datatype: String, url: String} where datatype is the input data type ("octree_tiles" is the only available for the moment) and url is the URL of the JSON config file.
 *
 */
 class QuadScene{
 
   constructor(DomContainer, rez=0){
-    //this._config = config;
     this._ready = false;
     this._counterRefresh = 0;
     this._resolutionLevel = rez;
@@ -2884,6 +3541,35 @@ class QuadScene{
     // scene, where everything goes
     this._scene = new THREE.Scene();
 
+    var axisHelper = new THREE.AxisHelper( 1 );
+    axisHelper.layers.enable(1);
+
+    this._scene.add( axisHelper );
+
+    this._scene.add( new THREE.AmbientLight( 0x444444 ) );
+
+    var light1 = new THREE.DirectionalLight( 0xffffff, 0.75 );
+		light1.position.set( 200, 200, 200 );
+    light1.layers.enable( 0 );
+    light1.layers.enable( 1 );
+		this._scene.add( light1 );
+
+    // container of annotations and meshes, this is rotated/scaled/repositioned
+    // so that the items are in the proper places compared to the images
+    this._adjustedContainer = new THREE.Object3D();
+
+    // contains the annotations (that are not meshes)
+    this._annotationContainer = new THREE.Object3D();
+
+    // contains the meshes
+    this._meshContainer = new THREE.Object3D();
+
+    // what is inside what:
+    this._adjustedContainer.add(this._meshContainer);
+    this._adjustedContainer.add(this._annotationContainer);
+    this._scene.add(this._adjustedContainer);
+
+
     // renderer construction and setting
     this._renderer = new THREE.WebGLRenderer( { antialias: true } );
     this._renderer.setPixelRatio( window.devicePixelRatio );
@@ -2904,15 +3590,13 @@ class QuadScene{
       height: 0
     };
 
+    // a future instance of MeshCollection, to deal with meshes (obviously)
+    this._meshCollection = null;
+
     this._stats = null;
-
     this._initViews();
-
     this._levelManager = new LevelManager();
-
     this._initPlaneManager();
-    //this._addProjectionPlane();
-    //this._initLevelManager();
     this._animate();
   }
 
@@ -3080,7 +3764,7 @@ class QuadScene{
       },
 
       debug: function(){
-        console.log(that._colormapManager.getCurrentColorMap());
+        that._adjustedContainer.visible = !that._adjustedContainer.visible;
       }
 
     };
@@ -3231,9 +3915,26 @@ class QuadScene{
   }
 
 
-  loadVoxelData( config ){
-    //this._config = config;
-    this._initLevelManager(config);
+  /**
+  * Entry point to load data (texture chunk octree or mesh collection)
+  */
+  loadData( config ){
+    if( config.datatype == "precomputed_octree_tiles"){
+      this._initLevelManager(config);
+    }else if(config.datatype == "mesh_collection"){
+      this._initMeshCollection(config);
+    }else{
+      console.warn("The data to load has an unknown format.");
+    }
+
+  }
+
+
+  /**
+  * [PRIVATE]
+  */
+  _initMeshCollection( config ){
+    this._meshCollection = new MeshCollection( config, this._meshContainer );
   }
 
   /**
@@ -3371,6 +4072,9 @@ class QuadScene{
 
     this._cubeHullSize = this._levelManager.getCubeHull();
 
+    console.log( this._cubeHullSize );
+
+
     var cubeHullMaterial = new THREE.MeshBasicMaterial( {
       transparent: true,
       opacity: 0.8,
@@ -3385,16 +4089,16 @@ class QuadScene{
       this._cubeHullSize[2]
     );
 
-    cubeHullGeometry.faces[0].color.setHex( 0xFF7A7A ); // Sagittal
-    cubeHullGeometry.faces[1].color.setHex( 0xFF7A7A );
-    cubeHullGeometry.faces[2].color.setHex( 0xff3333 );
-    cubeHullGeometry.faces[3].color.setHex( 0xff3333 );
-    cubeHullGeometry.faces[4].color.setHex( 0x61FA94 ); // Coronal
-    cubeHullGeometry.faces[5].color.setHex( 0x61FA94 );
-    cubeHullGeometry.faces[6].color.setHex( 0xA7FAC3 );
-    cubeHullGeometry.faces[7].color.setHex( 0xA7FAC3 );
-    cubeHullGeometry.faces[8].color.setHex( 0x95CCFC ); // Axial
-    cubeHullGeometry.faces[9].color.setHex( 0x95CCFC );
+    cubeHullGeometry.faces[0].color.setHex(  0xFF7A7A ); // Sagittal
+    cubeHullGeometry.faces[1].color.setHex(  0xFF7A7A );
+    cubeHullGeometry.faces[2].color.setHex(  0xff3333 );
+    cubeHullGeometry.faces[3].color.setHex(  0xff3333 );
+    cubeHullGeometry.faces[4].color.setHex(  0x61FA94 ); // Coronal
+    cubeHullGeometry.faces[5].color.setHex(  0x61FA94 );
+    cubeHullGeometry.faces[6].color.setHex(  0xA7FAC3 );
+    cubeHullGeometry.faces[7].color.setHex(  0xA7FAC3 );
+    cubeHullGeometry.faces[8].color.setHex(  0x95CCFC ); // Axial
+    cubeHullGeometry.faces[9].color.setHex(  0x95CCFC );
     cubeHullGeometry.faces[10].color.setHex( 0x0088ff );
     cubeHullGeometry.faces[11].color.setHex( 0x0088ff );
 

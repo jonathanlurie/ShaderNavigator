@@ -82,11 +82,20 @@
 
     var quadScene = new SHAD.QuadScene("container", 0);
 
+
     // loads the octree of texture chunks
     quadScene.loadData({
         datatype: "precomputed_octree_tiles",
-        configURL: "http://132.216.122.238/jpeg/info2.json"
+        url: "../data/info2.json"
+        //url: "http://132.216.122.238/jpeg/info2.json"
     });
+
+
+    quadScene.loadData({
+        datatype: "mesh_collection",
+        url: "../otherData/meshes/bigbrain_gray.json"
+    });
+    
 
     // optional: display some performances
     quadScene.initStat();

@@ -66,7 +66,7 @@ void getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4
 */
 vec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){
 
-  vec3 chunkSystemCoordinate = vec3( (textureOrigin.x - world.x)*(-1.0)/chunkSize,
+  vec3 chunkSystemCoordinate = vec3(/*1.0 - */(textureOrigin.x - world.x)*(-1.0)/chunkSize,
                                     1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize,
                                     1.0 - (textureOrigin.z - world.z)*(-1.0)/chunkSize);
 
