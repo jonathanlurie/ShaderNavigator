@@ -18,6 +18,7 @@ class ProjectionPlane{
     var that = this;
 
     this._plane = new THREE.Object3D();
+    this._plane.name = "projection plane";
 
     //this._subPlaneSize = chunkSize / 2; // ORIG
     //this._subPlaneSize = chunkSize * 0.7; // OPTIM
@@ -30,9 +31,9 @@ class ProjectionPlane{
     this._shaderMaterials = [];
 
     // number of rows and cols of sub-planes to compose the _plane
-    //this._subPlaneDim = {row: 10, col: 21}; // ORIG
+
     this._subPlaneDim = {row: 7, col: 15}; // OPTIM
-    //this._subPlaneDim = {row: 4, col: 4}; // TEST
+    //this._subPlaneDim = {row: 8, col: 17}; // TEST
 
     // to be aggregated
     this._colormapManager = colormapManager;

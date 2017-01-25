@@ -87,66 +87,66 @@ void main( void ) {
   vec2 shaderPos = vUv;
 
   // default color when out
-  vec4 color = vec4(0.0, 0.0 , 0.0, 0.0);
+  vec4 color = vec4(1.0, 0.0 , 0.0, 1.0);
 
   vec3 chunkPosition;
 
-  bool mustWrite = false;
+  bool hasColorFromChunk = false;
 
   if(nbChunks >= 1){
     chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);
     if( isInsideChunk(chunkPosition) ){
       getColorFrom3DTexture(textures[0], chunkPosition, color);
-      mustWrite = true;
+      hasColorFromChunk = true;
     }
 
     if(nbChunks >= 2){
       chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);
       if( isInsideChunk(chunkPosition) ){
         getColorFrom3DTexture(textures[1], chunkPosition, color);
-        mustWrite = true;
+        hasColorFromChunk = true;
       }
 
       if(nbChunks >= 3){
         chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);
         if( isInsideChunk(chunkPosition) ){
           getColorFrom3DTexture(textures[2], chunkPosition, color);
-          mustWrite = true;
+          hasColorFromChunk = true;
         }
 
         if(nbChunks >= 4){
           chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);
           if( isInsideChunk(chunkPosition) ){
             getColorFrom3DTexture(textures[3], chunkPosition, color);
-            mustWrite = true;
+            hasColorFromChunk = true;
           }
 
           if(nbChunks >= 5){
             chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);
             if( isInsideChunk(chunkPosition) ){
               getColorFrom3DTexture(textures[4], chunkPosition, color);
-              mustWrite = true;
+              hasColorFromChunk = true;
             }
 
             if(nbChunks >= 6){
               chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);
               if( isInsideChunk(chunkPosition) ){
                 getColorFrom3DTexture(textures[5], chunkPosition, color);
-                mustWrite = true;
+                hasColorFromChunk = true;
               }
 
               if(nbChunks >= 7){
                 chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);
                 if( isInsideChunk(chunkPosition) ){
                   getColorFrom3DTexture(textures[6], chunkPosition, color);
-                  mustWrite = true;
+                  hasColorFromChunk = true;
                 }
 
                 if(nbChunks == 8){
                   chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);
                   if( isInsideChunk(chunkPosition) ){
                     getColorFrom3DTexture(textures[7], chunkPosition, color);
-                    mustWrite = true;
+                    hasColorFromChunk = true;
                   }
 
                 }
@@ -158,28 +158,33 @@ void main( void ) {
     }
   }
 
-  if(mustWrite){
+  // inside the box
+  if(hasColorFromChunk){
 
+    // we are using a colormap
     if(useColorMap){
       vec2 colorToPosition = vec2(color.r, 0.5);
       vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);
 
-      if(colorFromColorMap.a == 0.0){
-        discard;
-      }else{
+      // the color from the colormap is not (fully) transparent
+      if(colorFromColorMap.a > 0.0){
         gl_FragColor = colorFromColorMap;
+
+      // the color from the colormap is fully transparent, simply not display it
+      }else{
+        discard;
       }
+
+    // we are not using a colormap
     }else{
       gl_FragColor = color;
     }
 
 
-
-
-
-
+  // outside the box
   }else{
     discard;
+    //gl_FragColor = vec4(1.0, 1.0 , 1.0, .5);
   }
 
 

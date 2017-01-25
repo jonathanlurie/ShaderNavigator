@@ -125,15 +125,15 @@ class QuadView{
   * Build an orthographic camera for this view.
   */
   initOrthoCamera(){
-    let orthographicCameraFovFactor = 360;
+    let orthographicCameraFovFactor = 360; // default: 360
 
     this._camera = new THREE.OrthographicCamera(
       window.innerWidth / - orthographicCameraFovFactor,
       window.innerWidth / orthographicCameraFovFactor,
       window.innerHeight / orthographicCameraFovFactor,
-      window.innerHeight / - orthographicCameraFovFactor,
-      this._near,
-      this._far
+      window.innerHeight / - orthographicCameraFovFactor
+      //9.99,//this._objectSize * 0.9, //this._near,
+      //10.01//this._objectSize * 1.1 //this._far
     );
 
     this._camera.left_orig = window.innerWidth / - orthographicCameraFovFactor;
@@ -173,6 +173,7 @@ class QuadView{
     this._camera.up.z = this._config.up[ 2 ];
     this._camera.fov = this._defaultFov;
     this._camera.lookAt( this._originToLookAt );
+
   }
 
 

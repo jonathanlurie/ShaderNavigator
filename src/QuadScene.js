@@ -87,6 +87,12 @@ class QuadScene{
     // contains the meshes
     this._meshContainer = new THREE.Object3D();
 
+    //var factor = 85;
+    //this._meshContainer.scale.set(1/factor, 1/factor, 1/factor);
+    this._meshContainer.rotateY( Math.PI);
+    //this._meshContainer.position.set(1.609/2, 1.81/2, 1.406/2);
+
+
     // what is inside what:
     this._adjustedContainer.add(this._meshContainer);
     this._adjustedContainer.add(this._annotationContainer);
@@ -288,9 +294,37 @@ class QuadScene{
 
       debug: function(){
         that._adjustedContainer.visible = !that._adjustedContainer.visible;
-      }
+      },
+
+      meshx: 0.98,
+      meshy: 0.8,
+      meshz: 1.04,
+      meshscale: 85
 
     }
+
+
+    this._datGui.add(this._guiVar, 'meshx', 0, 1.5).step(0.001)
+      .onChange( function(val){
+        that._meshContainer.position.x = val;
+      });
+
+    this._datGui.add(this._guiVar, 'meshy', 0, 1.5).step(0.001)
+      .onChange( function(val){
+        that._meshContainer.position.y = val;
+      });
+
+    this._datGui.add(this._guiVar, 'meshz', 0, 1.5).step(0.001)
+      .onChange( function(val){
+        that._meshContainer.position.z = val;
+      });
+
+    this._datGui.add(this._guiVar, 'meshscale', 80, 110).step(0.001)
+      .onChange( function(val){
+        that._meshContainer.scale.set( 1/val, 1/val, 1/val);
+      });
+
+
 
     this._datGui.add(this._guiVar, 'toggleOrientationHelper').name("Toggle helper");
     this._datGui.add(this._guiVar, 'toggleCubeHull').name("Toggle cube");
@@ -594,9 +628,6 @@ class QuadScene{
       return;
 
     this._cubeHullSize = this._levelManager.getCubeHull();
-
-    console.log( this._cubeHullSize );
-
 
     var cubeHullMaterial = new THREE.MeshBasicMaterial( {
       transparent: true,

@@ -123,12 +123,6 @@ class OrientationHelper{
       child.layers.enable( 1 );
     });
 
-
-
-    //this._sphere.layers.enable(0);
-    //this._sphere.layers.enable(1);
-    console.log("Orientaion Helper mask: " + this._sphere.layers.mask);
-
   }
 
 
@@ -138,7 +132,6 @@ class OrientationHelper{
   */
   addTo( obj ){
     obj.add( this._sphere );
-    console.log("ADDED");
   }
 
 

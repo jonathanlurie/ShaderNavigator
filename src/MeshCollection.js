@@ -107,12 +107,12 @@ class MeshCollection{
           mesh.userData.description = meshInfo.description;
 
           // shows on all cam
-          //mesh.layers.enable( 0 );
-          //mesh.layers.enable( 1 );
+          mesh.layers.enable( 0 );
+          mesh.layers.enable( 1 );
 
           // show only on perspective cam
-          mesh.layers.disable( 0 );
-          mesh.layers.enable( 1 );
+          //mesh.layers.disable( 0 );
+          //mesh.layers.enable( 1 );
 
           that._meshes[meshInfo.id] = mesh;
           that._container.add( mesh );
@@ -184,11 +184,12 @@ class MeshCollection{
 
       //this._container.applyMatrix(new THREE.Matrix4().makeScale(-1, 1, 1));
 
+      /*
       var factor = 85;
       this._container.scale.set(1/factor, 1/factor, 1/factor);
       this._container.rotateY( Math.PI);
       this._container.position.set(1.609/2, 1.81/2, 1.406/2);
-
+      */
     }
 
 

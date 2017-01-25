@@ -231,6 +231,7 @@ class ChunkCollection{
     }else{
       return true;
     }
+
   }
 
 
@@ -267,10 +268,19 @@ class ChunkCollection{
     var localChunk = this.getIndex3DFromWorldPosition(position);
 
     var closest = [
-      position[0] % this._sizeChunkWC > this._sizeChunkWC / 2 ? localChunk[0] +1 : localChunk[0] -1,
-      position[1] % this._sizeChunkWC > this._sizeChunkWC / 2 ? localChunk[1] +1 : localChunk[1] -1,
-      position[2] % this._sizeChunkWC > this._sizeChunkWC / 2 ? localChunk[2] +1 : localChunk[2] -1,
+      Math.abs(position[0] % this._sizeChunkWC) > this._sizeChunkWC / 2 ?
+        localChunk[0] + Math.sign(position[0]) :
+        localChunk[0] - Math.sign(position[0]),
+
+      Math.abs(position[1] % this._sizeChunkWC) > this._sizeChunkWC / 2 ?
+        localChunk[1] + Math.sign(position[1]) :
+        localChunk[1] - Math.sign(position[1]),
+
+      Math.abs(position[2] % this._sizeChunkWC) > this._sizeChunkWC / 2 ?
+        localChunk[2] + Math.sign(position[2]) :
+        localChunk[2] - Math.sign(position[2]),
     ];
+
 
     // build the chunk index of the 8 closest chunks from position
     var indexes3D = [
@@ -316,8 +326,6 @@ class ChunkCollection{
       ],
     ]
 
-    //console.log(indexes3D);
-
     return indexes3D;
   }
 
@@ -336,8 +344,8 @@ class ChunkCollection{
     var notValidChunksOrigin = [];
     var that = this;
 
-    the8closestIndexes.forEach(function(elem){
-      var aTextureData = that.getTextureAtIndex3D(elem);
+    the8closestIndexes.forEach(function(index){
+      var aTextureData = that.getTextureAtIndex3D(index);
 
       // this texture data is valid
       if(aTextureData.valid){
