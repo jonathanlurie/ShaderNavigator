@@ -138,9 +138,9 @@ class QuadView{
       window.innerWidth / - orthographicCameraFovFactor,  // left
       window.innerWidth / orthographicCameraFovFactor,    // right
       window.innerHeight / orthographicCameraFovFactor,   // top
-      window.innerHeight / - orthographicCameraFovFactor, // bottom
-      9.99,//this._objectSize * 0.9, //this._near,
-      10.01//this._objectSize * 1.1 //this._far
+      window.innerHeight / - orthographicCameraFovFactor // bottom
+      //9.99,//this._objectSize * 0.9, //this._near,
+      //10.01//this._objectSize * 1.1 //this._far
     );
 
 
@@ -395,6 +395,14 @@ class QuadView{
     this._windowSize.height = window.innerHeight;
   }
 
+
+  /**
+  * @return true if the camera of this view is a perspective camera.
+  */
+  isPerspective(){
+    return this._isPerspective;
+  }
+  
 
 } /* END QuadView */
 

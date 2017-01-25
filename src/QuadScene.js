@@ -30,7 +30,7 @@ class QuadScene{
     this._quadViews = [];
     this._quadViewInteraction = null;
 
-    // all the planes to intersect the chunks. They will all lie into _mainObjectContainer
+    // all the planes to intersect the chunks. They will all lie into _multiplaneContainer
     this._planeManager = null;
 
     // visible bounding box for the dataset
@@ -101,8 +101,8 @@ class QuadScene{
     this._domContainer.appendChild( this._renderer.domElement );
 
     // the main container to put objects in
-    this._mainObjectContainer = new THREE.Object3D();
-    this._scene.add(this._mainObjectContainer );
+    this._multiplaneContainer = new THREE.Object3D();
+    this._scene.add(this._multiplaneContainer );
 
     // TODO: use object real size (maybe)
     // a default camera distance we use instead of cube real size.
@@ -133,19 +133,19 @@ class QuadScene{
     var topLeftView = new QuadView(this._scene, this._renderer, this._cameraDistance);
     topLeftView.initTopLeft();
     topLeftView.initOrthoCamera();
-    topLeftView.useRelativeCoordinatesOf(this._mainObjectContainer);
+    topLeftView.useRelativeCoordinatesOf(this._multiplaneContainer);
     topLeftView.enableLayer( 0 );
 
     var topRightView = new QuadView(this._scene, this._renderer, this._cameraDistance);
     topRightView.initTopRight();
     topRightView.initOrthoCamera();
-    topRightView.useRelativeCoordinatesOf(this._mainObjectContainer);
+    topRightView.useRelativeCoordinatesOf(this._multiplaneContainer);
     topRightView.enableLayer( 0 );
 
     var bottomLeft = new QuadView(this._scene, this._renderer, this._cameraDistance);
     bottomLeft.initBottomLeft();
     bottomLeft.initOrthoCamera();
-    bottomLeft.useRelativeCoordinatesOf(this._mainObjectContainer);
+    bottomLeft.useRelativeCoordinatesOf(this._multiplaneContainer);
     bottomLeft.enableLayer( 0 );
 
     var bottomRight = new QuadView(this._scene, this._renderer, this._cameraDistance);
@@ -163,6 +163,7 @@ class QuadScene{
 
     // the quadviewinteraction instance deals with mouse things
     this._quadViewInteraction = new QuadViewInteraction( this._quadViews );
+    this._quadViewInteraction.setMultiplaneContainer( this._multiplaneContainer );
   }
 
 
@@ -171,7 +172,7 @@ class QuadScene{
   * Initialize the planeManager, so that we eventually have something to display here!
   */
   _initPlaneManager(){
-    this._planeManager = new PlaneManager(this._colormapManager, this._mainObjectContainer);
+    this._planeManager = new PlaneManager(this._colormapManager, this._multiplaneContainer);
     this._planeManager.enableLayerHiRez(0);
     this._planeManager.disableLayerHiRez(1);
     this._planeManager.enableLayerLoRez(1);
@@ -391,9 +392,9 @@ class QuadScene{
        y>0 && y<this._cubeHullSize[1] &&
        z>0 && z<this._cubeHullSize[2]
     ){
-      this._mainObjectContainer.position.x = x;
-      this._mainObjectContainer.position.y = y;
-      this._mainObjectContainer.position.z = z;
+      this._multiplaneContainer.position.x = x;
+      this._multiplaneContainer.position.y = y;
+      this._multiplaneContainer.position.z = z;
 
       // already done if called by the renderer and using DAT.gui
       this._guiVar.posx = x;
@@ -414,7 +415,7 @@ class QuadScene{
   */
   setMainObjectPositionX(x){
     if(x>0 && x<this._cubeHullSize[0]){
-      this._mainObjectContainer.position.x = x;
+      this._multiplaneContainer.position.x = x;
       this._updateAllPlanesShaderUniforms();
       this._updatePerspectiveCameraLookAt();
 
@@ -432,7 +433,7 @@ class QuadScene{
   */
   setMainObjectPositionY(y){
     if(y>0 && y<this._cubeHullSize[1]){
-      this._mainObjectContainer.position.y = y;
+      this._multiplaneContainer.position.y = y;
       this._updateAllPlanesShaderUniforms();
       this._updatePerspectiveCameraLookAt();
 
@@ -450,7 +451,7 @@ class QuadScene{
   */
   setMainObjectPositionZ(z){
     if(z>0 && z<this._cubeHullSize[2]){
-      this._mainObjectContainer.position.z = z;
+      this._multiplaneContainer.position.z = z;
       this._updateAllPlanesShaderUniforms();
       this._updatePerspectiveCameraLookAt();
 
@@ -469,9 +470,9 @@ class QuadScene{
   * @param {Number} z - z rotation in radian
   */
   setMainObjectRotation(x, y, z){
-    this._mainObjectContainer.rotation.x = x;
-    this._mainObjectContainer.rotation.y = y;
-    this._mainObjectContainer.rotation.z = z;
+    this._multiplaneContainer.rotation.x = x;
+    this._multiplaneContainer.rotation.y = y;
+    this._multiplaneContainer.rotation.z = z;
 
     // already done if called by the renderer and using DAT.gui
     this._guiVar.rotx = x;
@@ -582,7 +583,7 @@ class QuadScene{
   * So that the perspective cam targets the object container center
   */
   _updatePerspectiveCameraLookAt(){
-    this._quadViews[3].updateLookAt( this._mainObjectContainer.position );
+    this._quadViews[3].updateLookAt( this._multiplaneContainer.position );
   }
 
 
@@ -701,7 +702,7 @@ class QuadScene{
   */
   _syncOrientationHelperPosition(){
     if(this._orientationHelper){
-      this._orientationHelper.setPosition( this._mainObjectContainer.position );
+      this._orientationHelper.setPosition( this._multiplaneContainer.position );
     }
   }
 
@@ -749,7 +750,7 @@ class QuadScene{
   */
   _rotateNativePlane(planeIndex, rad){
     var normalPlane = this._planeManager.getWorldVectorN(planeIndex);
-    this._mainObjectContainer.rotateOnAxis ( normalPlane, rad );
+    this._multiplaneContainer.rotateOnAxis ( normalPlane, rad );
     this._updateAllPlanesShaderUniforms();
   }
 
@@ -796,8 +797,8 @@ class QuadScene{
     var uVector = this._planeManager.getWorldVectorU(planeIndex);
     var vVector = this._planeManager.getWorldVectorV(planeIndex);
 
-    this._mainObjectContainer.translateOnAxis( uVector, uDistance );
-    this._mainObjectContainer.translateOnAxis( vVector, vDistance );
+    this._multiplaneContainer.translateOnAxis( uVector, uDistance );
+    this._multiplaneContainer.translateOnAxis( vVector, vDistance );
 
     // update things related to the main object
     this._updateAllPlanesShaderUniforms();
@@ -938,14 +939,14 @@ class QuadScene{
     return {
       resolutionLvl: this._resolutionLevel,
       position: {
-        x: this._mainObjectContainer.position.x,
-        y: this._mainObjectContainer.position.y,
-        z: this._mainObjectContainer.position.z
+        x: this._multiplaneContainer.position.x,
+        y: this._multiplaneContainer.position.y,
+        z: this._multiplaneContainer.position.z
       },
       rotation: {
-        x: this._mainObjectContainer.rotation.x,
-        y: this._mainObjectContainer.rotation.y,
-        z: this._mainObjectContainer.rotation.z
+        x: this._multiplaneContainer.rotation.x,
+        y: this._multiplaneContainer.rotation.y,
+        z: this._multiplaneContainer.rotation.z
       }
     };
 

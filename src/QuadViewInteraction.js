@@ -65,6 +65,8 @@ class QuadViewInteraction{
     this._onArrowDownCallback = null;
 
     this._onDonePlayingCallback = null;
+
+    this._multiplaneContainer = null;
   }
 
 
@@ -164,6 +166,19 @@ class QuadViewInteraction{
     this._mousePressed = true;
     this._indexViewMouseDown = this._indexCurrentView;
 
+
+    // Shift + click on the perspective cam =
+    if( this._shiftKeyPressed ){
+      console.log(this._mouse);
+
+
+      if( this._quadViews[this._indexViewMouseDown].isPerspective() ){
+        this._intersectMultiplane();
+      }
+
+    }
+
+
     // will be used as an init position
     this._mouseLastPosition.x = this._mouse.x;
     this._mouseLastPosition.y = this._mouse.y;
@@ -249,6 +264,7 @@ class QuadViewInteraction{
 
 
   /**
+  * [PRIVATE]
   * For each QuadView instance, trigger things depending on how the mouse pointer interact with a quadview.
   */
   _manageQuadViewsMouseActivity(){
@@ -335,6 +351,7 @@ class QuadViewInteraction{
     this._onArrowUpCallback = cb;
   }
 
+
   /**
   * Callback called when a key of a mouse button is released
   */
@@ -343,6 +360,23 @@ class QuadViewInteraction{
   }
 
 
+  /**
+  * Set the plane container, so that we can perform raycasting
+  */
+  setMultiplaneContainer( c ){
+    this._multiplaneContainer = c;
+  }
+
+
+  /**
+  * [PRIVATE]
+  * perform a raycaster intersection from the perspective camera to the multiplane
+  * container.
+  * If impact, call a callback with the point coordinates.
+  */
+  _intersectMultiplane(){
+
+  }
 
 } /* END class QuadViewInteraction */
 
