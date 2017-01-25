@@ -37,6 +37,7 @@ class QuadViewInteraction{
 
     this._rKeyPressed = false;
     this._tKeyPressed = false;
+    this._shiftKeyPressed = false;
 
     // declaring some interaction events
     document.addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
@@ -76,6 +77,10 @@ class QuadViewInteraction{
   updateWindowSize(w, h){
     this._windowSize.width = w;
     this._windowSize.height = h;
+
+    this._quadViews.forEach(function(qv){
+      qv.updateRatio();
+    });
   }
 
 
@@ -187,12 +192,17 @@ class QuadViewInteraction{
   * Callback to the event onkeydown, aka. when a keyboard key is pressed
   */
   _onKeyDown( event ){
+
     switch( event.key ){
       case "r":
         this._rKeyPressed = true;
         break;
       case "t":
         this._tKeyPressed = true;
+        break;
+
+      case "Shift":
+        this._shiftKeyPressed = true;
         break;
 
       case "ArrowDown":
@@ -223,6 +233,9 @@ class QuadViewInteraction{
         break;
       case "t":
         this._tKeyPressed = false;
+        break;
+      case "Shift":
+        this._shiftKeyPressed = false;
         break;
 
       default:;

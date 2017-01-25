@@ -1258,6 +1258,7 @@ class QuadView{
   *
   */
   constructor(scene, renderer, objectSize){
+    this._isPerspective = false;
     this._objectSize = objectSize;
     this._camera = null;
     this._config = null;
@@ -1282,7 +1283,11 @@ class QuadView{
     // depends on what corner
     this._backgroundColor = null;
 
-
+    // we save to get a resize ratio
+    this._windowSize = {
+      width: window.innerWidth ,
+      height: window.innerHeight
+    };
 
   }
 
@@ -1369,22 +1374,32 @@ class QuadView{
   * Build an orthographic camera for this view.
   */
   initOrthoCamera(){
+    this._isPerspective = false;
+
     let orthographicCameraFovFactor = 360; // default: 360
 
     this._camera = new THREE.OrthographicCamera(
-      window.innerWidth / - orthographicCameraFovFactor,
-      window.innerWidth / orthographicCameraFovFactor,
-      window.innerHeight / orthographicCameraFovFactor,
-      window.innerHeight / - orthographicCameraFovFactor,
+      window.innerWidth / - orthographicCameraFovFactor,  // left
+      window.innerWidth / orthographicCameraFovFactor,    // right
+      window.innerHeight / orthographicCameraFovFactor,   // top
+      window.innerHeight / - orthographicCameraFovFactor, // bottom
       9.99,//this._objectSize * 0.9, //this._near,
       10.01//this._objectSize * 1.1 //this._far
     );
+
 
     this._camera.left_orig = window.innerWidth / - orthographicCameraFovFactor;
     this._camera.right_orig = window.innerWidth / orthographicCameraFovFactor;
     this._camera.top_orig = window.innerHeight / orthographicCameraFovFactor;
     this._camera.bottom_orig = window.innerHeight / - orthographicCameraFovFactor;
 
+
+    /*
+    this._camera.left_orig = this._camera.left;
+    this._camera.right_orig = this._camera.right;
+    this._camera.top_orig = this._camera.top;
+    this._camera.bottom_orig = this._camera.bottom;
+    */
     this._initCameraSettings();
   }
 
@@ -1393,6 +1408,8 @@ class QuadView{
   * Build a perspective camera for this view.
   */
   initPerspectiveCamera(){
+    this._isPerspective = true;
+
     this._camera = new THREE.PerspectiveCamera(
       this._defaultFov, // fov
       window.innerWidth / window.innerHeight, // aspect
@@ -1422,20 +1439,10 @@ class QuadView{
 
 
   /**
-  * Adds Orbit control on this view, but only if the pointer (mouse) is within the boundaries of this view.
-  * Should be called only after init a camera.
-  */
-  addOrbitControl(){
-    this._control = new THREE.OrbitControls(this._camera);
-  }
-
-
-  /**
-  *
+  * Adds an orbit control so that the user can play easily
   */
   addTrackballControl(renderFunction, domContainer){
     this._control = new THREE.TrackballControls( this._camera, domContainer );
-
 
     this._control.rotateSpeed = 5.0;
     this._control.staticMoving = true;
@@ -1456,50 +1463,6 @@ class QuadView{
   }
 
 
-  /**
-  * Updates the position of the mouse pointer with x and y in [0, 1] with origin at the bottom left corner.
-  * Must be called before renderView() in case of using an Orbit Control.
-  */
-  updateMousePosition(x, y){
-    this._mouse = {x:x, y:y};
-  }
-
-
-  /**
-  * [PRIVATE]
-  * If the camera uses an Orbit Control,
-  */
-  _updateCameraWithControl(){
-    // The camera needs an update only if we have an orbit control
-    if(this._control){
-
-      if( this._mouse.x >= this._config.left &&
-          this._mouse.x <= (this._config.left + this._config.width) &&
-          this._mouse.y >= this._config.bottom &&
-          this._mouse.y <= (this._config.bottom + this._config.height)
-        ){
-
-        // just entered
-        if(! this._mouseInView){
-          this._mouseInView = true;
-          this.enableControl();
-          console.log("ENTER " + this._viewName);
-        }
-
-      }else{
-
-        // just left
-        if(this._mouseInView){
-          this._mouseInView = false;
-          this.disableControl();
-          console.log("LEAVE" + this._viewName);
-        }
-
-      }
-    }
-  }
-
-
   /*
   * Change the background color for this view. If unchanged, top_left and bottom_right are in a bit darker gray than the 2 others.
   * @param {THREE.Color} c - color
@@ -1513,8 +1476,6 @@ class QuadView{
   * Render the view, should be called when the main renderer is rendering.
   */
   renderView(){
-    // will only work if an Orbt Control is defined
-    //this._updateCameraWithControl();
 
     var left   = Math.floor( window.innerWidth  * this._config.left );
     var bottom = Math.floor( window.innerHeight * this._config.bottom );
@@ -1557,7 +1518,7 @@ class QuadView{
 
 
   /**
-  * Used for perspective cameras. If the Orbit Control is enabled, the center of rotatation (target) will also be set.
+  * Used for perspective cameras. If a Control is enabled, the center of rotatation (target) will also be set.
   * @param {THREE.Vector3} pos - 3D position to look at and to turn around.
   */
   updateLookAt(pos){
@@ -1573,7 +1534,6 @@ class QuadView{
   /**
   * Update the control. This control needs to be updated from an "animate" function (like every frames) but not from a render function.
   * If the control is a TrackballControls, updateControl needs to be called at every loop.
-  * If the control is a OrbitControls, updateControl needs to be called only if using the cinetic effect.
   */
   updateControl(){
     this._control.update();
@@ -1581,7 +1541,7 @@ class QuadView{
 
 
   /**
-  * If the control (orbit or trackball) was initialized, it enables it.
+  * If the control ( trackball) was initialized, it enables it.
   * (Can be called even though it was already enabled, this is NOT a toggle)
   */
   enableControl(){
@@ -1594,7 +1554,7 @@ class QuadView{
 
 
   /**
-  * If the control (orbit or trackball) was initialized, it disables it.
+  * If the control (trackball) was initialized, it disables it.
   * (Can be called even though it was already enabled, this is NOT a toggle)
   */
   disableControl(){
@@ -1608,7 +1568,7 @@ class QuadView{
 
 
   /**
-  * @returns {boolean} true if this view is using a orbit/trackball control (no matter if enabled or disabled). Return false if this view does not use any kind of controls.
+  * @returns {boolean} true if this view is using a trackball control (no matter if enabled or disabled). Return false if this view does not use any kind of controls.
   */
   isUsingControl(){
     return !!this._control;
@@ -1628,14 +1588,58 @@ class QuadView{
   }
 
 
+  /**
+  * Enable a layer index for the camera of this view.
+  * @param {Number} layerNum - index of the layer.
+  */
   enableLayer( layerNum ){
     this._camera.layers.enable( layerNum );
 
   }
 
+
+  /**
+  * Disable a layer index for the camera of this view.
+  * @param {Number} layerNum - index of the layer.
+  */
   disableLayer( layerNum ){
     this._camera.layers.disable( layerNum );
   }
+
+
+  /**
+  * Return the camera of this view (unsafe, can be changed).
+  */
+  getCamera(){
+    return this._camera;
+  }
+
+
+  /**
+  * Update the ratio of the camera.
+  * Most likely to happen when the windows is resized.
+  * Depends if the cam is ortho of persp.
+  */
+  updateRatio(w, h){
+
+    if(this._isPerspective){
+      this._camera.aspect = w / h ;
+      this._camera.updateProjectionMatrix();
+    }else{
+      var wRatio = this._windowSize.width / window.innerWidth;
+      var hRatio = this._windowSize.height / window.innerHeight;
+
+      this._camera.left /= wRatio;
+      this._camera.right /= wRatio;
+      this._camera.top /= hRatio;
+      this._camera.bottom /= hRatio;
+    }
+
+    this._windowSize.width = window.innerWidth;
+    this._windowSize.height = window.innerHeight;
+  }
+
+  
 
 
 } /* END QuadView */
@@ -1851,6 +1855,7 @@ class QuadViewInteraction{
 
     this._rKeyPressed = false;
     this._tKeyPressed = false;
+    this._shiftKeyPressed = false;
 
     // declaring some interaction events
     document.addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
@@ -1890,6 +1895,10 @@ class QuadViewInteraction{
   updateWindowSize(w, h){
     this._windowSize.width = w;
     this._windowSize.height = h;
+
+    this._quadViews.forEach(function(qv){
+      qv.updateRatio();
+    });
   }
 
 
@@ -2001,12 +2010,17 @@ class QuadViewInteraction{
   * Callback to the event onkeydown, aka. when a keyboard key is pressed
   */
   _onKeyDown( event ){
+
     switch( event.key ){
       case "r":
         this._rKeyPressed = true;
         break;
       case "t":
         this._tKeyPressed = true;
+        break;
+
+      case "Shift":
+        this._shiftKeyPressed = true;
         break;
 
       case "ArrowDown":
@@ -2037,6 +2051,9 @@ class QuadViewInteraction{
         break;
       case "t":
         this._tKeyPressed = false;
+        break;
+      case "Shift":
+        this._shiftKeyPressed = false;
         break;
 
       default:;
@@ -3308,7 +3325,7 @@ class MeshCollection{
     this._container = container;
 
 
-    // rather than an arrya because all mesh have an ID
+    // rather than an array because all mesh have an ID
     this._meshes = {};
 
     // the folder that contains the json config file (that is at config.url).
@@ -3383,8 +3400,6 @@ class MeshCollection{
         // nothing to do
       }
 
-
-
       AjaxFileLoader.loadTextFile(
         // file URL
         url,
@@ -3409,12 +3424,10 @@ class MeshCollection{
             mesh.scale.set(meshInfo.scale[0], meshInfo.scale[1], meshInfo.scale[2]);
           }
 
-          // parametric scale
+          // parametric position
           if("position" in meshInfo){
             mesh.position.set(meshInfo.position[0], meshInfo.position[1], meshInfo.position[2]);
           }
-
-          console.log(meshInfo);
 
           // shows on all cam
           mesh.layers.enable( 0 );
@@ -3427,7 +3440,6 @@ class MeshCollection{
           that._meshes[meshInfo.id] = mesh;
           that._container.add( mesh );
 
-          console.log(mesh);
           that._updateCollectionBox( mesh );
         },
 
@@ -3438,11 +3450,8 @@ class MeshCollection{
         }
       );
 
-
-
     });
 
-    console.log( meshConfig );
   }
 
 
@@ -3470,7 +3479,7 @@ class MeshCollection{
       side: THREE.DoubleSide,
       vertexColors: THREE.VertexColors,
       transparent: true,
-      opacity: 0.2,//mniObjReader.getSurfaceProperties().transparency,
+      opacity: mniObjReader.getSurfaceProperties().transparency,
     } );
 
     var mesh = new THREE.Mesh( geometry, material );
@@ -3478,6 +3487,11 @@ class MeshCollection{
   }
 
 
+  /**
+  * [PRIVATE]
+  * Expands the collection bounding box with a new mesh.
+  * @param {THREE.Mesh} mesh - a mesh to expand the collection bounding box
+  */
   _updateCollectionBox( mesh ){
 
     // first mesh we load, we take its bb
@@ -3487,23 +3501,9 @@ class MeshCollection{
     // additionnal mes: we expand the collection bb
     }else{
       this._collectionBox.union( mesh.geometry.boundingBox );
-
-      console.log("bounding box:");
-      console.log(this._collectionBox.getCenter());
-      console.log(this._collectionBox.getSize());
-
-      //this._container.applyMatrix(new THREE.Matrix4().makeScale(-1, 1, 1));
-
-      /*
-      var factor = 85;
-      this._container.scale.set(1/factor, 1/factor, 1/factor);
-      this._container.rotateY( Math.PI);
-      this._container.position.set(1.609/2, 1.81/2, 1.406/2);
-      */
     }
-
-
   }
+
 
 } /* END class MeshCollection */
 
@@ -3518,6 +3518,8 @@ class MeshCollection{
 class QuadScene{
 
   constructor(DomContainer, rez=0){
+    window.addEventListener( 'resize', this._updateSize.bind(this), false );
+
     this._ready = false;
     this._counterRefresh = 0;
     this._resolutionLevel = rez;
@@ -3585,21 +3587,10 @@ class QuadScene{
     // contains the meshes
     this._meshContainer = new THREE.Object3D();
 
-    /*
-    this._meshContainer.scale.set(1/86.8, 1/81.332, 1/86.8);
-    this._meshContainer.rotation.set( 0, Math.PI, 0 );
-    this._meshContainer.position.set(0.99, 0.855, 1.02);
-    */
-    
-    console.log("-------------------------");
-    console.log(this._meshContainer);
-
-
     // what is inside what:
     this._adjustedContainer.add(this._meshContainer);
     this._adjustedContainer.add(this._annotationContainer);
     this._scene.add(this._adjustedContainer);
-
 
     // renderer construction and setting
     this._renderer = new THREE.WebGLRenderer( { antialias: true } );
@@ -3753,7 +3744,7 @@ class QuadScene{
     }
 
     // in case the window was resized
-    this._updateSize();
+    //this._updateSize();
 
     // refresh each view
     this._quadViews.forEach(function(view){

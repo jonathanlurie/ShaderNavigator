@@ -15,7 +15,7 @@ class MeshCollection{
     this._container = container;
 
 
-    // rather than an arrya because all mesh have an ID
+    // rather than an array because all mesh have an ID
     this._meshes = {};
 
     // the folder that contains the json config file (that is at config.url).
@@ -90,8 +90,6 @@ class MeshCollection{
         // nothing to do
       }
 
-
-
       AjaxFileLoader.loadTextFile(
         // file URL
         url,
@@ -116,12 +114,10 @@ class MeshCollection{
             mesh.scale.set(meshInfo.scale[0], meshInfo.scale[1], meshInfo.scale[2])
           }
 
-          // parametric scale
+          // parametric position
           if("position" in meshInfo){
             mesh.position.set(meshInfo.position[0], meshInfo.position[1], meshInfo.position[2])
           }
-
-          console.log(meshInfo);
 
           // shows on all cam
           mesh.layers.enable( 0 );
@@ -134,7 +130,6 @@ class MeshCollection{
           that._meshes[meshInfo.id] = mesh;
           that._container.add( mesh );
 
-          console.log(mesh);
           that._updateCollectionBox( mesh );
         },
 
@@ -145,11 +140,8 @@ class MeshCollection{
         }
       )
 
-
-
     });
 
-    console.log( meshConfig );
   }
 
 
@@ -177,7 +169,7 @@ class MeshCollection{
       side: THREE.DoubleSide,
       vertexColors: THREE.VertexColors,
       transparent: true,
-      opacity: 0.2,//mniObjReader.getSurfaceProperties().transparency,
+      opacity: mniObjReader.getSurfaceProperties().transparency,
     } );
 
     var mesh = new THREE.Mesh( geometry, material );
@@ -185,6 +177,11 @@ class MeshCollection{
   }
 
 
+  /**
+  * [PRIVATE]
+  * Expands the collection bounding box with a new mesh.
+  * @param {THREE.Mesh} mesh - a mesh to expand the collection bounding box
+  */
   _updateCollectionBox( mesh ){
 
     // first mesh we load, we take its bb
@@ -194,23 +191,9 @@ class MeshCollection{
     // additionnal mes: we expand the collection bb
     }else{
       this._collectionBox.union( mesh.geometry.boundingBox );
-
-      console.log("bounding box:");
-      console.log(this._collectionBox.getCenter());
-      console.log(this._collectionBox.getSize());
-
-      //this._container.applyMatrix(new THREE.Matrix4().makeScale(-1, 1, 1));
-
-      /*
-      var factor = 85;
-      this._container.scale.set(1/factor, 1/factor, 1/factor);
-      this._container.rotateY( Math.PI);
-      this._container.position.set(1.609/2, 1.81/2, 1.406/2);
-      */
     }
-
-
   }
+
 
 } /* END class MeshCollection */
 

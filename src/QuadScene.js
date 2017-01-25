@@ -20,6 +20,8 @@ import { MeshCollection } from './MeshCollection.js';
 class QuadScene{
 
   constructor(DomContainer, rez=0){
+    window.addEventListener( 'resize', this._updateSize.bind(this), false );
+
     this._ready = false;
     this._counterRefresh = 0;
     this._resolutionLevel = rez;
@@ -87,21 +89,10 @@ class QuadScene{
     // contains the meshes
     this._meshContainer = new THREE.Object3D();
 
-    /*
-    this._meshContainer.scale.set(1/86.8, 1/81.332, 1/86.8);
-    this._meshContainer.rotation.set( 0, Math.PI, 0 );
-    this._meshContainer.position.set(0.99, 0.855, 1.02);
-    */
-    
-    console.log("-------------------------");
-    console.log(this._meshContainer);
-
-
     // what is inside what:
     this._adjustedContainer.add(this._meshContainer);
     this._adjustedContainer.add(this._annotationContainer);
     this._scene.add(this._adjustedContainer);
-
 
     // renderer construction and setting
     this._renderer = new THREE.WebGLRenderer( { antialias: true } );
@@ -255,7 +246,7 @@ class QuadScene{
     }
 
     // in case the window was resized
-    this._updateSize();
+    //this._updateSize();
 
     // refresh each view
     this._quadViews.forEach(function(view){
