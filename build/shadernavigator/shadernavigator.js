@@ -1375,9 +1375,9 @@ class QuadView{
       window.innerWidth / - orthographicCameraFovFactor,
       window.innerWidth / orthographicCameraFovFactor,
       window.innerHeight / orthographicCameraFovFactor,
-      window.innerHeight / - orthographicCameraFovFactor
-      //9.99,//this._objectSize * 0.9, //this._near,
-      //10.01//this._objectSize * 1.1 //this._far
+      window.innerHeight / - orthographicCameraFovFactor,
+      9.99,//this._objectSize * 0.9, //this._near,
+      10.01//this._objectSize * 1.1 //this._far
     );
 
     this._camera.left_orig = window.innerWidth / - orthographicCameraFovFactor;
@@ -1433,8 +1433,8 @@ class QuadView{
   /**
   *
   */
-  addTrackballControl(renderFunction, toBind){
-    this._control = new THREE.TrackballControls( this._camera );
+  addTrackballControl(renderFunction, domContainer){
+    this._control = new THREE.TrackballControls( this._camera, domContainer );
 
 
     this._control.rotateSpeed = 5.0;
@@ -3399,6 +3399,23 @@ class MeshCollection{
           mesh.userData.longName = meshInfo.name;
           mesh.userData.description = meshInfo.description;
 
+          // parametric rotation
+          if("eulerAngle" in meshInfo){
+            mesh.rotation.set(meshInfo.eulerAngle[0], meshInfo.eulerAngle[1], meshInfo.eulerAngle[2]);
+          }
+
+          // parametric scale
+          if("scale" in meshInfo){
+            mesh.scale.set(meshInfo.scale[0], meshInfo.scale[1], meshInfo.scale[2]);
+          }
+
+          // parametric scale
+          if("position" in meshInfo){
+            mesh.position.set(meshInfo.position[0], meshInfo.position[1], meshInfo.position[2]);
+          }
+
+          console.log(meshInfo);
+
           // shows on all cam
           mesh.layers.enable( 0 );
           mesh.layers.enable( 1 );
@@ -3568,10 +3585,14 @@ class QuadScene{
     // contains the meshes
     this._meshContainer = new THREE.Object3D();
 
-    //var factor = 85;
-    //this._meshContainer.scale.set(1/factor, 1/factor, 1/factor);
-    this._meshContainer.rotateY( Math.PI);
-    //this._meshContainer.position.set(1.609/2, 1.81/2, 1.406/2);
+    /*
+    this._meshContainer.scale.set(1/86.8, 1/81.332, 1/86.8);
+    this._meshContainer.rotation.set( 0, Math.PI, 0 );
+    this._meshContainer.position.set(0.99, 0.855, 1.02);
+    */
+    
+    console.log("-------------------------");
+    console.log(this._meshContainer);
 
 
     // what is inside what:
@@ -3639,7 +3660,7 @@ class QuadScene{
     bottomRight.initPerspectiveCamera();
     bottomRight.enableLayer( 1 );
     bottomRight.disableLayer(0);
-    bottomRight.addTrackballControl(this._render, this);
+    bottomRight.addTrackballControl(this._render, this._domContainer);
 
     // adding the views
     this._quadViews.push(topLeftView);
@@ -3749,6 +3770,8 @@ class QuadScene{
   _initUI(){
     var that = this;
 
+    this._datGui;
+
     this._guiVar = {
       posx: 0,
       posy: 0,
@@ -3780,7 +3803,10 @@ class QuadScene{
       meshx: 0.98,
       meshy: 0.8,
       meshz: 1.04,
-      meshscale: 85
+      meshscalex: 85,
+      meshscaley: 85,
+      meshscalez: 85,
+
 
     };
 
@@ -3800,9 +3826,19 @@ class QuadScene{
         that._meshContainer.position.z = val;
       });
 
-    this._datGui.add(this._guiVar, 'meshscale', 80, 110).step(0.001)
+    this._datGui.add(this._guiVar, 'meshscalex', 80, 110).step(0.001)
       .onChange( function(val){
-        that._meshContainer.scale.set( 1/val, 1/val, 1/val);
+        that._meshContainer.scale.x = 1/val;
+      });
+
+    this._datGui.add(this._guiVar, 'meshscaley', 80, 110).step(0.001)
+      .onChange( function(val){
+        that._meshContainer.scale.y = 1/val;
+      });
+
+    this._datGui.add(this._guiVar, 'meshscalez', 80, 110).step(0.001)
+      .onChange( function(val){
+        that._meshContainer.scale.z = 1/val;
       });
 
 

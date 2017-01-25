@@ -106,6 +106,23 @@ class MeshCollection{
           mesh.userData.longName = meshInfo.name;
           mesh.userData.description = meshInfo.description;
 
+          // parametric rotation
+          if("eulerAngle" in meshInfo){
+            mesh.rotation.set(meshInfo.eulerAngle[0], meshInfo.eulerAngle[1], meshInfo.eulerAngle[2])
+          }
+
+          // parametric scale
+          if("scale" in meshInfo){
+            mesh.scale.set(meshInfo.scale[0], meshInfo.scale[1], meshInfo.scale[2])
+          }
+
+          // parametric scale
+          if("position" in meshInfo){
+            mesh.position.set(meshInfo.position[0], meshInfo.position[1], meshInfo.position[2])
+          }
+
+          console.log(meshInfo);
+
           // shows on all cam
           mesh.layers.enable( 0 );
           mesh.layers.enable( 1 );

@@ -131,9 +131,9 @@ class QuadView{
       window.innerWidth / - orthographicCameraFovFactor,
       window.innerWidth / orthographicCameraFovFactor,
       window.innerHeight / orthographicCameraFovFactor,
-      window.innerHeight / - orthographicCameraFovFactor
-      //9.99,//this._objectSize * 0.9, //this._near,
-      //10.01//this._objectSize * 1.1 //this._far
+      window.innerHeight / - orthographicCameraFovFactor,
+      9.99,//this._objectSize * 0.9, //this._near,
+      10.01//this._objectSize * 1.1 //this._far
     );
 
     this._camera.left_orig = window.innerWidth / - orthographicCameraFovFactor;
@@ -189,8 +189,8 @@ class QuadView{
   /**
   *
   */
-  addTrackballControl(renderFunction, toBind){
-    this._control = new THREE.TrackballControls( this._camera );
+  addTrackballControl(renderFunction, domContainer){
+    this._control = new THREE.TrackballControls( this._camera, domContainer );
 
 
     this._control.rotateSpeed = 5.0;

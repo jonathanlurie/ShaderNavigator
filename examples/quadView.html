@@ -86,17 +86,18 @@
     // loads the octree of texture chunks
     quadScene.loadData({
         datatype: "precomputed_octree_tiles",
-        url: "../data/info2.json"
+        url: "../data_raster/info2.json"
         //url: "http://132.216.122.238/jpeg/info2.json"
     });
 
-    /*
+
     quadScene.loadData({
         datatype: "mesh_collection",
-        url: "../otherData/meshes/bigbrain_gray.json"
-        //url: "../data_mesh/meshes/bigbrain_gray_histo.json" // histological space is no right!
+        //url: "../data_mesh/meshes/bigbrain_white.json"
+        url: "../data_mesh/meshes/bigbrain_gray.json"
+        //url: "../data_mesh/meshes/bigbrain_white_grey.json"
     });
-    */
+
 
     // optional: display some performances
     quadScene.initStat();

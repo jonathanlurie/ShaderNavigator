@@ -1,0 +1,24 @@
+[
+	{
+    "id": "right_gray",
+		"name": "Gray matter, right hemisphere",
+		"url": "bigbrain/gray_right_327680.obj",
+    "description" : "This is BigBrain data, visit https://bigbrain.loris.ca for more info",
+		"urlType": "near",
+    "eulerAngle": [0, 3.141592, 0],
+    "scale": [0.0115, 0.0122, 0.0115],
+    "position": [0.99, 0.855, 1.02]
+	},
+
+  {
+    "id": "left_gray",
+		"name": "Gray matter, left hemisphere",
+		"url": "bigbrain/gray_left_327680.obj",
+    "description" : "This is BigBrain data, visit https://bigbrain.loris.ca for more info",
+		"urlType": "near",
+    "eulerAngle": [0, 3.141592, 0],
+    "scale": [0.0115, 0.0122, 0.0115],
+    "position": [0.99, 0.855, 1.02]
+	}
+
+]

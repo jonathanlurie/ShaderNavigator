@@ -1,0 +1,18 @@
+[
+	{
+    "id": "right_gray",
+		"name": "Gray matter, right hemisphere",
+		"url": "bigbrain/gray_right_327680_2009b_sym.obj",
+    "description" : "This is BigBrain data, visit https://bigbrain.loris.ca for more info",
+		"urlType": "near"
+	},
+
+  {
+    "id": "left_gray",
+		"name": "Gray matter, left hemisphere",
+		"url": "bigbrain/gray_left_327680_2009b_sym.obj",
+    "description" : "This is BigBrain data, visit https://bigbrain.loris.ca for more info",
+		"urlType": "near"
+	}
+
+]
