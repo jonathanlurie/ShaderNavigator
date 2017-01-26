@@ -7,6 +7,7 @@ import { QuadViewInteraction } from './QuadViewInteraction.js';
 import { ColorMapManager } from './ColorMapManager.js';
 import { PlaneManager } from './PlaneManager.js';
 import { MeshCollection } from './MeshCollection.js';
+import { GuiController } from './GuiController.js';
 
 
 /**
@@ -54,11 +55,8 @@ class QuadScene{
     // a single colormap manager that will be used for all the planes
     this._colormapManager = new ColorMapManager();
 
-    // variables used to sync the dat.guy widget and some position/rotation.
-    // see _initUI() for more info.
-    this._guiVar = null;
-    this._datGui = new dat.GUI();
-    this._initUI();
+    // init the gui controller
+    this._guiController = new GuiController(this);
 
     // Container on the DOM tree, most likely a div
     this._domContainer = document.getElementById( DomContainer );
@@ -123,6 +121,8 @@ class QuadScene{
     this._initPlaneManager();
     this._animate();
   }
+
+
 
 
   /**
@@ -223,6 +223,13 @@ class QuadScene{
   }
 
 
+  /**
+  * @return {Number} the resolution level
+  */
+  getResolutionLevel(){
+    return this._resolutionLevel;
+  }
+
 
   /**
   * [PRIVATE]
@@ -277,13 +284,7 @@ class QuadScene{
     var that = this;
 
     this._guiVar = {
-      posx: 0,
-      posy: 0,
-      posz: 0,
-      rotx: 0,
-      roty: 0,
-      rotz: 0,
-      frustrum: 1,
+
       resolutionLevel: that._resolutionLevel,
       colormapChoice: 0, // the value does not matter
 
@@ -296,61 +297,15 @@ class QuadScene{
         that.toggleCubeHull();
       },
 
-      refresh: function(){
-        that._updateAllPlanesShaderUniforms();
-      },
-
       debug: function(){
         that._adjustedContainer.visible = !that._adjustedContainer.visible;
       },
 
-      meshx: 0.98,
-      meshy: 0.8,
-      meshz: 1.04,
-      meshscalex: 85,
-      meshscaley: 85,
-      meshscalez: 85,
-
-
     }
-
-
-    this._datGui.add(this._guiVar, 'meshx', 0, 1.5).step(0.001)
-      .onChange( function(val){
-        that._meshContainer.position.x = val;
-      });
-
-    this._datGui.add(this._guiVar, 'meshy', 0, 1.5).step(0.001)
-      .onChange( function(val){
-        that._meshContainer.position.y = val;
-      });
-
-    this._datGui.add(this._guiVar, 'meshz', 0, 1.5).step(0.001)
-      .onChange( function(val){
-        that._meshContainer.position.z = val;
-      });
-
-    this._datGui.add(this._guiVar, 'meshscalex', 80, 110).step(0.001)
-      .onChange( function(val){
-        that._meshContainer.scale.x = 1/val;
-      });
-
-    this._datGui.add(this._guiVar, 'meshscaley', 80, 110).step(0.001)
-      .onChange( function(val){
-        that._meshContainer.scale.y = 1/val;
-      });
-
-    this._datGui.add(this._guiVar, 'meshscalez', 80, 110).step(0.001)
-      .onChange( function(val){
-        that._meshContainer.scale.z = 1/val;
-      });
-
 
 
     this._datGui.add(this._guiVar, 'toggleOrientationHelper').name("Toggle helper");
     this._datGui.add(this._guiVar, 'toggleCubeHull').name("Toggle cube");
-
-    //var controllerFrustrum = this._datGui.add(this._guiVar, 'frustrum', 0, 0.05).name("frustrum").step(0.001).listen();
 
     var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1).listen();
 
@@ -358,13 +313,18 @@ class QuadScene{
 
     levelController.onFinishChange(function(lvl) {
       that.setResolutionLevel(lvl);
-      //that._updateOthoCamFrustrum();
     });
 
     // whenever a colormap is loaded, add it to the list in dat.gui
     this._colormapManager.onColormapUpdate( this._updateColormapList.bind(this) );
+
+
   }
 
+
+  getOrientationHelper(){
+    return this._orientationHelper;
+  }
 
   /**
   * [PRIVATE]
@@ -405,11 +365,6 @@ class QuadScene{
       this._multiplaneContainer.position.x = x;
       this._multiplaneContainer.position.y = y;
       this._multiplaneContainer.position.z = z;
-
-      // already done if called by the renderer and using DAT.gui
-      this._guiVar.posx = x;
-      this._guiVar.posy = y;
-      this._guiVar.posz = z;
 
       this._updateAllPlanesShaderUniforms();
       this._updatePerspectiveCameraLookAt();
@@ -483,11 +438,6 @@ class QuadScene{
     this._multiplaneContainer.rotation.x = x;
     this._multiplaneContainer.rotation.y = y;
     this._multiplaneContainer.rotation.z = z;
-
-    // already done if called by the renderer and using DAT.gui
-    this._guiVar.rotx = x;
-    this._guiVar.roty = y;
-    this._guiVar.rotz = z;
 
     this._updateAllPlanesShaderUniforms();
   }
@@ -571,11 +521,10 @@ class QuadScene{
     this._planeManager.updateScaleFromRezLvl( this._resolutionLevel );
 
     this._syncOrientationHelperScale();
-    this._guiVar.resolutionLevel = lvl;
     this._updateOthoCamFrustrum();
 
     if(this._onUpdateViewCallback){
-      this._onUpdateViewCallback( this.getMainObjectInfo() );
+      this._onUpdateViewCallback( this.getMultiplaneContainerInfo() );
     }
   }
 
@@ -946,7 +895,7 @@ class QuadScene{
 
     this._quadViewInteraction.onDonePlaying(function(){
       if(that._onUpdateViewCallback){
-        that._onUpdateViewCallback( that.getMainObjectInfo() );
+        that._onUpdateViewCallback( that.getMultiplaneContainerInfo() );
       }
     });
   }
@@ -956,7 +905,7 @@ class QuadScene{
   * @return {Object} the returned object if of the form:
   * { resolutionLvl, position {x, y, z}, rotation {x, y, z} }
   */
-  getMainObjectInfo(){
+  getMultiplaneContainerInfo(){
 
     return {
       resolutionLvl: this._resolutionLevel,
