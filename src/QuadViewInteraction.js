@@ -66,7 +66,16 @@ class QuadViewInteraction{
 
     this._onDonePlayingCallback = null;
 
+    // (aggregation) container of planes
     this._multiplaneContainer = null;
+
+    // to intersect with the multplane container
+    this._raycaster = new THREE.Raycaster();
+
+    this._onClickPlaneCallback = {
+      perspective: null,
+      ortho: null
+    }
   }
 
 
@@ -169,15 +178,12 @@ class QuadViewInteraction{
 
     // Shift + click on the perspective cam =
     if( this._shiftKeyPressed ){
-      console.log(this._mouse);
+      //console.log(this._mouse);
 
-
-      if( this._quadViews[this._indexViewMouseDown].isPerspective() ){
-        this._intersectMultiplane();
-      }
+      this._intersectMultiplane( event );
 
     }
-
+    
 
     // will be used as an init position
     this._mouseLastPosition.x = this._mouse.x;
@@ -374,9 +380,59 @@ class QuadViewInteraction{
   * container.
   * If impact, call a callback with the point coordinates.
   */
-  _intersectMultiplane(){
+  _intersectMultiplane( ){
+
+    // size ratio to the whole window
+    var viewWidth = this._quadViews[this._indexViewMouseDown].getConfigParam("width");
+    var widthRatio = 1 / viewWidth;
+    var viewHeight = this._quadViews[this._indexViewMouseDown].getConfigParam("height");
+    var heightRatio = 1 / viewHeight;
+
+    var widthOffset = this._quadViews[this._indexViewMouseDown].getConfigParam("left");
+    var heightOffset = this._quadViews[this._indexViewMouseDown].getConfigParam("bottom");
+
+    // these coords are centered on the current view and are within [-1, 1]
+    var localCenteredMouse = new THREE.Vector2(
+      (this._mouse.x * widthRatio - widthOffset*widthRatio) * 2 - 1,
+      (this._mouse.y * heightRatio - heightOffset*heightRatio) * 2 - 1
+    )
+
+    this._raycaster.setFromCamera(
+      localCenteredMouse,
+      this._quadViews[this._indexViewMouseDown].getCamera()
+    );
+
+    var intersects = this._raycaster.intersectObject( this._multiplaneContainer, true );
+
+    if(intersects.length ){
+      if(this._quadViews[this._indexViewMouseDown].isPerspective()){
+        // a callback for persp cam
+        this._onClickPlaneCallback.perspective && this._onClickPlaneCallback.perspective( intersects[0].point );
+      }else{
+        // a callback for ortho cam
+        this._onClickPlaneCallback.ortho && this._onClickPlaneCallback.ortho( intersects[0].point );
+      }
+    }
+
 
   }
+
+
+  /**
+  * Defines a callback for shift+clicking on a plane, depending on the camera type.
+  * @param {String} - camera type is "ortho" or "perspective"
+  * @param {Function} callback - is the method to be called
+  */
+  onClickPlane( cameraType, callback ){
+
+    if( !(cameraType in this._onClickPlaneCallback) ){
+      console.warn('The camera type must be "perspective" or "ortho".');
+      return;
+    }
+
+    this._onClickPlaneCallback[ cameraType ] = callback;
+  }
+
 
 } /* END class QuadViewInteraction */
 

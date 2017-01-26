@@ -402,7 +402,22 @@ class QuadView{
   isPerspective(){
     return this._isPerspective;
   }
-  
+
+
+  /**
+  * @param {String} name of the config param to get. Must be "left", "bottom", "width", "height", "position" or "up". The 4 firsts being window settings, while the 2 lasts are camera settings. Read only.
+  * @return {Number} the value of the parameter
+  */
+  getConfigParam( paramName ){
+
+    if(paramName in this._config){
+      return this._config[ paramName ]
+    }else{
+      console.warn(paramName + " param does not exist in the config.");
+      return null;
+    }
+  }
+
 
 } /* END QuadView */
 

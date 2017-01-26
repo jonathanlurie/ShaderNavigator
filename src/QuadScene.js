@@ -130,6 +130,8 @@ class QuadScene{
   * Initialize the 4 QuadView instances. The 3 first being ortho cam and the last being a global view perspective cam.
   */
   _initViews(){
+    var that = this;
+
     var topLeftView = new QuadView(this._scene, this._renderer, this._cameraDistance);
     topLeftView.initTopLeft();
     topLeftView.initOrthoCamera();
@@ -164,6 +166,16 @@ class QuadScene{
     // the quadviewinteraction instance deals with mouse things
     this._quadViewInteraction = new QuadViewInteraction( this._quadViews );
     this._quadViewInteraction.setMultiplaneContainer( this._multiplaneContainer );
+
+    this._quadViewInteraction.onClickPlane(
+      "perspective",
+
+      function( point ){
+        that.moveMultiplaneTo( point );
+      }
+    )
+
+
   }
 
 
@@ -263,8 +275,6 @@ class QuadScene{
   */
   _initUI(){
     var that = this;
-
-    this._datGui
 
     this._guiVar = {
       posx: 0,
@@ -807,6 +817,18 @@ class QuadScene{
 
   }
 
+
+  /**
+  *
+  */
+  moveMultiplaneTo( position ){
+    this._multiplaneContainer.position.set( position.x, position.y, position.z);
+
+    // update things related to the main object
+    this._updateAllPlanesShaderUniforms();
+    this._updatePerspectiveCameraLookAt();
+    this._syncOrientationHelperPosition();
+  }
 
   /**
   * Specify a callback for when the Quadscene is ready.

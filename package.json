@@ -9,6 +9,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "rollup -c",
+    "build-min": "rollup -c && google-closure-compiler-js build/shadernavigator/shadernavigator.js > build/shadernavigator/shadernavigator.min.js",
     "doc": "documentation build --name ShaderNavigator -o ./doc/ -f html"
   },
   "author": "Jonathan Lurie",
