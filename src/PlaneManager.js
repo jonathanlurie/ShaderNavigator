@@ -14,7 +14,10 @@ class PlaneManager{
   */
   constructor(colorMapManager, parent){
     this._colormapManager = colorMapManager;
-    this._parent = parent;
+
+    // object that contains all the planes
+    this._multiplaneContainer = new THREE.Object3D();
+    parent.add( this._multiplaneContainer )
 
     this._projectionPlanesHiRez = [];
     this._projectionPlanesLoRez = [];
@@ -23,7 +26,65 @@ class PlaneManager{
     this._addOrthoPlanes(this._projectionPlanesHiRez)
     this._addOrthoPlanes(this._projectionPlanesLoRez)
 
+    this._onMultiplaneMoveCallback = null;
+    this._onMultiplaneRotateCallback = null;
+
   }
+
+
+  /**
+  * Define a callback for when the multiplane container is moved.
+  * @param {function} cb - callback
+  */
+  onMultiplaneMove(cb){
+    this._onMultiplaneMoveCallback = cb;
+  }
+
+
+  /**
+  * Define a callback for when the multiplane container is rotated.
+  * @param {function} cb - callback
+  */
+  onMultiplaneRotate(cb){
+    this._onMultiplaneRotateCallback = cb;
+  }
+
+
+  /**
+  * @return {THREE.Object3D} the multiplane container
+  */
+  getMultiplaneContainer(){
+    return this._multiplaneContainer;
+  }
+
+
+  setMultiplanePosition(x, y, z){
+    this._multiplaneContainer.position.x = x;
+    this._multiplaneContainer.position.y = y;
+    this._multiplaneContainer.position.z = z;
+
+    this._onMultiplaneMoveCallback && this._onMultiplaneMoveCallback( this._multiplaneContainer.position );
+  }
+
+
+  getMultiplanePosition(){
+    return this._multiplaneContainer.position;
+  }
+
+
+  setMultiplaneRotation(x, y, z){
+    this._multiplaneContainer.rotation.x = x;
+    this._multiplaneContainer.rotation.y = y;
+    this._multiplaneContainer.rotation.z = z;
+
+    this._onMultiplaneRotateCallback && this._onMultiplaneRotateCallback();
+  }
+
+
+  getMultiplaneRotation(){
+    return this._multiplaneContainer.rotation;
+  }
+
 
   /**
   * Build 3 orthogonal planes, add them to the array in argument arrayToAdd and add them to the parent.
@@ -33,19 +94,19 @@ class PlaneManager{
     var pn = new ProjectionPlane(1, this._colormapManager);
     pn.setMeshColor(new THREE.Color(0x000099) );
     arrayToAdd.push( pn );
-    this._parent.add( pn.getPlane() );
+    this._multiplaneContainer.add( pn.getPlane() );
 
     var pu = new ProjectionPlane(1, this._colormapManager);
     arrayToAdd.push( pu );
     pu.getPlane().rotateX( Math.PI / 2);
-    this._parent.add( pu.getPlane() );
+    this._multiplaneContainer.add( pu.getPlane() );
 
     var pv = new ProjectionPlane(1, this._colormapManager);
     pv.setMeshColor(new THREE.Color(0x990000) );
     arrayToAdd.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
     pv.getPlane().rotateZ( Math.PI / 2);
-    this._parent.add( pv.getPlane() );
+    this._multiplaneContainer.add( pv.getPlane() );
   }
 
 
@@ -213,6 +274,97 @@ class PlaneManager{
     return this._projectionPlanesHiRez[planeIndex].getWorldVectorV();
   }
 
+
+  /**
+  * [PRIVATE]
+  * Rotate the main object container on one of its native axis. This axis is relative to inside the object.
+  * @param {Number} planeIndex - Index of the plane (0:Z, 1:Y, 2:X)
+  * @param {Number} rad - angle in radian
+  */
+  _rotateMultiplane(planeIndex, rad){
+    var normalPlane = this.getWorldVectorN(planeIndex);
+    this._multiplaneContainer.rotateOnAxis ( normalPlane, rad );
+
+    this._onMultiplaneRotateCallback && this._onMultiplaneRotateCallback();
+  }
+
+
+  /**
+  * Rotate the main object container on its native Z axis. This Z axis is relative to inside the object.
+  * @param {Number} rad - angle in radian
+  */
+  rotateMultiplaneZ( rad ){
+    this._rotateMultiplane(0, rad);
+  }
+
+
+  /**
+  * Rotate the main object container on its native X axis. This X axis is relative to inside the object.
+  * @param {Number} rad - angle in radian
+  */
+  rotateMultiplaneX( rad ){
+    this._rotateMultiplane(2, rad);
+  }
+
+
+  /**
+  * Rotate the main object container on its native Y axis. This Y axis is relative to inside the object.
+  * @param {Number} rad - angle in radian
+  */
+  rotateMultiplaneY( rad ){
+    this._rotateMultiplane(1, rad);
+  }
+
+
+
+  /**
+  * Translate the main object container along the u and v vector relative to the x plane instead of the regular coordinate system X.
+  * @param {Number} uDistance - distance to move along the uVector of the plane X
+  * @param {Number} vDistance - distance to move along the vVector of the plane X
+  */
+  translateMultiplaneX(uDistance, vDistance){
+    this._translateMultiplane(2, uDistance, vDistance);
+  }
+
+
+  /**
+  * Translate the main object container along the u and v vector relative to the y plane instead of the regular coordinate system Y.
+  * @param {Number} uDistance - distance to move along the uVector of the plane Y
+  * @param {Number} vDistance - distance to move along the vVector of the plane Y
+  */
+  translateMultiplaneY(uDistance, vDistance){
+    this._translateMultiplane(1, uDistance, vDistance);
+  }
+
+
+  /**
+  * Translate the main object container along the u and v vector relative to the z plane instead of the regular coordinate system Z.
+  * @param {Number} uDistance - distance to move along the uVector of the plane Z
+  * @param {Number} vDistance - distance to move along the vVector of the plane Z
+  */
+  translateMultiplaneZ(uDistance, vDistance){
+    this._translateMultiplane(0, uDistance, vDistance);
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Moves the main object container using a the u and v local unit vector of a specific plane.
+  * The u and v vector are orthogonal to the plane's normal (even in an oblique context).
+  * @param {Number} planeIndex - index of the plane, most likely in [0, 2]
+  * @param {Number} uDistance - distance to move the main object along u vector. signed float.
+  * @param {Number} vDistance - distance to move the main object along v vector. signed float.
+  */
+  _translateMultiplane(planeIndex, uDistance, vDistance){
+    var uVector = this.getWorldVectorU(planeIndex);
+    var vVector = this.getWorldVectorV(planeIndex);
+
+    this._multiplaneContainer.translateOnAxis( uVector, uDistance );
+    this._multiplaneContainer.translateOnAxis( vVector, vDistance );
+
+    this._onMultiplaneMoveCallback && this._onMultiplaneMoveCallback( this._multiplaneContainer.position );
+
+  }
 
 } /* END CLASS PlaneManager */
 

@@ -2786,7 +2786,10 @@ class PlaneManager{
   */
   constructor(colorMapManager, parent){
     this._colormapManager = colorMapManager;
-    this._parent = parent;
+
+    // object that contains all the planes
+    this._multiplaneContainer = new THREE.Object3D();
+    parent.add( this._multiplaneContainer );
 
     this._projectionPlanesHiRez = [];
     this._projectionPlanesLoRez = [];
@@ -2795,7 +2798,65 @@ class PlaneManager{
     this._addOrthoPlanes(this._projectionPlanesHiRez);
     this._addOrthoPlanes(this._projectionPlanesLoRez);
 
+    this._onMultiplaneMoveCallback = null;
+    this._onMultiplaneRotateCallback = null;
+
   }
+
+
+  /**
+  * Define a callback for when the multiplane container is moved.
+  * @param {function} cb - callback
+  */
+  onMultiplaneMove(cb){
+    this._onMultiplaneMoveCallback = cb;
+  }
+
+
+  /**
+  * Define a callback for when the multiplane container is rotated.
+  * @param {function} cb - callback
+  */
+  onMultiplaneRotate(cb){
+    this._onMultiplaneRotateCallback = cb;
+  }
+
+
+  /**
+  * @return {THREE.Object3D} the multiplane container
+  */
+  getMultiplaneContainer(){
+    return this._multiplaneContainer;
+  }
+
+
+  setMultiplanePosition(x, y, z){
+    this._multiplaneContainer.position.x = x;
+    this._multiplaneContainer.position.y = y;
+    this._multiplaneContainer.position.z = z;
+
+    this._onMultiplaneMoveCallback && this._onMultiplaneMoveCallback( this._multiplaneContainer.position );
+  }
+
+
+  getMultiplanePosition(){
+    return this._multiplaneContainer.position;
+  }
+
+
+  setMultiplaneRotation(x, y, z){
+    this._multiplaneContainer.rotation.x = x;
+    this._multiplaneContainer.rotation.y = y;
+    this._multiplaneContainer.rotation.z = z;
+
+    this._onMultiplaneRotateCallback && this._onMultiplaneRotateCallback();
+  }
+
+
+  getMultiplaneRotation(){
+    return this._multiplaneContainer.rotation;
+  }
+
 
   /**
   * Build 3 orthogonal planes, add them to the array in argument arrayToAdd and add them to the parent.
@@ -2805,19 +2866,19 @@ class PlaneManager{
     var pn = new ProjectionPlane(1, this._colormapManager);
     pn.setMeshColor(new THREE.Color(0x000099) );
     arrayToAdd.push( pn );
-    this._parent.add( pn.getPlane() );
+    this._multiplaneContainer.add( pn.getPlane() );
 
     var pu = new ProjectionPlane(1, this._colormapManager);
     arrayToAdd.push( pu );
     pu.getPlane().rotateX( Math.PI / 2);
-    this._parent.add( pu.getPlane() );
+    this._multiplaneContainer.add( pu.getPlane() );
 
     var pv = new ProjectionPlane(1, this._colormapManager);
     pv.setMeshColor(new THREE.Color(0x990000) );
     arrayToAdd.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
     pv.getPlane().rotateZ( Math.PI / 2);
-    this._parent.add( pv.getPlane() );
+    this._multiplaneContainer.add( pv.getPlane() );
   }
 
 
@@ -2985,6 +3046,97 @@ class PlaneManager{
     return this._projectionPlanesHiRez[planeIndex].getWorldVectorV();
   }
 
+
+  /**
+  * [PRIVATE]
+  * Rotate the main object container on one of its native axis. This axis is relative to inside the object.
+  * @param {Number} planeIndex - Index of the plane (0:Z, 1:Y, 2:X)
+  * @param {Number} rad - angle in radian
+  */
+  _rotateMultiplane(planeIndex, rad){
+    var normalPlane = this.getWorldVectorN(planeIndex);
+    this._multiplaneContainer.rotateOnAxis ( normalPlane, rad );
+
+    this._onMultiplaneRotateCallback && this._onMultiplaneRotateCallback();
+  }
+
+
+  /**
+  * Rotate the main object container on its native Z axis. This Z axis is relative to inside the object.
+  * @param {Number} rad - angle in radian
+  */
+  rotateMultiplaneZ( rad ){
+    this._rotateMultiplane(0, rad);
+  }
+
+
+  /**
+  * Rotate the main object container on its native X axis. This X axis is relative to inside the object.
+  * @param {Number} rad - angle in radian
+  */
+  rotateMultiplaneX( rad ){
+    this._rotateMultiplane(2, rad);
+  }
+
+
+  /**
+  * Rotate the main object container on its native Y axis. This Y axis is relative to inside the object.
+  * @param {Number} rad - angle in radian
+  */
+  rotateMultiplaneY( rad ){
+    this._rotateMultiplane(1, rad);
+  }
+
+
+
+  /**
+  * Translate the main object container along the u and v vector relative to the x plane instead of the regular coordinate system X.
+  * @param {Number} uDistance - distance to move along the uVector of the plane X
+  * @param {Number} vDistance - distance to move along the vVector of the plane X
+  */
+  translateMultiplaneX(uDistance, vDistance){
+    this._translateMultiplane(2, uDistance, vDistance);
+  }
+
+
+  /**
+  * Translate the main object container along the u and v vector relative to the y plane instead of the regular coordinate system Y.
+  * @param {Number} uDistance - distance to move along the uVector of the plane Y
+  * @param {Number} vDistance - distance to move along the vVector of the plane Y
+  */
+  translateMultiplaneY(uDistance, vDistance){
+    this._translateMultiplane(1, uDistance, vDistance);
+  }
+
+
+  /**
+  * Translate the main object container along the u and v vector relative to the z plane instead of the regular coordinate system Z.
+  * @param {Number} uDistance - distance to move along the uVector of the plane Z
+  * @param {Number} vDistance - distance to move along the vVector of the plane Z
+  */
+  translateMultiplaneZ(uDistance, vDistance){
+    this._translateMultiplane(0, uDistance, vDistance);
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Moves the main object container using a the u and v local unit vector of a specific plane.
+  * The u and v vector are orthogonal to the plane's normal (even in an oblique context).
+  * @param {Number} planeIndex - index of the plane, most likely in [0, 2]
+  * @param {Number} uDistance - distance to move the main object along u vector. signed float.
+  * @param {Number} vDistance - distance to move the main object along v vector. signed float.
+  */
+  _translateMultiplane(planeIndex, uDistance, vDistance){
+    var uVector = this.getWorldVectorU(planeIndex);
+    var vVector = this.getWorldVectorV(planeIndex);
+
+    this._multiplaneContainer.translateOnAxis( uVector, uDistance );
+    this._multiplaneContainer.translateOnAxis( vVector, vDistance );
+
+    this._onMultiplaneMoveCallback && this._onMultiplaneMoveCallback( this._multiplaneContainer.position );
+
+  }
 
 } /* END CLASS PlaneManager */
 
@@ -3854,7 +4006,7 @@ class QuadScene{
     this._quadViews = [];
     this._quadViewInteraction = null;
 
-    // all the planes to intersect the chunks. They will all lie into _multiplaneContainer
+    // all the planes to intersect the chunks. Contains the multiplane
     this._planeManager = null;
 
     // a static gimbal to show dataset orientation
@@ -3914,10 +4066,6 @@ class QuadScene{
     this._renderer.setSize( window.innerWidth, window.innerHeight );
     this._domContainer.appendChild( this._renderer.domElement );
 
-    // the main container to put objects in
-    this._multiplaneContainer = new THREE.Object3D();
-    this._scene.add(this._multiplaneContainer );
-
     // TODO: use object real size (maybe)
     // a default camera distance we use instead of cube real size.
     this._cameraDistance = 10;
@@ -3932,9 +4080,10 @@ class QuadScene{
     this._meshCollection = null;
 
     this._stats = null;
+    this._initPlaneManager();
     this._initViews();
     this._levelManager = new LevelManager();
-    this._initPlaneManager();
+
 
     // init the gui controller
     this._guiController = new GuiController(this);
@@ -3955,19 +4104,19 @@ class QuadScene{
     var topLeftView = new QuadView(this._scene, this._renderer, this._cameraDistance);
     topLeftView.initTopLeft();
     topLeftView.initOrthoCamera();
-    topLeftView.useRelativeCoordinatesOf(this._multiplaneContainer);
+    topLeftView.useRelativeCoordinatesOf(this._planeManager.getMultiplaneContainer());
     topLeftView.enableLayer( 0 );
 
     var topRightView = new QuadView(this._scene, this._renderer, this._cameraDistance);
     topRightView.initTopRight();
     topRightView.initOrthoCamera();
-    topRightView.useRelativeCoordinatesOf(this._multiplaneContainer);
+    topRightView.useRelativeCoordinatesOf(this._planeManager.getMultiplaneContainer());
     topRightView.enableLayer( 0 );
 
     var bottomLeft = new QuadView(this._scene, this._renderer, this._cameraDistance);
     bottomLeft.initBottomLeft();
     bottomLeft.initOrthoCamera();
-    bottomLeft.useRelativeCoordinatesOf(this._multiplaneContainer);
+    bottomLeft.useRelativeCoordinatesOf(this._planeManager.getMultiplaneContainer());
     bottomLeft.enableLayer( 0 );
 
     var bottomRight = new QuadView(this._scene, this._renderer, this._cameraDistance);
@@ -3985,13 +4134,13 @@ class QuadScene{
 
     // the quadviewinteraction instance deals with mouse things
     this._quadViewInteraction = new QuadViewInteraction( this._quadViews );
-    this._quadViewInteraction.setMultiplaneContainer( this._multiplaneContainer );
+    this._quadViewInteraction.setMultiplaneContainer( this._planeManager.getMultiplaneContainer() );
 
     this._quadViewInteraction.onClickPlane(
       "perspective",
 
       function( point ){
-        that.moveMultiplaneTo( point );
+        that.setMultiplanePosition( point.x, point.y, point.z);
       }
     );
 
@@ -4000,15 +4149,46 @@ class QuadScene{
 
 
   /**
+  * Shortcut function to set the multiplane position.
+  * Handy because accessible from the onReady callback.
+  */
+  setMultiplanePosition(x, y, z){
+    this._planeManager.setMultiplanePosition( x, y, z);
+  }
+
+
+  /**
+  *
+  */
+  setMultiplaneRotation(x, y, z){
+    this._planeManager.setMultiplaneRotation( x, y, z);
+  }
+
+  /**
   * [PRIVATE]
   * Initialize the planeManager, so that we eventually have something to display here!
   */
   _initPlaneManager(){
-    this._planeManager = new PlaneManager(this._colormapManager, this._multiplaneContainer);
+    var that = this;
+
+    this._planeManager = new PlaneManager(this._colormapManager, this._scene);
     this._planeManager.enableLayerHiRez(0);
     this._planeManager.disableLayerHiRez(1);
     this._planeManager.enableLayerLoRez(1);
     this._planeManager.disableLayerLoRez(0);
+
+    // callback when multiplane moves
+    this._planeManager.onMultiplaneMove( function( position ){
+      that._updateAllPlanesShaderUniforms();
+      that._updatePerspectiveCameraLookAt( position );
+      that._syncOrientationHelperPosition( position );
+    });
+
+    // callback when multiplane rotates
+    this._planeManager.onMultiplaneRotate( function(){
+      that._updateAllPlanesShaderUniforms();
+    });
+
   }
 
 
@@ -4121,41 +4301,6 @@ class QuadScene{
 
 
   /**
-  * Set the position of the center of the main object (where the center of the planes are).
-  * @param {Number} x - x position in world coordinates
-  * @param {Number} y - y position in world coordinates
-  * @param {Number} z - z position in world coordinates
-  */
-  setMainObjectPosition(x, y, z){
-    if(this._levelManager.isInside(x, y, z)){
-
-      this._multiplaneContainer.position.x = x;
-      this._multiplaneContainer.position.y = y;
-      this._multiplaneContainer.position.z = z;
-
-      this._updateAllPlanesShaderUniforms();
-      this._updatePerspectiveCameraLookAt();
-      this._syncOrientationHelperPosition();
-    }
-  }
-
-
-  /**
-  * Set the Euler angles of MainObject (that contains the planes)
-  * @param {Number} x - x rotation in radian
-  * @param {Number} y - y rotation in radian
-  * @param {Number} z - z rotation in radian
-  */
-  setMainObjectRotation(x, y, z){
-    this._multiplaneContainer.rotation.x = x;
-    this._multiplaneContainer.rotation.y = y;
-    this._multiplaneContainer.rotation.z = z;
-
-    this._updateAllPlanesShaderUniforms();
-  }
-
-
-  /**
   * Entry point to load data (texture chunk octree or mesh collection)
   */
   loadData( config ){
@@ -4194,14 +4339,13 @@ class QuadScene{
       that._levelManager.setResolutionLevel( that._resolutionLevel );
       that._boundingBoxHelper.build( boxSize );
 
-      // Place the plane intersection at the center of the data
-      that.setMainObjectPosition(
+      that._planeManager.setMultiplanePosition(
         boxSize[0] / 2,
         boxSize[1] / 2,
         boxSize[2] / 2
       );
 
-      that._initOrientationHelper();
+      that._initOrientationHelper( new THREE.Vector3(boxSize[0] / 2, boxSize[1] / 2, boxSize[2] / 2) );
       that.setResolutionLevel( that._resolutionLevel );
       that._initPlaneInteraction();
       that._ready = true;
@@ -4256,8 +4400,8 @@ class QuadScene{
   /**
   * So that the perspective cam targets the object container center
   */
-  _updatePerspectiveCameraLookAt(){
-    this._quadViews[3].updateLookAt( this._multiplaneContainer.position );
+  _updatePerspectiveCameraLookAt( position ){
+    this._quadViews[3].updateLookAt( position );
   }
 
 
@@ -4275,22 +4419,22 @@ class QuadScene{
   /**
   * Initialize the orientation helper and adds it to the scene (and not to the main object, because it is not supposed to rotate)
   */
-  _initOrientationHelper(){
+  _initOrientationHelper( position ){
     this._orientationHelper = new OrientationHelper(
       this._planeManager.getWorldDiagonalHiRez() / 13
     );
 
     this._orientationHelper.addTo( this._scene );
-    this._syncOrientationHelperPosition();
+    this._syncOrientationHelperPosition( position );
   }
 
 
   /**
   * Synchronize the orientation helper position based on the main object position.
   */
-  _syncOrientationHelperPosition(){
+  _syncOrientationHelperPosition( position ){
     if(this._orientationHelper){
-      this._orientationHelper.setPosition( this._multiplaneContainer.position );
+      this._orientationHelper.setPosition( position );
     }
   }
 
@@ -4303,110 +4447,6 @@ class QuadScene{
   }
 
 
-  /**
-  * Rotate the main object container on its native X axis. This X axis is relative to inside the object.
-  * @param {Number} rad - angle in radian
-  */
-  rotateNativePlaneX( rad ){
-    this._rotateNativePlane(2, rad);
-  }
-
-
-  /**
-  * Rotate the main object container on its native Y axis. This Y axis is relative to inside the object.
-  * @param {Number} rad - angle in radian
-  */
-  rotateNativePlaneY( rad ){
-    this._rotateNativePlane(1, rad);
-  }
-
-
-  /**
-  * Rotate the main object container on its native Z axis. This Z axis is relative to inside the object.
-  * @param {Number} rad - angle in radian
-  */
-  rotateNativePlaneZ( rad ){
-    this._rotateNativePlane(0, rad);
-  }
-
-
-  /**
-  * [PRIVATE]
-  * Rotate the main object container on one of its native axis. This axis is relative to inside the object.
-  * @param {Number} planeIndex - Index of the plane (0:Z, 1:Y, 2:X)
-  * @param {Number} rad - angle in radian
-  */
-  _rotateNativePlane(planeIndex, rad){
-    var normalPlane = this._planeManager.getWorldVectorN(planeIndex);
-    this._multiplaneContainer.rotateOnAxis ( normalPlane, rad );
-    this._updateAllPlanesShaderUniforms();
-  }
-
-
-  /**
-  * Translate the main object container along the u and v vector relative to the x plane instead of the regular coordinate system X.
-  * @param {Number} uDistance - distance to move along the uVector of the plane X
-  * @param {Number} vDistance - distance to move along the vVector of the plane X
-  */
-  translateNativePlaneX(uDistance, vDistance){
-    this._translateNativePlane(2, uDistance, vDistance);
-  }
-
-
-  /**
-  * Translate the main object container along the u and v vector relative to the y plane instead of the regular coordinate system Y.
-  * @param {Number} uDistance - distance to move along the uVector of the plane Y
-  * @param {Number} vDistance - distance to move along the vVector of the plane Y
-  */
-  translateNativePlaneY(uDistance, vDistance){
-    this._translateNativePlane(1, uDistance, vDistance);
-  }
-
-
-  /**
-  * Translate the main object container along the u and v vector relative to the z plane instead of the regular coordinate system Z.
-  * @param {Number} uDistance - distance to move along the uVector of the plane Z
-  * @param {Number} vDistance - distance to move along the vVector of the plane Z
-  */
-  translateNativePlaneZ(uDistance, vDistance){
-    this._translateNativePlane(0, uDistance, vDistance);
-  }
-
-
-  /**
-  * [PRIVATE]
-  * Moves the main object container using a the u and v local unit vector of a specific plane.
-  * The u and v vector are orthogonal to the plane's normal (even in an oblique context).
-  * @param {Number} planeIndex - index of the plane, most likely in [0, 2]
-  * @param {Number} uDistance - distance to move the main object along u vector. signed float.
-  * @param {Number} vDistance - distance to move the main object along v vector. signed float.
-  */
-  _translateNativePlane(planeIndex, uDistance, vDistance){
-    var uVector = this._planeManager.getWorldVectorU(planeIndex);
-    var vVector = this._planeManager.getWorldVectorV(planeIndex);
-
-    this._multiplaneContainer.translateOnAxis( uVector, uDistance );
-    this._multiplaneContainer.translateOnAxis( vVector, vDistance );
-
-    // update things related to the main object
-    this._updateAllPlanesShaderUniforms();
-    this._updatePerspectiveCameraLookAt();
-    this._syncOrientationHelperPosition();
-
-  }
-
-
-  /**
-  *
-  */
-  moveMultiplaneTo( position ){
-    this._multiplaneContainer.position.set( position.x, position.y, position.z);
-
-    // update things related to the main object
-    this._updateAllPlanesShaderUniforms();
-    this._updatePerspectiveCameraLookAt();
-    this._syncOrientationHelperPosition();
-  }
 
   /**
   * Specify a callback for when the Quadscene is ready.
@@ -4430,13 +4470,13 @@ class QuadScene{
 
       switch (viewIndex) {
         case 0:
-          that.translateNativePlaneX(-distance.x/factor, distance.y/factor);
+          that._planeManager.translateMultiplaneX(-distance.x/factor, distance.y/factor);
           break;
         case 1:
-          that.translateNativePlaneY(distance.x/factor, distance.y/factor);
+          that._planeManager.translateMultiplaneY(distance.x/factor, distance.y/factor);
           break;
         case 2:
-          that.translateNativePlaneZ(distance.x/factor, -distance.y/factor);
+          that._planeManager.translateMultiplaneZ(distance.x/factor, -distance.y/factor);
           break;
         default:  // if last view, we dont do anything
           return;
@@ -4448,13 +4488,13 @@ class QuadScene{
     this._quadViewInteraction.onGrabViewRotate( function(angleRad, angleDir, viewIndex){
       switch (viewIndex) {
         case 0:
-          that.rotateNativePlaneX(angleRad * angleDir);
+          that._planeManager.rotateMultiplaneX(angleRad * angleDir);
           break;
         case 1:
-          that.rotateNativePlaneY(angleRad * angleDir * -1);
+          that._planeManager.rotateMultiplaneY(angleRad * angleDir * -1);
           break;
         case 2:
-          that.rotateNativePlaneZ(angleRad * angleDir);
+          that._planeManager.rotateMultiplaneZ(angleRad * angleDir);
           break;
         default:  // if last view, we dont do anything
           return;
@@ -4468,16 +4508,16 @@ class QuadScene{
 
       switch (viewIndex) {
         case 0:
-          that.rotateNativePlaneZ(distance.x / factor);
-          that.rotateNativePlaneY(-distance.y / factor);
+          that._planeManager.rotateMultiplaneZ(distance.x / factor);
+          that._planeManager.rotateMultiplaneY(-distance.y / factor);
           break;
         case 1:
-          that.rotateNativePlaneX(-distance.y / factor);
-          that.rotateNativePlaneZ(distance.x / factor);
+          that._planeManager.rotateMultiplaneX(-distance.y / factor);
+          that._planeManager.rotateMultiplaneZ(distance.x / factor);
           break;
         case 2:
-          that.rotateNativePlaneX(-distance.y / factor);
-          that.rotateNativePlaneY(distance.x / factor);
+          that._planeManager.rotateMultiplaneX(-distance.y / factor);
+          that._planeManager.rotateMultiplaneY(distance.x / factor);
           break;
         default:  // if last view, we dont do anything
           return;
@@ -4490,13 +4530,13 @@ class QuadScene{
 
       switch (viewIndex) {
         case 0:
-          that.translateNativePlaneY(factor, 0);
+          that._planeManager.translateMultiplaneY(factor, 0);
           break;
         case 1:
-          that.translateNativePlaneX(factor, 0);
+          that.translateMultiplanePlaneX(factor, 0);
           break;
         case 2:
-          that.translateNativePlaneY(0, -factor);
+          that._planeManager.translateMultiplaneY(0, -factor);
           break;
         default:  // if last view, we dont do anything
           return;
@@ -4509,13 +4549,13 @@ class QuadScene{
 
       switch (viewIndex) {
         case 0:
-          that.translateNativePlaneY(factor, 0);
+          that._planeManager.translateMultiplaneY(factor, 0);
           break;
         case 1:
-          that.translateNativePlaneX(factor, 0);
+          that.translateMultiplanePlaneX(factor, 0);
           break;
         case 2:
-          that.translateNativePlaneY(0, -factor);
+          that._planeManager.translateMultiplaneY(0, -factor);
           break;
         default:  // if last view, we dont do anything
           return;
@@ -4536,17 +4576,20 @@ class QuadScene{
   */
   getMultiplaneContainerInfo(){
 
+    var multiplanePos = this._planeManager.getMultiplanePosition();
+    var multiplaneRot = this._planeManager.getMultiplaneRotation();
+
     return {
       resolutionLvl: this._resolutionLevel,
       position: {
-        x: this._multiplaneContainer.position.x,
-        y: this._multiplaneContainer.position.y,
-        z: this._multiplaneContainer.position.z
+        x: multiplanePos.x,
+        y: multiplanePos.y,
+        z: multiplanePos.z
       },
       rotation: {
-        x: this._multiplaneContainer.rotation.x,
-        y: this._multiplaneContainer.rotation.y,
-        z: this._multiplaneContainer.rotation.z
+        x: multiplaneRot.x,
+        y: multiplaneRot.y,
+        z: multiplaneRot.z
       }
     };
 
