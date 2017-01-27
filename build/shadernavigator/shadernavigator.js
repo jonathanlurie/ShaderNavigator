@@ -2835,6 +2835,8 @@ class PlaneManager{
     this._multiplaneContainer.position.y = y;
     this._multiplaneContainer.position.z = z;
 
+    this.updateUniforms();
+
     this._onMultiplaneMoveCallback && this._onMultiplaneMoveCallback( this._multiplaneContainer.position );
   }
 
@@ -2848,6 +2850,8 @@ class PlaneManager{
     this._multiplaneContainer.rotation.x = x;
     this._multiplaneContainer.rotation.y = y;
     this._multiplaneContainer.rotation.z = z;
+
+    this.updateUniforms();
 
     this._onMultiplaneRotateCallback && this._onMultiplaneRotateCallback();
   }
@@ -3057,6 +3061,8 @@ class PlaneManager{
     var normalPlane = this.getWorldVectorN(planeIndex);
     this._multiplaneContainer.rotateOnAxis ( normalPlane, rad );
 
+    this.updateUniforms();
+
     this._onMultiplaneRotateCallback && this._onMultiplaneRotateCallback();
   }
 
@@ -3133,6 +3139,8 @@ class PlaneManager{
 
     this._multiplaneContainer.translateOnAxis( uVector, uDistance );
     this._multiplaneContainer.translateOnAxis( vVector, vDistance );
+
+    this.updateUniforms();
 
     this._onMultiplaneMoveCallback && this._onMultiplaneMoveCallback( this._multiplaneContainer.position );
 
@@ -4179,15 +4187,17 @@ class QuadScene{
 
     // callback when multiplane moves
     this._planeManager.onMultiplaneMove( function( position ){
-      that._updateAllPlanesShaderUniforms();
+
       that._updatePerspectiveCameraLookAt( position );
       that._syncOrientationHelperPosition( position );
     });
 
+    /*
     // callback when multiplane rotates
     this._planeManager.onMultiplaneRotate( function(){
-      that._updateAllPlanesShaderUniforms();
+      // nothing to do here for the moment
     });
+    */
 
   }
 
@@ -4447,7 +4457,6 @@ class QuadScene{
   }
 
 
-
   /**
   * Specify a callback for when the Quadscene is ready.
   * @param {Callback} cb - a function to be call with the object _this_ in param (the current QuadScene instance).
@@ -4563,10 +4572,9 @@ class QuadScene{
     });
 
     this._quadViewInteraction.onDonePlaying(function(){
-      if(that._onUpdateViewCallback){
-        that._onUpdateViewCallback( that.getMultiplaneContainerInfo() );
-      }
+      that._onUpdateViewCallback && that._onUpdateViewCallback( that.getMultiplaneContainerInfo() );
     });
+
   }
 
 
@@ -4594,6 +4602,7 @@ class QuadScene{
     };
 
   }
+
 
   /**
   * Defines the callback for whenever the lvl, rotation or position changes
