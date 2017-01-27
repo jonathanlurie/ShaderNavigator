@@ -28,8 +28,8 @@ class LevelManager{
 
     this.onReadyCallback = null;
 
-    /** Size of the hull that wraps the entire dataset */
-    this._cubeHull = null;
+    /** Size of the bounding box that wraps the entire dataset */
+    this._boundingBox = null;
 
     /** size of a chunk, considering it's always cubic */
     this._chunkSize = [64, 64, 64]; // will be overwritten using the config file, but it will be 64 anyway.
@@ -109,8 +109,8 @@ class LevelManager{
 
     this._determineChunkSize(levels); // most likely 64 for every config anyway
 
-    // Compute the cube hull, that will give some sense of boundaries to the dataset
-    this._computeCubeHull(levels);
+    // Compute the cube _boundingBox, that will give some sense of boundaries to the dataset
+    this._computeBoundingBox(levels);
 
     // add a chunk collection for each level
     levels.forEach(function(elem, index){
@@ -225,12 +225,12 @@ class LevelManager{
 
 
   /**
-  * The cube hull may be used for different things, like checking inside/outside or simply to show a cube hull with a box.
+  * The bounding box may be used for different things, like checking inside/outside or simply to show a bounding box with a box.
   * The size data is available at every resolution level, we'll just take the info from the first level (0) since the size remains consistant all along.
   * @param {Object} levels - config data
   */
-  _computeCubeHull(levels){
-    this._cubeHull = [
+  _computeBoundingBox(levels){
+    this._boundingBox = [
       levels[0].size[0] / 64.0,
       levels[0].size[1] / 64.0,
       levels[0].size[2] / 64.0
@@ -239,10 +239,20 @@ class LevelManager{
 
 
   /**
-  * @returns {Array} a copy of the cubeHull size as [xSize, ySize, zSize]
+  * @returns {Array} a copy of the bounding box size as [xSize, ySize, zSize]
   */
-  getCubeHull(){
-    return this._cubeHull.slice();
+  getBoundingBox(){
+    return this._boundingBox.slice();
+  }
+
+  /**
+  * @return {boolean} true if xyz is within the bounding box. Return false if outside.
+  * @param {Number} x - coordinate along x
+  * @param {Number} y - coordinate along y
+  * @param {Number} z - coordinate along z
+  */
+  isInside(x, y, z){
+    return (x>0 && x<this._boundingBox[0] && y>0 && y<this._boundingBox[1] && z>0 && z<this._boundingBox[2]);
   }
 
 

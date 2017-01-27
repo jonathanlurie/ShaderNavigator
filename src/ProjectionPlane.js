@@ -175,7 +175,7 @@ class ProjectionPlane{
   * [PRIVATE]
   * Update the uniform of a specific sub-plane using the texture data. This will automatically update the related fragment shader.
   * @param {Number} i - index of the subplane to update.
-  * @textureData {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
+  * @param {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
   */
   _updateSubPlaneUniform(i, textureData){
     //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();

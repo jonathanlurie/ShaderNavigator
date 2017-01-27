@@ -927,8 +927,8 @@ class LevelManager{
 
     this.onReadyCallback = null;
 
-    /** Size of the hull that wraps the entire dataset */
-    this._cubeHull = null;
+    /** Size of the bounding box that wraps the entire dataset */
+    this._boundingBox = null;
 
     /** size of a chunk, considering it's always cubic */
     this._chunkSize = [64, 64, 64]; // will be overwritten using the config file, but it will be 64 anyway.
@@ -1008,8 +1008,8 @@ class LevelManager{
 
     this._determineChunkSize(levels); // most likely 64 for every config anyway
 
-    // Compute the cube hull, that will give some sense of boundaries to the dataset
-    this._computeCubeHull(levels);
+    // Compute the cube _boundingBox, that will give some sense of boundaries to the dataset
+    this._computeBoundingBox(levels);
 
     // add a chunk collection for each level
     levels.forEach(function(elem, index){
@@ -1124,12 +1124,12 @@ class LevelManager{
 
 
   /**
-  * The cube hull may be used for different things, like checking inside/outside or simply to show a cube hull with a box.
+  * The bounding box may be used for different things, like checking inside/outside or simply to show a bounding box with a box.
   * The size data is available at every resolution level, we'll just take the info from the first level (0) since the size remains consistant all along.
   * @param {Object} levels - config data
   */
-  _computeCubeHull(levels){
-    this._cubeHull = [
+  _computeBoundingBox(levels){
+    this._boundingBox = [
       levels[0].size[0] / 64.0,
       levels[0].size[1] / 64.0,
       levels[0].size[2] / 64.0
@@ -1138,10 +1138,20 @@ class LevelManager{
 
 
   /**
-  * @returns {Array} a copy of the cubeHull size as [xSize, ySize, zSize]
+  * @returns {Array} a copy of the bounding box size as [xSize, ySize, zSize]
   */
-  getCubeHull(){
-    return this._cubeHull.slice();
+  getBoundingBox(){
+    return this._boundingBox.slice();
+  }
+
+  /**
+  * @return {boolean} true if xyz is within the bounding box. Return false if outside.
+  * @param {Number} x - coordinate along x
+  * @param {Number} y - coordinate along y
+  * @param {Number} z - coordinate along z
+  */
+  isInside(x, y, z){
+    return (x>0 && x<this._boundingBox[0] && y>0 && y<this._boundingBox[1] && z>0 && z<this._boundingBox[2]);
   }
 
 
@@ -2637,7 +2647,7 @@ class ProjectionPlane{
   * [PRIVATE]
   * Update the uniform of a specific sub-plane using the texture data. This will automatically update the related fragment shader.
   * @param {Number} i - index of the subplane to update.
-  * @textureData {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
+  * @param {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
   */
   _updateSubPlaneUniform(i, textureData){
     //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
@@ -3628,11 +3638,22 @@ class GuiController{
     // fake value for dat gui - just to display the init value
     this._resolutionLevel = this._quadScene.getResolutionLevel();
 
+    // special controller for colormaps
+    this._colormapController = null;
 
+    this._colormapChoice = 0;
+
+    this._colormapManager = this._quadScene.getColormapManager();
+    this._colormapManager.onColormapUpdate( this._updateColormapList.bind(this) );
 
     this._initActions();
   }
 
+
+  /**
+  * [PRIVATE]
+  * Adds buttons to the widget
+  */
   _initActions(){
     var that = this;
 
@@ -3641,13 +3662,15 @@ class GuiController{
 
     // TODO: add a listner on the resolution lvl so that it's updated
 
-    this._datGui.add(this, "_resolutionLevel", 0, 6).name("resolutionLevel").step(1).listen()
+    this._datGui.add(this, "_resolutionLevel", 0, 6).name("Resolution level").step(1).listen()
       .onFinishChange(function(lvl) {
         that._quadScene.setResolutionLevel(lvl);
       });
   }
 
+
   /**
+  * [PRIVATE]
   * Action to toggle the orientation helper
   */
   _toggleOrientationHelper(){
@@ -3655,17 +3678,160 @@ class GuiController{
   }
 
 
+  /**
+  * [PRIVATE]
+  * Action to toggle the bounding box helper
+  */
   _toggleBoundingBoxHelper(){
-    this._quadScene.toggleCubeHull();
-    this._resolutionLevel = 6;
+    this._quadScene.getBoundingBoxHelper().toggle();
   }
 
-  _changeResolutionLevel( v ){
-    console.log(v);
+
+  /**
+  * Update the UI with a new resolution level.
+  * This does not do anything but refreshing the display
+  * (iow. calling this method does NOT change the rez lvl)
+  */
+  updateResolutionLevelUI( lvl ){
+    this._resolutionLevel = lvl;
   }
 
+
+  /**
+  * [PRIVATE] callback
+  * Update the colormap list box and the dedicated callback for when the colormap
+  * changes.
+  */
+  _updateColormapList(){
+    var that = this;
+
+    if( this._colormapController ){
+      this._datGui.remove(this._colormapController);
+      this._colormapController = null;
+    }
+
+    this._colormapController = this._datGui.add(
+      this,
+      '_colormapChoice',
+      this._colormapManager.getAvailableColormaps()
+    ).name("Color map");
+
+    this._colormapController.onFinishChange(function(colormapId) {
+      that._colormapManager.useColormap(colormapId);
+    });
+
+  }
 
 }/* END class GuiController */
+
+/**
+* A BoundingBoxHelper instance shows the limits of the dataset in a visual way.
+* A bounding box can be built only once.
+*/
+class BoundingBoxHelper{
+
+  /**
+  * Constructor
+  * @param {THREE.Object3D} parent - THREE js object to add the boinding box
+  */
+  constructor( parent ){
+    this._size = null;
+    this._parentElem = parent;
+    this._boundingBox3D = null;
+  }
+
+
+  /**
+  * Build the bounding box helper.
+  * Can be called only once.
+  * @param {Array} size - Array of Number [xsize, ysize, zsize]
+  */
+  build( size ){
+    this._size = size.slice();
+
+    if(this._boundingBox3D)
+      return;
+
+    this._boundingBox3D = new THREE.Object3D();
+
+    var boundingBoxMaterial = new THREE.MeshBasicMaterial( {
+      transparent: true,
+      opacity: 0.8,
+      color: 0xffffff,
+      vertexColors: THREE.FaceColors,
+      side: THREE.BackSide
+    } );
+
+    var boundingBoxGeometry = new THREE.BoxGeometry(
+      this._size[0],
+      this._size[1],
+      this._size[2]
+    );
+
+    boundingBoxGeometry.faces[0].color.setHex(  0xFF7A7A ); // Sagittal
+    boundingBoxGeometry.faces[1].color.setHex(  0xFF7A7A );
+    boundingBoxGeometry.faces[2].color.setHex(  0xff3333 );
+    boundingBoxGeometry.faces[3].color.setHex(  0xff3333 );
+    boundingBoxGeometry.faces[4].color.setHex(  0x61FA94 ); // Coronal
+    boundingBoxGeometry.faces[5].color.setHex(  0x61FA94 );
+    boundingBoxGeometry.faces[6].color.setHex(  0xA7FAC3 );
+    boundingBoxGeometry.faces[7].color.setHex(  0xA7FAC3 );
+    boundingBoxGeometry.faces[8].color.setHex(  0x95CCFC ); // Axial
+    boundingBoxGeometry.faces[9].color.setHex(  0x95CCFC );
+    boundingBoxGeometry.faces[10].color.setHex( 0x0088ff );
+    boundingBoxGeometry.faces[11].color.setHex( 0x0088ff );
+
+    // mesh
+    var boundingBoxPlainMesh = new THREE.Mesh( boundingBoxGeometry, boundingBoxMaterial );
+    this._boundingBox3D.add( boundingBoxPlainMesh );
+    this._boundingBox3D.position.x = this._size[0] / 2;
+    this._boundingBox3D.position.y = this._size[1] / 2;
+    this._boundingBox3D.position.z = this._size[2] / 2;
+
+    this._boundingBox3D.children.forEach( function(child){
+      child.layers.disable( 0 );
+      child.layers.enable( 1 );
+    });
+
+    this._parentElem.add( this._boundingBox3D );
+  }
+
+
+  /**
+  * @return {boolean} true if xyz is within the bounding box. Return false if outside.
+  * @param {Number} x - coordinate along x
+  * @param {Number} y - coordinate along y
+  * @param {Number} z - coordinate along z
+  */
+  isInside(x, y, z){
+    return (x>0 && x<this._size[0] && y>0 && y<this._size[1] && z>0 && z<this._size[2]);
+  }
+
+
+  /**
+  * Show the bounding box
+  */
+  show(){
+    this._boundingBox3D.visible = true;
+  }
+
+
+  /**
+  * Hide the bounding box
+  */
+  hide(){
+    this._boundingBox3D.visible = false;
+  }
+
+
+  /**
+  * Show the bounding box if it's hidden, hide if it's shown.
+  */
+  toggle(){
+    this._boundingBox3D.visible = !this._boundingBox3D.visible;
+  }
+
+}/* END class BoundingBoxHelper */
 
 /**
 * A QuadScene is a THREE js context where the viewport is split in 4 windows, for each window comes a QuadView.
@@ -3691,12 +3857,6 @@ class QuadScene{
     // all the planes to intersect the chunks. They will all lie into _multiplaneContainer
     this._planeManager = null;
 
-    // visible bounding box for the dataset
-    this._cubeHull3D = null;
-
-    // size of the dataset in world coords. TO BE INIT
-    this._cubeHullSize = [0, 0, 0];
-
     // a static gimbal to show dataset orientation
     this._orientationHelper = null;
 
@@ -3712,14 +3872,13 @@ class QuadScene{
     // a single colormap manager that will be used for all the planes
     this._colormapManager = new ColorMapManager();
 
-    // init the gui controller
-    this._guiController = new GuiController(this);
-
     // Container on the DOM tree, most likely a div
     this._domContainer = document.getElementById( DomContainer );
 
     // scene, where everything goes
     this._scene = new THREE.Scene();
+
+    this._boundingBoxHelper = new BoundingBoxHelper( this._scene );
 
     var axisHelper = new THREE.AxisHelper( 1 );
     axisHelper.layers.enable(1);
@@ -3776,6 +3935,10 @@ class QuadScene{
     this._initViews();
     this._levelManager = new LevelManager();
     this._initPlaneManager();
+
+    // init the gui controller
+    this._guiController = new GuiController(this);
+
     this._animate();
   }
 
@@ -3889,6 +4052,14 @@ class QuadScene{
 
 
   /**
+  * @return {ColorMapManager} the colormap manager
+  */
+  getColormapManager(){
+    return this._colormapManager;
+  }
+
+
+  /**
   * [PRIVATE]
   * To feed the animation feature built in WebGL.
   */
@@ -3934,77 +4105,18 @@ class QuadScene{
 
 
   /**
-  * [PRIVATE]
-  * Initialize the DAT.GUI component
+  * @return {OrientationHelper} the instance of OrientationHelper used in Quadscene.
   */
-  _initUI(){
-    var that = this;
-
-    this._guiVar = {
-
-      resolutionLevel: that._resolutionLevel,
-      colormapChoice: 0, // the value does not matter
-
-
-      toggleOrientationHelper: function(){
-        that._orientationHelper.toggle();
-      },
-
-      toggleCubeHull: function(){
-        that.toggleCubeHull();
-      },
-
-      debug: function(){
-        that._adjustedContainer.visible = !that._adjustedContainer.visible;
-      },
-
-    };
-
-
-    this._datGui.add(this._guiVar, 'toggleOrientationHelper').name("Toggle helper");
-    this._datGui.add(this._guiVar, 'toggleCubeHull').name("Toggle cube");
-
-    var levelController = this._datGui.add(this._guiVar, 'resolutionLevel', 0, 6).name("resolutionLevel").step(1).listen();
-
-    this._datGui.add(this._guiVar, 'debug');
-
-    levelController.onFinishChange(function(lvl) {
-      that.setResolutionLevel(lvl);
-    });
-
-    // whenever a colormap is loaded, add it to the list in dat.gui
-    this._colormapManager.onColormapUpdate( this._updateColormapList.bind(this) );
-
-
-  }
-
-
   getOrientationHelper(){
     return this._orientationHelper;
   }
 
+
   /**
-  * [PRIVATE]
-  * Suposed to be called as a callback of _colormapManager.onColormapUpdate.
-  * Updates the dat.guy view and its corresponding controller with the new list of colormaps
+  * @return {BoundingBoxHelper} the bounding box helper
   */
-  _updateColormapList(){
-    var that = this;
-
-    if( typeof this._colormapController !== "undefined" ){
-      this._datGui.remove(this._colormapController);
-      this._colormapController = null;
-    }
-
-    this._colormapController = this._datGui.add(
-      this._guiVar,
-      'colormapChoice',
-      this._colormapManager.getAvailableColormaps()
-    ).name("color map");
-
-    this._colormapController.onFinishChange(function(colormapId) {
-      that._colormapManager.useColormap(colormapId);
-    });
+  getBoundingBoxHelper(){
+    return this._boundingBoxHelper;
   }
 
 
@@ -4015,71 +4127,14 @@ class QuadScene{
   * @param {Number} z - z position in world coordinates
   */
   setMainObjectPosition(x, y, z){
-    if(x>0 && x<this._cubeHullSize[0] &&
-       y>0 && y<this._cubeHullSize[1] &&
-       z>0 && z<this._cubeHullSize[2]
-    ){
+    if(this._levelManager.isInside(x, y, z)){
+
       this._multiplaneContainer.position.x = x;
       this._multiplaneContainer.position.y = y;
       this._multiplaneContainer.position.z = z;
 
       this._updateAllPlanesShaderUniforms();
       this._updatePerspectiveCameraLookAt();
-
-      this._syncOrientationHelperPosition();
-    }
-  }
-
-
-  /**
-  * Set the x position of the main object container.
-  * @param {Number} x - position
-  */
-  setMainObjectPositionX(x){
-    if(x>0 && x<this._cubeHullSize[0]){
-      this._multiplaneContainer.position.x = x;
-      this._updateAllPlanesShaderUniforms();
-      this._updatePerspectiveCameraLookAt();
-
-      // already done if called by the renderer and using DAT.gui
-      this._guiVar.posx = x;
-
-      this._syncOrientationHelperPosition();
-    }
-  }
-
-
-  /**
-  * Set the y position of the main object container.
-  * @param {Number} y - position
-  */
-  setMainObjectPositionY(y){
-    if(y>0 && y<this._cubeHullSize[1]){
-      this._multiplaneContainer.position.y = y;
-      this._updateAllPlanesShaderUniforms();
-      this._updatePerspectiveCameraLookAt();
-
-      // already done if called by the renderer and using DAT.gui
-      this._guiVar.posy = y;
-
-      this._syncOrientationHelperPosition();
-    }
-  }
-
-
-  /**
-  * Set the z position of the main object container.
-  * @param {Number} z - position
-  */
-  setMainObjectPositionZ(z){
-    if(z>0 && z<this._cubeHullSize[2]){
-      this._multiplaneContainer.position.z = z;
-      this._updateAllPlanesShaderUniforms();
-      this._updatePerspectiveCameraLookAt();
-
-      // already done if called by the renderer and using DAT.gui
-      this._guiVar.posz = z;
-
       this._syncOrientationHelperPosition();
     }
   }
@@ -4133,16 +4188,17 @@ class QuadScene{
     this._levelManager.loadConfig(config);
 
     this._levelManager.onReady(function(){
+      var boxSize = that._levelManager.getBoundingBox();
 
       that._planeManager.setLevelManager( that._levelManager );
       that._levelManager.setResolutionLevel( that._resolutionLevel );
-      that._buildCubeHull();
+      that._boundingBoxHelper.build( boxSize );
 
       // Place the plane intersection at the center of the data
       that.setMainObjectPosition(
-        that._cubeHullSize[0] / 2,
-        that._cubeHullSize[1] / 2,
-        that._cubeHullSize[2] / 2
+        boxSize[0] / 2,
+        boxSize[1] / 2,
+        boxSize[2] / 2
       );
 
       that._initOrientationHelper();
@@ -4180,6 +4236,8 @@ class QuadScene{
     this._syncOrientationHelperScale();
     this._updateOthoCamFrustrum();
 
+    this._guiController.updateResolutionLevelUI( lvl );
+
     if(this._onUpdateViewCallback){
       this._onUpdateViewCallback( this.getMultiplaneContainerInfo() );
     }
@@ -4211,92 +4269,6 @@ class QuadScene{
     this._quadViews[0].updateOrthoCamFrustrum( frustrumFactor );
     this._quadViews[1].updateOrthoCamFrustrum( frustrumFactor );
     this._quadViews[2].updateOrthoCamFrustrum( frustrumFactor );
-  }
-
-
-  /**
-  * Make the cube hull visible. Builds it if not already built.
-  */
-  showCubeHull(){
-    if(!this._cubeHull3D){
-      this._buildCubeHull();
-    }else{
-      this._cubeHull3D.visible = true;
-    }
-  }
-
-
-  /**
-  * Make the cube hull invisible.
-  */
-  hideCubeHull(){
-    if(this._cubeHull3D){
-      this._cubeHull3D.visible = false;
-    }
-  }
-
-
-  /**
-  * Make the cube hull visible or not (reverses the current state)
-  */
-  toggleCubeHull(){
-    if(this._cubeHull3D){
-      this._cubeHull3D.visible = !this._cubeHull3D.visible;
-    }
-  }
-
-
-  /**
-  * [PRIVATE]
-  * Build the cube hull, in other word, the box that adds some notion of boundaries to the dataset.
-  */
-  _buildCubeHull(){
-    if(this._cubeHull3D)
-      return;
-
-    this._cubeHullSize = this._levelManager.getCubeHull();
-
-    var cubeHullMaterial = new THREE.MeshBasicMaterial( {
-      transparent: true,
-      opacity: 0.8,
-      color: 0xffffff,
-      vertexColors: THREE.FaceColors,
-      side: THREE.BackSide
-    } );
-
-    var cubeHullGeometry = new THREE.BoxGeometry(
-      this._cubeHullSize[0],
-      this._cubeHullSize[1],
-      this._cubeHullSize[2]
-    );
-
-    cubeHullGeometry.faces[0].color.setHex(  0xFF7A7A ); // Sagittal
-    cubeHullGeometry.faces[1].color.setHex(  0xFF7A7A );
-    cubeHullGeometry.faces[2].color.setHex(  0xff3333 );
-    cubeHullGeometry.faces[3].color.setHex(  0xff3333 );
-    cubeHullGeometry.faces[4].color.setHex(  0x61FA94 ); // Coronal
-    cubeHullGeometry.faces[5].color.setHex(  0x61FA94 );
-    cubeHullGeometry.faces[6].color.setHex(  0xA7FAC3 );
-    cubeHullGeometry.faces[7].color.setHex(  0xA7FAC3 );
-    cubeHullGeometry.faces[8].color.setHex(  0x95CCFC ); // Axial
-    cubeHullGeometry.faces[9].color.setHex(  0x95CCFC );
-    cubeHullGeometry.faces[10].color.setHex( 0x0088ff );
-    cubeHullGeometry.faces[11].color.setHex( 0x0088ff );
-
-    // mesh
-    var cubeHullPlainMesh = new THREE.Mesh( cubeHullGeometry, cubeHullMaterial );
-    this._cubeHull3D = new THREE.Object3D();
-    this._cubeHull3D.add( cubeHullPlainMesh );
-    this._cubeHull3D.position.x = this._cubeHullSize[0] / 2;
-    this._cubeHull3D.position.y = this._cubeHullSize[1] / 2;
-    this._cubeHull3D.position.z = this._cubeHullSize[2] / 2;
-
-    this._cubeHull3D.children.forEach( function(child){
-      child.layers.disable( 0 );
-      child.layers.enable( 1 );
-    });
-
-    this._scene.add( this._cubeHull3D );
   }
 
 
