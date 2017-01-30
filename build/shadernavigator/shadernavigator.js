@@ -5,6 +5,618 @@
 }(this, (function (exports) { 'use strict';
 
 /**
+* An HashIO instance reads and writes the hash part of the URL (what is after '#').
+* The read mode: the user can specify some arguments in the URL to specify
+* the resolution level, the position and the rotation. Here is how the URL should
+* look like: mydomain.com/quadView.html#5/1.01,1.02,1.03/0.1,0.2,0.3
+* Where:
+*    5 is the resolution level
+*    1.01,1.02,1.03 is the x,y,z position of the intersection plane
+*    0.1,0.2,0.3 is the x,y,z Euler angle rotation of the intersection plane
+*
+* The write mode: everytime the intersection plane is moved, the hash is refreshed
+* so that the url can be used to come back to a specific position within the dataset.
+*
+*/
+class HashIO{
+
+  constructor(){
+    this._rePattern = /(\d)[\/]([-]?[0-9]*[.]?[0-9]+)[,]([-]?[0-9]*[.]?[0-9]+)[,]([-]?[0-9]*[.]?[0-9]+)[\/]([-]?[0-9]*[.]?[0-9]+)[,]([-]?[0-9]*[.]?[0-9]+)[,]([-]?[0-9]*[.]?[0-9]+)/g;
+
+  }
+
+
+  /**
+  * @returns the hash if there is one (without the '#'). Return an empty string if no hash.
+  */
+  getRawHash(){
+    return window.location.hash.substr(1);
+  }
+
+
+  /**
+  * Reads the URL hash and returns plane intersection information if the format matches.
+  * @return {Object} the returned object if of the form:
+  * { resolutionLvl, position {x, y, z}, rotation {x, y, z} }
+  * Or returns null if the format does not match.
+  */
+  getHashInfo(){
+    var match  = this._rePattern.exec( this.getRawHash() );
+
+    if(!match)
+      return null;
+
+    return {
+      resolutionLvl: parseInt(match[1]),
+      position: {
+        x: parseFloat(match[2]),
+        y: parseFloat(match[3]),
+        z: parseFloat(match[4])
+      },
+      rotation: {
+        x: parseFloat(match[5]),
+        y: parseFloat(match[6]),
+        z: parseFloat(match[7])
+      }
+    };
+  }
+
+  /**
+  * Write the hash part of the url
+  * @param {Object} objectInfo - should have this structure:
+  *   { resolutionLvl, position {x, y, z}, rotation {x, y, z} }
+  * If one of the parameter is NaN, the URL hash is not updated
+  * (some low level bug tend to produce NaN Euler angle).
+  *
+  */
+  setHashInfo( objectInfo ){
+
+    // dont refresh if we get a NaN
+    if( isNaN(objectInfo.position.x) || isNaN(objectInfo.position.y) || isNaN(objectInfo.position.z) ||
+        isNaN(objectInfo.rotation.x) || isNaN(objectInfo.rotation.y) || isNaN(objectInfo.rotation.z) )
+    {
+      return;
+    }
+
+    window.location.hash = objectInfo.resolutionLvl + "/"+
+      objectInfo.position.x + "," +
+      objectInfo.position.y + "," +
+      objectInfo.position.z + "/" +
+      objectInfo.rotation.x + "," +
+      objectInfo.rotation.y + "," +
+      objectInfo.rotation.z;
+  }
+
+
+
+} /* END CLASS HashIO */
+
+/**
+* A QuadView is a projection of a rendered scene on a quarter of the viewport, typically: top_left, top_right, bottom_left or bottom_right.
+* A QuadView instance is part of a QuadScene, where are renderer 4 QuadViews.
+*/
+class QuadView{
+
+  /**
+  * @param {THREE.Scene} scene - the main scene to be used by aggregation here.
+  * @param {THREE.Renderer} renderer - the main renderer to be used by aggregation here.
+  * @param {Number} objectSize - Considering the object is centered on origin, this is a distance to be used so that the camera are not within the object. Example: 2 times the largest diagonal.
+  *
+  */
+  constructor(scene, renderer, objectSize){
+    this._isPerspective = false;
+    this._objectSize = objectSize;
+    this._camera = null;
+    this._config = null;
+    this._near = 0.1;
+    this._far = 1000;
+    this._defaultFov = 30;
+
+    // set when decided which corner
+    this._viewName = "";
+
+    this._originToLookAt = new THREE.Vector3(0, 0, 0);
+    this._control = null;
+    this._renderer = renderer;
+    this._scene = scene;
+
+    // mouse coordinates, given by an higher object to prevent recomputing for every view
+    this._mouse = {x:0, y:0};
+
+    // keeps a track if the mouse pointer is within this view
+    this._mouseInView = false;
+
+    // depends on what corner
+    this._backgroundColor = null;
+
+    // we save to get a resize ratio
+    this._windowSize = {
+      width: window.innerWidth ,
+      height: window.innerHeight
+    };
+
+  }
+
+  /**
+  * Define the point the camera is supposed to look at. By default, this is in world coordinates but if you place the current camera into an object, this will be in object-related coordinates.
+  * If unchanged, [0, 0, 0]
+  * @param {Number} x - x from 3D world coordinates
+  * @param {Number} y - y from 3D world coordinates
+  * @param {Number} z - z from 3D world coordinates
+  */
+  setOriginToLookAt(x, y, z){
+    this._originToLookAt.set(x, y, z);
+  }
+
+
+  /**
+  * Init the current view as the top left view of the quad view
+  */
+  initTopLeft(){
+    this._config = {
+      left: 0.0,
+      bottom: 0.5,
+      width: 0.5,
+      height: 0.5,
+      position: [ -this._objectSize, 0, 0 ],
+      up: [ -1, 0, 0 ]
+    };
+    this._viewName = "top_left";
+    this._backgroundColor = new THREE.Color().setRGB( 0.8, 0.8, 0.8 );
+  }
+
+
+  /**
+  * Init the current view as the top right view of the quad view
+  */
+  initTopRight(){
+    this._config = {
+      left: 0.5,
+      bottom: 0.5,
+      width: 0.5,
+      height: 0.5,
+      position: [ 0, -this._objectSize, 0 ],
+      up: [ 0, -1, 0 ]
+    };
+    this._viewName = "top_right";
+    this._backgroundColor = new THREE.Color().setRGB( 0.9, 0.9, 0.9 );
+  }
+
+  /**
+  * Init the current view as the Bottom left view of the quad view
+  */
+  initBottomLeft(){
+    this._config = {
+      left: 0.0,
+      bottom: 0.0,
+      width: 0.5,
+      height: 0.5,
+      position: [ 0, 0, -this._objectSize ],
+      up: [ 0, 1, 0 ]
+    };
+    this._viewName = "bottom_left";
+    this._backgroundColor = new THREE.Color().setRGB( 0.9, 0.9, 0.9 );
+  }
+
+
+  /**
+  * Init the current view as the Bottom right view of the quad view
+  */
+  initBottomRight(){
+    this._config = {
+      left: 0.5,
+      bottom: 0,
+      width: 0.5,
+      height: 0.5,
+      position: [ -this._objectSize/2, this._objectSize/2, -this._objectSize/3 ],
+      up: [ 0, 0, -1 ]
+    };
+    this._viewName = "bottom_right";
+    this._backgroundColor = new THREE.Color().setRGB( 0.97, 0.97, 0.97 );
+  }
+
+
+  /**
+  * Build an orthographic camera for this view.
+  */
+  initOrthoCamera(){
+    this._isPerspective = false;
+
+    let orthographicCameraFovFactor = 360; // default: 360
+
+    this._camera = new THREE.OrthographicCamera(
+      window.innerWidth / - orthographicCameraFovFactor,  // left
+      window.innerWidth / orthographicCameraFovFactor,    // right
+      window.innerHeight / orthographicCameraFovFactor,   // top
+      window.innerHeight / - orthographicCameraFovFactor // bottom
+      //9.99,//this._objectSize * 0.9, //this._near,
+      //10.01//this._objectSize * 1.1 //this._far
+    );
+
+
+    this._camera.left_orig = window.innerWidth / - orthographicCameraFovFactor;
+    this._camera.right_orig = window.innerWidth / orthographicCameraFovFactor;
+    this._camera.top_orig = window.innerHeight / orthographicCameraFovFactor;
+    this._camera.bottom_orig = window.innerHeight / - orthographicCameraFovFactor;
+
+
+    /*
+    this._camera.left_orig = this._camera.left;
+    this._camera.right_orig = this._camera.right;
+    this._camera.top_orig = this._camera.top;
+    this._camera.bottom_orig = this._camera.bottom;
+    */
+    this._initCameraSettings();
+  }
+
+
+  /**
+  * Build a perspective camera for this view.
+  */
+  initPerspectiveCamera(){
+    this._isPerspective = true;
+
+    this._camera = new THREE.PerspectiveCamera(
+      this._defaultFov, // fov
+      window.innerWidth / window.innerHeight, // aspect
+      this._near, // near
+      this._far // far
+    );
+
+    this._initCameraSettings();
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Ends the building of the camera, using the settings from _config.
+  */
+  _initCameraSettings(){
+    this._camera.position.x = this._config.position[0];
+    this._camera.position.y = this._config.position[1];
+    this._camera.position.z = this._config.position[2];
+    this._camera.up.x = this._config.up[ 0 ];
+    this._camera.up.y = this._config.up[ 1 ];
+    this._camera.up.z = this._config.up[ 2 ];
+    this._camera.fov = this._defaultFov;
+    this._camera.lookAt( this._originToLookAt );
+
+  }
+
+
+  /**
+  * Adds an orbit control so that the user can play easily
+  */
+  addTrackballControl(renderFunction, domContainer){
+    this._control = new THREE.TrackballControls( this._camera, domContainer );
+
+    this._control.rotateSpeed = 5.0;
+    this._control.staticMoving = true;
+    this._control.zoomSpeed = 0.3;
+		this._control.panSpeed = 1;
+
+    /*
+    this._control.zoomSpeed = 1.2;
+		this._control.panSpeed = 0.8;
+		this._control.noZoom = false;
+		this._control.noPan = false;
+		this._control.staticMoving = true;
+		this._control.dynamicDampingFactor = 0.3;
+		this._control.keys = [ 65, 83, 68 ];
+    */
+
+    this._control.addEventListener( 'change', this.renderView.bind(this) );
+  }
+
+
+  /*
+  * Change the background color for this view. If unchanged, top_left and bottom_right are in a bit darker gray than the 2 others.
+  * @param {THREE.Color} c - color
+  */
+  setBackgroundColor(c){
+    this._backgroundColor = c;
+  }
+
+
+  /**
+  * Render the view, should be called when the main renderer is rendering.
+  */
+  renderView(){
+
+    var left   = Math.floor( window.innerWidth  * this._config.left );
+    var bottom = Math.floor( window.innerHeight * this._config.bottom );
+    var width  = Math.floor( window.innerWidth  * this._config.width );
+    var height = Math.floor( window.innerHeight * this._config.height );
+
+    this._renderer.setViewport( left, bottom, width, height );
+    this._renderer.setScissor( left, bottom, width, height );
+    this._renderer.setScissorTest( true );
+    this._renderer.setClearColor( this._backgroundColor );
+    this._camera.aspect = width / height;
+    this._camera.updateProjectionMatrix();
+    this._renderer.render( this._scene, this._camera );
+  }
+
+
+
+  /**
+  * To use to embed the camera of this QuadView into an existing object, so that it can profit from this object space transformation without further work.
+  * We use it to embed a orthographic camera to planes so that the wole system can rotate and move all at once.
+  */
+  useRelativeCoordinatesOf( object3D ){
+    // TODO: remove from an possibly existing parent first (if not scene)
+
+    object3D.add(this._camera);
+  }
+
+
+  /**
+  * Updates the camera frustrum for ortho cam, in order to change the width and heigh of its projection and keep a relativelly constant image no matter what zoom level we are using.
+  * @param {Number} ff -
+  */
+  updateOrthoCamFrustrum(ff){
+    this._camera.left = this._camera.left_orig * ff;
+    this._camera.right = this._camera.right_orig * ff;
+    this._camera.top = this._camera.top_orig * ff;
+    this._camera.bottom = this._camera.bottom_orig * ff;
+    //this._camera.updateProjectionMatrix();
+  }
+
+
+  /**
+  * Used for perspective cameras. If a Control is enabled, the center of rotatation (target) will also be set.
+  * @param {THREE.Vector3} pos - 3D position to look at and to turn around.
+  */
+  updateLookAt(pos){
+    this._camera.lookAt( pos.clone() );
+
+    if(this._control){
+      this._control.target = pos.clone();
+    }
+
+  }
+
+
+  /**
+  * Update the control. This control needs to be updated from an "animate" function (like every frames) but not from a render function.
+  * If the control is a TrackballControls, updateControl needs to be called at every loop.
+  */
+  updateControl(){
+    this._control.update();
+  }
+
+
+  /**
+  * If the control ( trackball) was initialized, it enables it.
+  * (Can be called even though it was already enabled, this is NOT a toggle)
+  */
+  enableControl(){
+    if(this._control){
+      if(!this._control.enabled){
+        this._control.enabled = true;
+      }
+    }
+  }
+
+
+  /**
+  * If the control (trackball) was initialized, it disables it.
+  * (Can be called even though it was already enabled, this is NOT a toggle)
+  */
+  disableControl(){
+    if(this._control){
+      if(this._control.enabled){
+        //console.log("mouse left " + this._viewName);
+        this._control.enabled = false;
+      }
+    }
+  }
+
+
+  /**
+  * @returns {boolean} true if this view is using a trackball control (no matter if enabled or disabled). Return false if this view does not use any kind of controls.
+  */
+  isUsingControl(){
+    return !!this._control;
+  }
+
+
+  /**
+  * Ask if a specific normalized coordinates are in the window boundaries of this view.
+  * @param {Number} x - horizontal coordinate normalized to the screen, so within [0, 1]. Origin on the left.
+  * @param {Number} y - vertical coordinate normalized to the screen, so within [0, 1]. Origin on the bottom.
+  * @returns true if (x, y) are
+  */
+  isInViewWindow(x, y){
+    return x > this._config.left && y > this._config.bottom &&
+      x < (this._config.left + this._config.width) &&
+      y < (this._config.bottom + this._config.height);
+  }
+
+
+  /**
+  * Enable a layer index for the camera of this view.
+  * @param {Number} layerNum - index of the layer.
+  */
+  enableLayer( layerNum ){
+    this._camera.layers.enable( layerNum );
+
+  }
+
+
+  /**
+  * Disable a layer index for the camera of this view.
+  * @param {Number} layerNum - index of the layer.
+  */
+  disableLayer( layerNum ){
+    this._camera.layers.disable( layerNum );
+  }
+
+
+  /**
+  * Return the camera of this view (unsafe, can be changed).
+  */
+  getCamera(){
+    return this._camera;
+  }
+
+
+  /**
+  * Update the ratio of the camera.
+  * Most likely to happen when the windows is resized.
+  * Depends if the cam is ortho of persp.
+  */
+  updateRatio(w, h){
+
+    if(this._isPerspective){
+      this._camera.aspect = w / h ;
+      this._camera.updateProjectionMatrix();
+    }else{
+      var wRatio = this._windowSize.width / window.innerWidth;
+      var hRatio = this._windowSize.height / window.innerHeight;
+
+      this._camera.left /= wRatio;
+      this._camera.right /= wRatio;
+      this._camera.top /= hRatio;
+      this._camera.bottom /= hRatio;
+    }
+
+    this._windowSize.width = window.innerWidth;
+    this._windowSize.height = window.innerHeight;
+  }
+
+
+  /**
+  * @return true if the camera of this view is a perspective camera.
+  */
+  isPerspective(){
+    return this._isPerspective;
+  }
+
+
+  /**
+  * @param {String} name of the config param to get. Must be "left", "bottom", "width", "height", "position" or "up". The 4 firsts being window settings, while the 2 lasts are camera settings. Read only.
+  * @return {Number} the value of the parameter
+  */
+  getConfigParam( paramName ){
+
+    if(paramName in this._config){
+      return this._config[ paramName ]
+    }else{
+      console.warn(paramName + " param does not exist in the config.");
+      return null;
+    }
+  }
+
+
+} /* END QuadView */
+
+/**
+* Contains only static methods to load various kind of data with an AJAX request.
+*/
+class AjaxFileLoader{
+
+  /**
+  * Loads a text file and makes its content available thru a String.
+  * @param {String} url - URL of the file to load
+  * @param {callback} successCallback - function to call when the file is loaded. Called with one String argument.
+  * @param {callback} errorCallback - function to call when the file failed to load. Called with a Number argument (http status).
+  */
+  static loadTextFile(url, successCallback, errorCallback) {
+    var xhr = typeof XMLHttpRequest != 'undefined'
+      ? new XMLHttpRequest()
+      : new ActiveXObject('Microsoft.XMLHTTP');
+
+    xhr.open('GET', url, true);
+
+    xhr.onload = function() {
+      var status;
+      var data;
+
+      if (xhr.readyState == 4) { // `DONE`
+        status = xhr.status;
+        if (status == 200) {
+          successCallback && successCallback(xhr.responseText);
+        } else {
+          errorCallback && errorCallback(status);
+        }
+      }
+    };
+
+    xhr.onerror = function(e){
+      errorCallback && errorCallback(status);
+    };
+
+    xhr.send();
+  }
+
+
+
+  static loadCompressedTextFile(url, successCallback, errorCallback) {
+    if(! AjaxFileLoader.isPakoAvailable()){
+      errorCallback("Pako lib is not available, please include it to your project.");
+      return;
+    }
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.responseType = "arraybuffer";
+
+    xhr.onload = function (oEvent) {
+
+      var status = xhr.status;
+      var arrayBuffer = xhr.response;
+
+      if (arrayBuffer) {
+        var unzipped = pako.inflate(arrayBuffer);
+        var result = unzipped.buffer;
+        var blob = new Blob([result]);
+        var fileReader = new FileReader();
+
+        fileReader.onload = function(event) {
+          //console.log(event.target.result.length);
+          successCallback && successCallback(event.target.result);
+        };
+
+        fileReader.onerror = function(event){
+          errorCallback && errorCallback(event);
+        };
+
+        fileReader.readAsText(blob);
+      }
+    };
+
+    xhr.onerror = function(e){
+      console.error("Can't find the file " + url);
+      errorCallback && errorCallback(status);
+    };
+
+    xhr.send(null);
+
+  }
+
+
+  /**
+  * Check if Pako lib (for reading gz files) is available.
+  * @return true if available, or false if not
+  */
+  static isPakoAvailable(){
+    var isIt = true;
+
+    try{
+      pako;
+    }catch(e){
+      console.warn(e);
+      isIt = false;
+    }
+
+    return isIt;
+  }
+
+
+}/* END CLASS AjaxFileLoader */
+
+/**
 * Generic interface to load texture and give them to the TextureChunk
 */
 class TextureLoaderInterface{
@@ -799,111 +1411,6 @@ class ChunkCollection{
 } /* END CLASS ChunkCollection */
 
 /**
-* Contains only static methods to load various kind of data with an AJAX request.
-*/
-class AjaxFileLoader{
-
-  /**
-  * Loads a text file and makes its content available thru a String.
-  * @param {String} url - URL of the file to load
-  * @param {callback} successCallback - function to call when the file is loaded. Called with one String argument.
-  * @param {callback} errorCallback - function to call when the file failed to load. Called with a Number argument (http status).
-  */
-  static loadTextFile(url, successCallback, errorCallback) {
-    var xhr = typeof XMLHttpRequest != 'undefined'
-      ? new XMLHttpRequest()
-      : new ActiveXObject('Microsoft.XMLHTTP');
-
-    xhr.open('GET', url, true);
-
-    xhr.onload = function() {
-      var status;
-      var data;
-
-      if (xhr.readyState == 4) { // `DONE`
-        status = xhr.status;
-        if (status == 200) {
-          successCallback && successCallback(xhr.responseText);
-        } else {
-          errorCallback && errorCallback(status);
-        }
-      }
-    };
-
-    xhr.onerror = function(e){
-      errorCallback && errorCallback(status);
-    };
-
-    xhr.send();
-  }
-
-
-
-  static loadCompressedTextFile(url, successCallback, errorCallback) {
-    if(! AjaxFileLoader.isPakoAvailable()){
-      errorCallback("Pako lib is not available, please include it to your project.");
-      return;
-    }
-
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url, true);
-    xhr.responseType = "arraybuffer";
-
-    xhr.onload = function (oEvent) {
-
-      var status = xhr.status;
-      var arrayBuffer = xhr.response;
-
-      if (arrayBuffer) {
-        var unzipped = pako.inflate(arrayBuffer);
-        var result = unzipped.buffer;
-        var blob = new Blob([result]);
-        var fileReader = new FileReader();
-
-        fileReader.onload = function(event) {
-          //console.log(event.target.result.length);
-          successCallback && successCallback(event.target.result);
-        };
-
-        fileReader.onerror = function(event){
-          errorCallback && errorCallback(event);
-        };
-
-        fileReader.readAsText(blob);
-      }
-    };
-
-    xhr.onerror = function(e){
-      console.error("Can't find the file " + url);
-      errorCallback && errorCallback(status);
-    };
-
-    xhr.send(null);
-
-  }
-
-
-  /**
-  * Check if Pako lib (for reading gz files) is available.
-  * @return true if available, or false if not
-  */
-  static isPakoAvailable(){
-    var isIt = true;
-
-    try{
-      pako;
-    }catch(e){
-      console.warn(e);
-      isIt = false;
-    }
-
-    return isIt;
-  }
-
-
-}/* END CLASS AjaxFileLoader */
-
-/**
 * The LevelManager is above the {@link ChunkCollection} and contain them all, one for each resolution level. LevelManager also acts like an interface to query chunk data.
 */
 class LevelManager{
@@ -1167,513 +1674,6 @@ class LevelManager{
 
 
 } /* END CLASS LevelManager */
-
-/**
-* An HashIO instance reads and writes the hash part of the URL (what is after '#').
-* The read mode: the user can specify some arguments in the URL to specify
-* the resolution level, the position and the rotation. Here is how the URL should
-* look like: mydomain.com/quadView.html#5/1.01,1.02,1.03/0.1,0.2,0.3
-* Where:
-*    5 is the resolution level
-*    1.01,1.02,1.03 is the x,y,z position of the intersection plane
-*    0.1,0.2,0.3 is the x,y,z Euler angle rotation of the intersection plane
-*
-* The write mode: everytime the intersection plane is moved, the hash is refreshed
-* so that the url can be used to come back to a specific position within the dataset.
-*
-*/
-class HashIO{
-
-  constructor(){
-    this._rePattern = /(\d)[\/]([-]?[0-9]*[.]?[0-9]+)[,]([-]?[0-9]*[.]?[0-9]+)[,]([-]?[0-9]*[.]?[0-9]+)[\/]([-]?[0-9]*[.]?[0-9]+)[,]([-]?[0-9]*[.]?[0-9]+)[,]([-]?[0-9]*[.]?[0-9]+)/g;
-
-  }
-
-
-  /**
-  * @returns the hash if there is one (without the '#'). Return an empty string if no hash.
-  */
-  getRawHash(){
-    return window.location.hash.substr(1);
-  }
-
-
-  /**
-  * Reads the URL hash and returns plane intersection information if the format matches.
-  * @return {Object} the returned object if of the form:
-  * { resolutionLvl, position {x, y, z}, rotation {x, y, z} }
-  * Or returns null if the format does not match.
-  */
-  getHashInfo(){
-    var match  = this._rePattern.exec( this.getRawHash() );
-
-    if(!match)
-      return null;
-
-    return {
-      resolutionLvl: parseInt(match[1]),
-      position: {
-        x: parseFloat(match[2]),
-        y: parseFloat(match[3]),
-        z: parseFloat(match[4])
-      },
-      rotation: {
-        x: parseFloat(match[5]),
-        y: parseFloat(match[6]),
-        z: parseFloat(match[7])
-      }
-    };
-  }
-
-  /**
-  * Write the hash part of the url
-  * @param {Object} objectInfo - should have this structure:
-  *   { resolutionLvl, position {x, y, z}, rotation {x, y, z} }
-  * If one of the parameter is NaN, the URL hash is not updated
-  * (some low level bug tend to produce NaN Euler angle).
-  *
-  */
-  setHashInfo( objectInfo ){
-
-    // dont refresh if we get a NaN
-    if( isNaN(objectInfo.position.x) || isNaN(objectInfo.position.y) || isNaN(objectInfo.position.z) ||
-        isNaN(objectInfo.rotation.x) || isNaN(objectInfo.rotation.y) || isNaN(objectInfo.rotation.z) )
-    {
-      return;
-    }
-
-    window.location.hash = objectInfo.resolutionLvl + "/"+
-      objectInfo.position.x + "," +
-      objectInfo.position.y + "," +
-      objectInfo.position.z + "/" +
-      objectInfo.rotation.x + "," +
-      objectInfo.rotation.y + "," +
-      objectInfo.rotation.z;
-  }
-
-
-
-} /* END CLASS HashIO */
-
-/**
-* A QuadView is a projection of a rendered scene on a quarter of the viewport, typically: top_left, top_right, bottom_left or bottom_right.
-* A QuadView instance is part of a QuadScene, where are renderer 4 QuadViews.
-*/
-class QuadView{
-
-  /**
-  * @param {THREE.Scene} scene - the main scene to be used by aggregation here.
-  * @param {THREE.Renderer} renderer - the main renderer to be used by aggregation here.
-  * @param {Number} objectSize - Considering the object is centered on origin, this is a distance to be used so that the camera are not within the object. Example: 2 times the largest diagonal.
-  *
-  */
-  constructor(scene, renderer, objectSize){
-    this._isPerspective = false;
-    this._objectSize = objectSize;
-    this._camera = null;
-    this._config = null;
-    this._near = 0.1;
-    this._far = 1000;
-    this._defaultFov = 30;
-
-    // set when decided which corner
-    this._viewName = "";
-
-    this._originToLookAt = new THREE.Vector3(0, 0, 0);
-    this._control = null;
-    this._renderer = renderer;
-    this._scene = scene;
-
-    // mouse coordinates, given by an higher object to prevent recomputing for every view
-    this._mouse = {x:0, y:0};
-
-    // keeps a track if the mouse pointer is within this view
-    this._mouseInView = false;
-
-    // depends on what corner
-    this._backgroundColor = null;
-
-    // we save to get a resize ratio
-    this._windowSize = {
-      width: window.innerWidth ,
-      height: window.innerHeight
-    };
-
-  }
-
-  /**
-  * Define the point the camera is supposed to look at. By default, this is in world coordinates but if you place the current camera into an object, this will be in object-related coordinates.
-  * If unchanged, [0, 0, 0]
-  * @param {Number} x - x from 3D world coordinates
-  * @param {Number} y - y from 3D world coordinates
-  * @param {Number} z - z from 3D world coordinates
-  */
-  setOriginToLookAt(x, y, z){
-    this._originToLookAt.set(x, y, z);
-  }
-
-
-  /**
-  * Init the current view as the top left view of the quad view
-  */
-  initTopLeft(){
-    this._config = {
-      left: 0.0,
-      bottom: 0.5,
-      width: 0.5,
-      height: 0.5,
-      position: [ -this._objectSize, 0, 0 ],
-      up: [ -1, 0, 0 ]
-    };
-    this._viewName = "top_left";
-    this._backgroundColor = new THREE.Color().setRGB( 0.8, 0.8, 0.8 );
-  }
-
-
-  /**
-  * Init the current view as the top right view of the quad view
-  */
-  initTopRight(){
-    this._config = {
-      left: 0.5,
-      bottom: 0.5,
-      width: 0.5,
-      height: 0.5,
-      position: [ 0, -this._objectSize, 0 ],
-      up: [ 0, -1, 0 ]
-    };
-    this._viewName = "top_right";
-    this._backgroundColor = new THREE.Color().setRGB( 0.9, 0.9, 0.9 );
-  }
-
-  /**
-  * Init the current view as the Bottom left view of the quad view
-  */
-  initBottomLeft(){
-    this._config = {
-      left: 0.0,
-      bottom: 0.0,
-      width: 0.5,
-      height: 0.5,
-      position: [ 0, 0, -this._objectSize ],
-      up: [ 0, 1, 0 ]
-    };
-    this._viewName = "bottom_left";
-    this._backgroundColor = new THREE.Color().setRGB( 0.9, 0.9, 0.9 );
-  }
-
-
-  /**
-  * Init the current view as the Bottom right view of the quad view
-  */
-  initBottomRight(){
-    this._config = {
-      left: 0.5,
-      bottom: 0,
-      width: 0.5,
-      height: 0.5,
-      position: [ -this._objectSize/2, this._objectSize/2, -this._objectSize/3 ],
-      up: [ 0, 0, -1 ]
-    };
-    this._viewName = "bottom_right";
-    this._backgroundColor = new THREE.Color().setRGB( 0.97, 0.97, 0.97 );
-  }
-
-
-  /**
-  * Build an orthographic camera for this view.
-  */
-  initOrthoCamera(){
-    this._isPerspective = false;
-
-    let orthographicCameraFovFactor = 360; // default: 360
-
-    this._camera = new THREE.OrthographicCamera(
-      window.innerWidth / - orthographicCameraFovFactor,  // left
-      window.innerWidth / orthographicCameraFovFactor,    // right
-      window.innerHeight / orthographicCameraFovFactor,   // top
-      window.innerHeight / - orthographicCameraFovFactor // bottom
-      //9.99,//this._objectSize * 0.9, //this._near,
-      //10.01//this._objectSize * 1.1 //this._far
-    );
-
-
-    this._camera.left_orig = window.innerWidth / - orthographicCameraFovFactor;
-    this._camera.right_orig = window.innerWidth / orthographicCameraFovFactor;
-    this._camera.top_orig = window.innerHeight / orthographicCameraFovFactor;
-    this._camera.bottom_orig = window.innerHeight / - orthographicCameraFovFactor;
-
-
-    /*
-    this._camera.left_orig = this._camera.left;
-    this._camera.right_orig = this._camera.right;
-    this._camera.top_orig = this._camera.top;
-    this._camera.bottom_orig = this._camera.bottom;
-    */
-    this._initCameraSettings();
-  }
-
-
-  /**
-  * Build a perspective camera for this view.
-  */
-  initPerspectiveCamera(){
-    this._isPerspective = true;
-
-    this._camera = new THREE.PerspectiveCamera(
-      this._defaultFov, // fov
-      window.innerWidth / window.innerHeight, // aspect
-      this._near, // near
-      this._far // far
-    );
-
-    this._initCameraSettings();
-  }
-
-
-  /**
-  * [PRIVATE]
-  * Ends the building of the camera, using the settings from _config.
-  */
-  _initCameraSettings(){
-    this._camera.position.x = this._config.position[0];
-    this._camera.position.y = this._config.position[1];
-    this._camera.position.z = this._config.position[2];
-    this._camera.up.x = this._config.up[ 0 ];
-    this._camera.up.y = this._config.up[ 1 ];
-    this._camera.up.z = this._config.up[ 2 ];
-    this._camera.fov = this._defaultFov;
-    this._camera.lookAt( this._originToLookAt );
-
-  }
-
-
-  /**
-  * Adds an orbit control so that the user can play easily
-  */
-  addTrackballControl(renderFunction, domContainer){
-    this._control = new THREE.TrackballControls( this._camera, domContainer );
-
-    this._control.rotateSpeed = 5.0;
-    this._control.staticMoving = true;
-    this._control.zoomSpeed = 0.3;
-		this._control.panSpeed = 1;
-
-    /*
-    this._control.zoomSpeed = 1.2;
-		this._control.panSpeed = 0.8;
-		this._control.noZoom = false;
-		this._control.noPan = false;
-		this._control.staticMoving = true;
-		this._control.dynamicDampingFactor = 0.3;
-		this._control.keys = [ 65, 83, 68 ];
-    */
-
-    this._control.addEventListener( 'change', this.renderView.bind(this) );
-  }
-
-
-  /*
-  * Change the background color for this view. If unchanged, top_left and bottom_right are in a bit darker gray than the 2 others.
-  * @param {THREE.Color} c - color
-  */
-  setBackgroundColor(c){
-    this._backgroundColor = c;
-  }
-
-
-  /**
-  * Render the view, should be called when the main renderer is rendering.
-  */
-  renderView(){
-
-    var left   = Math.floor( window.innerWidth  * this._config.left );
-    var bottom = Math.floor( window.innerHeight * this._config.bottom );
-    var width  = Math.floor( window.innerWidth  * this._config.width );
-    var height = Math.floor( window.innerHeight * this._config.height );
-
-    this._renderer.setViewport( left, bottom, width, height );
-    this._renderer.setScissor( left, bottom, width, height );
-    this._renderer.setScissorTest( true );
-    this._renderer.setClearColor( this._backgroundColor );
-    this._camera.aspect = width / height;
-    this._camera.updateProjectionMatrix();
-    this._renderer.render( this._scene, this._camera );
-  }
-
-
-
-  /**
-  * To use to embed the camera of this QuadView into an existing object, so that it can profit from this object space transformation without further work.
-  * We use it to embed a orthographic camera to planes so that the wole system can rotate and move all at once.
-  */
-  useRelativeCoordinatesOf( object3D ){
-    // TODO: remove from an possibly existing parent first (if not scene)
-
-    object3D.add(this._camera);
-  }
-
-
-  /**
-  * Updates the camera frustrum for ortho cam, in order to change the width and heigh of its projection and keep a relativelly constant image no matter what zoom level we are using.
-  * @param {Number} ff -
-  */
-  updateOrthoCamFrustrum(ff){
-    this._camera.left = this._camera.left_orig * ff;
-    this._camera.right = this._camera.right_orig * ff;
-    this._camera.top = this._camera.top_orig * ff;
-    this._camera.bottom = this._camera.bottom_orig * ff;
-    //this._camera.updateProjectionMatrix();
-  }
-
-
-  /**
-  * Used for perspective cameras. If a Control is enabled, the center of rotatation (target) will also be set.
-  * @param {THREE.Vector3} pos - 3D position to look at and to turn around.
-  */
-  updateLookAt(pos){
-    this._camera.lookAt( pos.clone() );
-
-    if(this._control){
-      this._control.target = pos.clone();
-    }
-
-  }
-
-
-  /**
-  * Update the control. This control needs to be updated from an "animate" function (like every frames) but not from a render function.
-  * If the control is a TrackballControls, updateControl needs to be called at every loop.
-  */
-  updateControl(){
-    this._control.update();
-  }
-
-
-  /**
-  * If the control ( trackball) was initialized, it enables it.
-  * (Can be called even though it was already enabled, this is NOT a toggle)
-  */
-  enableControl(){
-    if(this._control){
-      if(!this._control.enabled){
-        this._control.enabled = true;
-      }
-    }
-  }
-
-
-  /**
-  * If the control (trackball) was initialized, it disables it.
-  * (Can be called even though it was already enabled, this is NOT a toggle)
-  */
-  disableControl(){
-    if(this._control){
-      if(this._control.enabled){
-        //console.log("mouse left " + this._viewName);
-        this._control.enabled = false;
-      }
-    }
-  }
-
-
-  /**
-  * @returns {boolean} true if this view is using a trackball control (no matter if enabled or disabled). Return false if this view does not use any kind of controls.
-  */
-  isUsingControl(){
-    return !!this._control;
-  }
-
-
-  /**
-  * Ask if a specific normalized coordinates are in the window boundaries of this view.
-  * @param {Number} x - horizontal coordinate normalized to the screen, so within [0, 1]. Origin on the left.
-  * @param {Number} y - vertical coordinate normalized to the screen, so within [0, 1]. Origin on the bottom.
-  * @returns true if (x, y) are
-  */
-  isInViewWindow(x, y){
-    return x > this._config.left && y > this._config.bottom &&
-      x < (this._config.left + this._config.width) &&
-      y < (this._config.bottom + this._config.height);
-  }
-
-
-  /**
-  * Enable a layer index for the camera of this view.
-  * @param {Number} layerNum - index of the layer.
-  */
-  enableLayer( layerNum ){
-    this._camera.layers.enable( layerNum );
-
-  }
-
-
-  /**
-  * Disable a layer index for the camera of this view.
-  * @param {Number} layerNum - index of the layer.
-  */
-  disableLayer( layerNum ){
-    this._camera.layers.disable( layerNum );
-  }
-
-
-  /**
-  * Return the camera of this view (unsafe, can be changed).
-  */
-  getCamera(){
-    return this._camera;
-  }
-
-
-  /**
-  * Update the ratio of the camera.
-  * Most likely to happen when the windows is resized.
-  * Depends if the cam is ortho of persp.
-  */
-  updateRatio(w, h){
-
-    if(this._isPerspective){
-      this._camera.aspect = w / h ;
-      this._camera.updateProjectionMatrix();
-    }else{
-      var wRatio = this._windowSize.width / window.innerWidth;
-      var hRatio = this._windowSize.height / window.innerHeight;
-
-      this._camera.left /= wRatio;
-      this._camera.right /= wRatio;
-      this._camera.top /= hRatio;
-      this._camera.bottom /= hRatio;
-    }
-
-    this._windowSize.width = window.innerWidth;
-    this._windowSize.height = window.innerHeight;
-  }
-
-
-  /**
-  * @return true if the camera of this view is a perspective camera.
-  */
-  isPerspective(){
-    return this._isPerspective;
-  }
-
-
-  /**
-  * @param {String} name of the config param to get. Must be "left", "bottom", "width", "height", "position" or "up". The 4 firsts being window settings, while the 2 lasts are camera settings. Read only.
-  * @return {Number} the value of the parameter
-  */
-  getConfigParam( paramName ){
-
-    if(paramName in this._config){
-      return this._config[ paramName ]
-    }else{
-      console.warn(paramName + " param does not exist in the config.");
-      return null;
-    }
-  }
-
-
-} /* END QuadView */
 
 /**
 * A OrientationHelper is a sphere surrounding the orthogonal planes that will show the direction of left/right, posterior/anterior and inferior/superior.
@@ -2384,21 +2384,23 @@ class ColorMapManager{
 
 
   /**
-  *
+  * Load colormaps from a config file
+  * @param {String} config - the url to the config file for color maps
   */
   loadCollection( config ){
     var that = this;
     var jsonFilename = config.url;
 
-
     AjaxFileLoader.loadTextFile(
       jsonFilename,
 
+      // success in loading the json file
       function( fileContent ){
         that._defaultMapFolder = jsonFilename.substring(0, Math.max(jsonFilename.lastIndexOf("/"), jsonFilename.lastIndexOf("\\"))) + "/";
 
         that._colormapsToLoad = JSON.parse(fileContent);
 
+        // load each colormap
         that._colormapsToLoad.forEach( function(colormapFilename){
           that._loadColormap(
             that._defaultMapFolder + colormapFilename,
@@ -3069,6 +3071,9 @@ class PlaneManager{
   }
 
 
+
+
+
   /**
   * [PRIVATE]
   * Rotate the main object container on one of its native axis. This axis is relative to inside the object.
@@ -3638,7 +3643,6 @@ class MeshCollection{
   }
 
 
-
   /**
   * [PRIVATE]
   * Start to read the configuration, containing an extensive list of mesh
@@ -3818,7 +3822,7 @@ class GuiController{
     // fake value for dat gui - just to display the init value
     this._resolutionLevel = this._quadScene.getResolutionLevel();
     this._resolutionLvlRange = [0, 6];
-    this._resolutionLvlSlider = null;
+    this._resolutionLvlSliderBuilt = false;
 
 
     // special controller for colormaps
@@ -3837,6 +3841,8 @@ class GuiController{
       position: [window.innerWidth - 250, 0]
     });
 
+
+
     this._initActions();
   }
 
@@ -3848,13 +3854,26 @@ class GuiController{
   _initActions(){
     var that = this;
 
-    //this._datGui.add(this, '_toggleOrientationHelper').name("Toggle compass");
-    //this._controlKit.addStringInput(this,'_toggleOrientationHelper',{label: 'Toggle compass'})
-    // compass toggle
-    this._mainPanel.addButton('Toggle compass',  this._toggleOrientationHelper.bind(this)  );
+    var helperSubGroup = this._mainPanel.addSubGroup({label: 'Helpers'});
+    helperSubGroup.addButton('Toggle compass',  this._toggleOrientationHelper.bind(this)  );
+    helperSubGroup.addButton('Toggle bounding box',  this._toggleBoundingBoxHelper.bind(this)  );
 
-    // bounding box toggle
-    this._mainPanel.addButton('Toggle bounding box',  this._toggleBoundingBoxHelper.bind(this)  );
+
+    /*
+    this._mainPanel.addSubGroup({label: 'Helpers'})
+      // compass toggle
+      .addButton('Toggle compass',  this._toggleOrientationHelper.bind(this)  )
+      // bounding box toggle
+      .addButton('Toggle bounding box',  this._toggleBoundingBoxHelper.bind(this)  );
+    */
+
+    this._navigationSubGroup = this._mainPanel.addSubGroup({label: 'Navigation'});
+
+
+    this._navigationSubGroup.addButton(
+      'Reset orientation',
+      this._resetMultiplaneRotation.bind(this)
+    );
 
 
   }
@@ -3888,8 +3907,9 @@ class GuiController{
 
     // last minute build because ControlKit does not allow to refresh
     // a slider value from the outside.
-    if(!this._resolutionLvlSlider){
+    if(!this._resolutionLvlSliderBuilt){
       this._buildResolutionLevelSlider();
+      this._resolutionLvlSliderBuilt = true;
     }
 
   }
@@ -3903,7 +3923,9 @@ class GuiController{
   _buildResolutionLevelSlider(){
     var that = this;
 
-    this._resolutionLvlSlider = this._mainPanel.addSlider(this, '_resolutionLevel', "_resolutionLvlRange",{
+
+
+      this._navigationSubGroup.addSlider(this, '_resolutionLevel', "_resolutionLvlRange",{
       label: 'Resolution',
       step: 1,
       dp: 0,
@@ -3929,8 +3951,10 @@ class GuiController{
 
     colorMapSelect.selection = colorMapSelect.maps[0];
 
-    this._mainPanel.addSelect(colorMapSelect,'maps',{
-      label: "Colormap",
+    var ColormapsSubGroup = this._mainPanel.addSubGroup({label: 'Colormaps'});
+
+    ColormapsSubGroup.addSelect(colorMapSelect,'maps',{
+      label: "Choose",
       target: "selection",
       onChange:function(index){
         that._colormapManager.useColormap(colorMapSelect.maps[index]);
@@ -3940,8 +3964,9 @@ class GuiController{
   }
 
 
-
-
+  _resetMultiplaneRotation(){
+    this._quadScene.setMultiplaneRotation(0, 0, 0);
+  }
 
 }/* END class GuiController */
 
@@ -4227,7 +4252,8 @@ class QuadScene{
 
 
   /**
-  *
+  * Shortcut function to set the multiplane position.
+  * Handy because accessible from the onReady callback.
   */
   setMultiplaneRotation(x, y, z){
     this._planeManager.setMultiplaneRotation( x, y, z);
@@ -4603,10 +4629,10 @@ class QuadScene{
           that._planeManager.translateMultiplaneY(factor, 0);
           break;
         case 1:
-          that.translateMultiplanePlaneX(factor, 0);
+          that.translateMultiplaneX(factor, 0);
           break;
         case 2:
-          that._planeManager.translateMultiplaneY(0, -factor);
+          that._planeManager._planeManager.translateMultiplaneY(0, -factor);
           break;
         default:  // if last view, we dont do anything
           return;
@@ -4622,7 +4648,7 @@ class QuadScene{
           that._planeManager.translateMultiplaneY(factor, 0);
           break;
         case 1:
-          that.translateMultiplanePlaneX(factor, 0);
+          that._planeManager.translateMultiplaneX(factor, 0);
           break;
         case 2:
           that._planeManager.translateMultiplaneY(0, -factor);
@@ -4683,20 +4709,6 @@ class QuadScene{
 
 }
 
-// if we wanted to use foo here:
-//import foo from './foo.js';
-
-
-// but we just want to make it accessible:
-//export { Foo } from './Foo.js';
-
-
-
-//export { ShaderImporter } from './ShaderImporter.js';
-
-exports.TextureChunk = TextureChunk;
-exports.ChunkCollection = ChunkCollection;
-exports.LevelManager = LevelManager;
 exports.HashIO = HashIO;
 exports.QuadScene = QuadScene;
 

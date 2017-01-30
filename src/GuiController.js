@@ -12,7 +12,7 @@ class GuiController{
     // fake value for dat gui - just to display the init value
     this._resolutionLevel = this._quadScene.getResolutionLevel();
     this._resolutionLvlRange = [0, 6];
-    this._resolutionLvlSlider = null;
+    this._resolutionLvlSliderBuilt = false;
 
 
     // special controller for colormaps
@@ -31,6 +31,8 @@ class GuiController{
       position: [window.innerWidth - 250, 0]
     });
 
+
+
     this._initActions();
   }
 
@@ -42,13 +44,26 @@ class GuiController{
   _initActions(){
     var that = this;
 
-    //this._datGui.add(this, '_toggleOrientationHelper').name("Toggle compass");
-    //this._controlKit.addStringInput(this,'_toggleOrientationHelper',{label: 'Toggle compass'})
-    // compass toggle
-    this._mainPanel.addButton('Toggle compass',  this._toggleOrientationHelper.bind(this)  );
+    var helperSubGroup = this._mainPanel.addSubGroup({label: 'Helpers'})
+    helperSubGroup.addButton('Toggle compass',  this._toggleOrientationHelper.bind(this)  );
+    helperSubGroup.addButton('Toggle bounding box',  this._toggleBoundingBoxHelper.bind(this)  );
 
-    // bounding box toggle
-    this._mainPanel.addButton('Toggle bounding box',  this._toggleBoundingBoxHelper.bind(this)  );
+
+    /*
+    this._mainPanel.addSubGroup({label: 'Helpers'})
+      // compass toggle
+      .addButton('Toggle compass',  this._toggleOrientationHelper.bind(this)  )
+      // bounding box toggle
+      .addButton('Toggle bounding box',  this._toggleBoundingBoxHelper.bind(this)  );
+    */
+
+    this._navigationSubGroup = this._mainPanel.addSubGroup({label: 'Navigation'});
+
+
+    this._navigationSubGroup.addButton(
+      'Reset orientation',
+      this._resetMultiplaneRotation.bind(this)
+    );
 
 
   }
@@ -82,8 +97,9 @@ class GuiController{
 
     // last minute build because ControlKit does not allow to refresh
     // a slider value from the outside.
-    if(!this._resolutionLvlSlider){
-      this._buildResolutionLevelSlider()
+    if(!this._resolutionLvlSliderBuilt){
+      this._buildResolutionLevelSlider();
+      this._resolutionLvlSliderBuilt = true;
     }
 
   }
@@ -97,7 +113,9 @@ class GuiController{
   _buildResolutionLevelSlider(){
     var that = this;
 
-    this._resolutionLvlSlider = this._mainPanel.addSlider(this, '_resolutionLevel', "_resolutionLvlRange",{
+
+
+      this._navigationSubGroup.addSlider(this, '_resolutionLevel', "_resolutionLvlRange",{
       label: 'Resolution',
       step: 1,
       dp: 0,
@@ -123,8 +141,10 @@ class GuiController{
 
     colorMapSelect.selection = colorMapSelect.maps[0];
 
-    this._mainPanel.addSelect(colorMapSelect,'maps',{
-      label: "Colormap",
+    var ColormapsSubGroup = this._mainPanel.addSubGroup({label: 'Colormaps'});
+
+    ColormapsSubGroup.addSelect(colorMapSelect,'maps',{
+      label: "Choose",
       target: "selection",
       onChange:function(index){
         that._colormapManager.useColormap(colorMapSelect.maps[index])
@@ -134,8 +154,9 @@ class GuiController{
   }
 
 
-
-
+  _resetMultiplaneRotation(){
+    this._quadScene.setMultiplaneRotation(0, 0, 0);
+  }
 
 }/* END class GuiController */
 

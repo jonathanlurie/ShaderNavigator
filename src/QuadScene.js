@@ -185,7 +185,8 @@ class QuadScene{
 
 
   /**
-  *
+  * Shortcut function to set the multiplane position.
+  * Handy because accessible from the onReady callback.
   */
   setMultiplaneRotation(x, y, z){
     this._planeManager.setMultiplaneRotation( x, y, z);
@@ -561,10 +562,10 @@ class QuadScene{
           that._planeManager.translateMultiplaneY(factor, 0);
           break;
         case 1:
-          that.translateMultiplanePlaneX(factor, 0);
+          that.translateMultiplaneX(factor, 0);
           break;
         case 2:
-          that._planeManager.translateMultiplaneY(0, -factor);
+          that._planeManager._planeManager.translateMultiplaneY(0, -factor);
           break;
         default:  // if last view, we dont do anything
           return;
@@ -580,7 +581,7 @@ class QuadScene{
           that._planeManager.translateMultiplaneY(factor, 0);
           break;
         case 1:
-          that.translateMultiplanePlaneX(factor, 0);
+          that._planeManager.translateMultiplaneX(factor, 0);
           break;
         case 2:
           that._planeManager.translateMultiplaneY(0, -factor);

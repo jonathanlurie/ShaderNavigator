@@ -279,6 +279,9 @@ class PlaneManager{
   }
 
 
+
+
+
   /**
   * [PRIVATE]
   * Rotate the main object container on one of its native axis. This axis is relative to inside the object.
