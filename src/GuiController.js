@@ -5,18 +5,31 @@ class GuiController{
   constructor( quadScene ){
 
     this._quadScene = quadScene;
-    this._datGui = new dat.GUI();
+
+
+    //this._datGui = new dat.GUI();
 
     // fake value for dat gui - just to display the init value
     this._resolutionLevel = this._quadScene.getResolutionLevel();
+    this._resolutionLvlRange = [0, 6];
+    this._resolutionLvlSlider = null;
+
 
     // special controller for colormaps
-    this._colormapController = null;
-
-    this._colormapChoice = 0;
-
     this._colormapManager = this._quadScene.getColormapManager();
     this._colormapManager.onColormapUpdate( this._updateColormapList.bind(this) );
+
+
+    this._controlKit = new ControlKit();
+
+    // the main panel
+    this._mainPanel = this._controlKit.addPanel({
+      label: 'BigBrain Explorer',
+      align : 'left',
+      fixed: false,
+      width: 250,
+      position: [window.innerWidth - 250, 0]
+    });
 
     this._initActions();
   }
@@ -29,15 +42,15 @@ class GuiController{
   _initActions(){
     var that = this;
 
-    this._datGui.add(this, '_toggleOrientationHelper').name("Toggle compass");
-    this._datGui.add(this, '_toggleBoundingBoxHelper').name("Toggle box");
+    //this._datGui.add(this, '_toggleOrientationHelper').name("Toggle compass");
+    //this._controlKit.addStringInput(this,'_toggleOrientationHelper',{label: 'Toggle compass'})
+    // compass toggle
+    this._mainPanel.addButton('Toggle compass',  this._toggleOrientationHelper.bind(this)  );
 
-    // TODO: add a listner on the resolution lvl so that it's updated
+    // bounding box toggle
+    this._mainPanel.addButton('Toggle bounding box',  this._toggleBoundingBoxHelper.bind(this)  );
 
-    this._datGui.add(this, "_resolutionLevel", 0, 6).name("Resolution level").step(1).listen()
-      .onFinishChange(function(lvl) {
-        that._quadScene.setResolutionLevel(lvl);
-      });
+
   }
 
 
@@ -66,6 +79,32 @@ class GuiController{
   */
   updateResolutionLevelUI( lvl ){
     this._resolutionLevel = lvl;
+
+    // last minute build because ControlKit does not allow to refresh
+    // a slider value from the outside.
+    if(!this._resolutionLvlSlider){
+      this._buildResolutionLevelSlider()
+    }
+
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Last minute build of the resolution level slider. This is necessary because
+  * ControlKit does not allow updating a value (and that sucks).
+  */
+  _buildResolutionLevelSlider(){
+    var that = this;
+
+    this._resolutionLvlSlider = this._mainPanel.addSlider(this, '_resolutionLevel', "_resolutionLvlRange",{
+      label: 'Resolution',
+      step: 1,
+      dp: 0,
+      onFinish: function(value){
+        that._quadScene.setResolutionLevel( that._resolutionLevel );
+      }
+    })
   }
 
 
@@ -77,22 +116,26 @@ class GuiController{
   _updateColormapList(){
     var that = this;
 
-    if( this._colormapController ){
-      this._datGui.remove(this._colormapController);
-      this._colormapController = null;
+    var colorMapSelect = {
+      maps: this._colormapManager.getAvailableColormaps(),
+      selection: null
     }
 
-    this._colormapController = this._datGui.add(
-      this,
-      '_colormapChoice',
-      this._colormapManager.getAvailableColormaps()
-    ).name("Color map");
+    colorMapSelect.selection = colorMapSelect.maps[0];
 
-    this._colormapController.onFinishChange(function(colormapId) {
-      that._colormapManager.useColormap(colormapId)
+    this._mainPanel.addSelect(colorMapSelect,'maps',{
+      label: "Colormap",
+      target: "selection",
+      onChange:function(index){
+        that._colormapManager.useColormap(colorMapSelect.maps[index])
+      }
     });
 
   }
+
+
+
+
 
 }/* END class GuiController */
 

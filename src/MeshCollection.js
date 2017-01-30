@@ -29,7 +29,6 @@ class MeshCollection{
   }
 
 
-
   /**
   * [PRIVATE]
   * Start to read the configuration, containing an extensive list of mesh

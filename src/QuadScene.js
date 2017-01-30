@@ -108,7 +108,7 @@ class QuadScene{
 
     this._stats = null;
     this._initPlaneManager();
-    this._initViews();
+    this._initViews( DomContainer );
     this._levelManager = new LevelManager();
 
 
@@ -125,7 +125,7 @@ class QuadScene{
   * [PRIVATE]
   * Initialize the 4 QuadView instances. The 3 first being ortho cam and the last being a global view perspective cam.
   */
-  _initViews(){
+  _initViews( DomContainer ){
     var that = this;
 
     var topLeftView = new QuadView(this._scene, this._renderer, this._cameraDistance);
@@ -160,7 +160,7 @@ class QuadScene{
     this._quadViews.push(bottomRight);
 
     // the quadviewinteraction instance deals with mouse things
-    this._quadViewInteraction = new QuadViewInteraction( this._quadViews );
+    this._quadViewInteraction = new QuadViewInteraction( this._quadViews, DomContainer);
     this._quadViewInteraction.setMultiplaneContainer( this._planeManager.getMultiplaneContainer() );
 
     this._quadViewInteraction.onClickPlane(
@@ -337,6 +337,8 @@ class QuadScene{
       this._initLevelManager(config);
     }else if(config.datatype == "mesh_collection"){
       this._initMeshCollection(config);
+    }else if(config.datatype == "colormap_collection"){
+      this._colormapManager.loadCollection( config );
     }else{
       console.warn("The data to load has an unknown format.");
     }
@@ -375,7 +377,6 @@ class QuadScene{
       );
 
       that._initOrientationHelper( new THREE.Vector3(boxSize[0] / 2, boxSize[1] / 2, boxSize[2] / 2) );
-      that.setResolutionLevel( that._resolutionLevel );
       that._initPlaneInteraction();
       that._ready = true;
 
@@ -384,7 +385,6 @@ class QuadScene{
       }
 
     });
-
 
     // the config file failed to load
     this._levelManager.onConfigError( function(url, code){

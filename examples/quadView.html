@@ -68,12 +68,12 @@
     </div>
 
 		<script src="js/three.js"></script>
-    <!-- <script src="js/OrbitControls.js"></script> -->
     <script src="js/TrackballControls.js"></script>
 		<script src="js/Detector.js"></script>
 		<script src="js/stats.min.js"></script>
-    <script src="js/dat.gui.js"></script>
-    <script src="js/jpg.js"></script>
+    <!--<script src="js/dat.gui.js"></script>-->
+    <script src="js/controlKit.js"></script>
+
 
     <!-- importing the automatically build module -->
     <script src="../build/shadernavigator/shadernavigator.js"></script>
@@ -92,6 +92,7 @@
     });
 
     /*
+    // Loads the mesh
     quadScene.loadData({
         datatype: "mesh_collection",
         //url: "../data_mesh/meshes/bigbrain_white.json"
@@ -99,6 +100,13 @@
         //url: "../data_mesh/meshes/bigbrain_white_grey.json"
     });
     */
+
+    // loads the colormaps
+    quadScene.loadData({
+        datatype: "colormap_collection",
+        url: "colormaps/colormaps.json"
+    });
+
 
     // optional: display some performances
     quadScene.initStat();
@@ -132,9 +140,7 @@
       // if no position is mentioned in the URL, the location is at the center,
       // but we can change things like rezLvl, position or rotation
       }else{
-        qs.setResolutionLevel(4);
-        //qs.setMainObjectRotation(1, 0.2, 0.6);
-        //qs.setMainObjectPosition(0.3, 0.41, 0.8);
+        qs.setResolutionLevel(2);
       }
 
     });

@@ -1,5 +1,7 @@
 'use strict';
 
+import { AjaxFileLoader } from './AjaxFileLoader.js';
+
 /**
 * An instance of ColorMapManager is used to load color maps and retrive them.
 * A certain amount of default color maps is available but curtom maps can also be added.
@@ -10,19 +12,14 @@ class ColorMapManager{
   /**
   * Loads the default colormaps.
   */
-  constructor(){
+  constructor( ){
     // default folder where the default colormaps are stored
-    this._defaultMapFolder = "colormaps/";
+    this._defaultMapFolder = "";
 
-    // default colormaps filename
-    this._defaultMaps = [
-      "plum.png",
-      "thermal.png",
-      "blue_klein.png",
-      "blue_teal.png",
-      "rainbow.png",
-      "rainbow_alpha.png"
-    ];
+    // the ones from the json config file
+    this._colormapsToLoad = [];
+
+    this._colormapSuccessCounter = 0;
 
     // map of colormaps. The keys are colormap file (no extension) and the objects are THREE.Texture
     this._colorMaps = {};
@@ -39,7 +36,7 @@ class ColorMapManager{
     this._textureLoader = new THREE.TextureLoader();
 
     this._colorMaps["none"] = null;
-    this._loadDefaultColormaps();
+
   }
 
 
@@ -48,7 +45,7 @@ class ColorMapManager{
   * @param {String} filename - url or the colormap file.
   * @param {bool} setCurrent - true to use this one as default, false not to.
   */
-  loadColormap(filename, setCurrent=true){
+  _loadColormap(filename, setCurrent=true){
     var that = this;
 
     // get the basename (no extension)
@@ -61,6 +58,8 @@ class ColorMapManager{
 
       // success
       function ( texture ) {
+        that._colormapSuccessCounter ++;
+
         // add to the map of colormaps
         that._colorMaps[basename] = texture;
 
@@ -70,8 +69,8 @@ class ColorMapManager{
           that._currentColormap.colormap = texture;
         }
 
-        if(that._onColormapUpdateCallback){
-          that._onColormapUpdateCallback();
+        if(that._colormapSuccessCounter == that._colormapsToLoad.length ){
+          that._onColormapUpdateCallback && that._onColormapUpdateCallback();
         }
 
       },
@@ -92,20 +91,35 @@ class ColorMapManager{
 
 
   /**
-  * [PRIVATE]
-  * Loads all the default textures.
+  * Load colormaps from a config file
+  * @param {String} config - the url to the config file for color maps
   */
-  _loadDefaultColormaps(){
+  loadCollection( config ){
     var that = this;
+    var jsonFilename = config.url;
 
-    // for each colormap to be loaded
-    this._defaultMaps.forEach(function( texFilename, index ){
-      // loading the colormap
-      that.loadColormap(
-        that._defaultMapFolder + texFilename,
-        false
-      );
-    });
+    AjaxFileLoader.loadTextFile(
+      jsonFilename,
+
+      // success in loading the json file
+      function( fileContent ){
+        that._defaultMapFolder = jsonFilename.substring(0, Math.max(jsonFilename.lastIndexOf("/"), jsonFilename.lastIndexOf("\\"))) + "/";
+
+        that._colormapsToLoad = JSON.parse(fileContent);
+
+        // load each colormap
+        that._colormapsToLoad.forEach( function(colormapFilename){
+          that._loadColormap(
+            that._defaultMapFolder + colormapFilename,
+            false
+          );
+        });
+      },
+
+      function(){
+        console.warn("Unable to load the colormap list file ( " + jsonFilename + " ).");
+      }
+    )
   }
 
 
@@ -152,8 +166,6 @@ class ColorMapManager{
   * @return true if success, return false if fail
   */
   useColormap(id){
-
-
 
     if(this._colorMaps.hasOwnProperty(id)){
       this._currentColormap.id = id;

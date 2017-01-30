@@ -9,8 +9,9 @@ class QuadViewInteraction{
   /**
   * Build the QuadViewInteraction instance. Requires a list of QuadView instances.
   * @param {Array of QuadView} QuadViewArray - an array of QuadView.
+  * @param {String} domContainerID - ID of the container
   */
-  constructor(QuadViewArray){
+  constructor(QuadViewArray, domContainerID="container"){
     this._quadViews = QuadViewArray;
 
     this._windowSize = {
@@ -39,12 +40,21 @@ class QuadViewInteraction{
     this._tKeyPressed = false;
     this._shiftKeyPressed = false;
 
-    // declaring some interaction events
-    document.addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
-    document.addEventListener( 'mousedown', this._onMouseDown.bind(this), false );
-    document.addEventListener( 'mouseup', this._onMouseUp.bind(this), false );
+    // declaring mouse events
+    // (on a specific div to prevent conflict with ControlKit)
+    document.getElementById(domContainerID)
+      .addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
+    document.getElementById(domContainerID)
+      .addEventListener( 'mousedown', this._onMouseDown.bind(this), false );
+    document.getElementById(domContainerID)
+      .addEventListener( 'mouseup', this._onMouseUp.bind(this), false );
+
+    // declaring keyboard events
+    // (on document, otherwise it does not work)
     document.addEventListener( 'keydown', this._onKeyDown.bind(this), false);
     document.addEventListener( 'keyup', this._onKeyUp.bind(this), false);
+
+
 
     // function to be called when the mouse is pressed on a view for translation - no R key pressed
     this._onGrabViewTranslateCallback = null;
@@ -183,7 +193,7 @@ class QuadViewInteraction{
       this._intersectMultiplane( event );
 
     }
-    
+
 
     // will be used as an init position
     this._mouseLastPosition.x = this._mouse.x;

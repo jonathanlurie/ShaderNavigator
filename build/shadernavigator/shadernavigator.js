@@ -1858,8 +1858,9 @@ class QuadViewInteraction{
   /**
   * Build the QuadViewInteraction instance. Requires a list of QuadView instances.
   * @param {Array of QuadView} QuadViewArray - an array of QuadView.
+  * @param {String} domContainerID - ID of the container
   */
-  constructor(QuadViewArray){
+  constructor(QuadViewArray, domContainerID="container"){
     this._quadViews = QuadViewArray;
 
     this._windowSize = {
@@ -1888,12 +1889,21 @@ class QuadViewInteraction{
     this._tKeyPressed = false;
     this._shiftKeyPressed = false;
 
-    // declaring some interaction events
-    document.addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
-    document.addEventListener( 'mousedown', this._onMouseDown.bind(this), false );
-    document.addEventListener( 'mouseup', this._onMouseUp.bind(this), false );
+    // declaring mouse events
+    // (on a specific div to prevent conflict with ControlKit)
+    document.getElementById(domContainerID)
+      .addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
+    document.getElementById(domContainerID)
+      .addEventListener( 'mousedown', this._onMouseDown.bind(this), false );
+    document.getElementById(domContainerID)
+      .addEventListener( 'mouseup', this._onMouseUp.bind(this), false );
+
+    // declaring keyboard events
+    // (on document, otherwise it does not work)
     document.addEventListener( 'keydown', this._onKeyDown.bind(this), false);
     document.addEventListener( 'keyup', this._onKeyUp.bind(this), false);
+
+
 
     // function to be called when the mouse is pressed on a view for translation - no R key pressed
     this._onGrabViewTranslateCallback = null;
@@ -2032,7 +2042,7 @@ class QuadViewInteraction{
       this._intersectMultiplane( event );
 
     }
-    
+
 
     // will be used as an init position
     this._mouseLastPosition.x = this._mouse.x;
@@ -2295,19 +2305,14 @@ class ColorMapManager{
   /**
   * Loads the default colormaps.
   */
-  constructor(){
+  constructor( ){
     // default folder where the default colormaps are stored
-    this._defaultMapFolder = "colormaps/";
+    this._defaultMapFolder = "";
 
-    // default colormaps filename
-    this._defaultMaps = [
-      "plum.png",
-      "thermal.png",
-      "blue_klein.png",
-      "blue_teal.png",
-      "rainbow.png",
-      "rainbow_alpha.png"
-    ];
+    // the ones from the json config file
+    this._colormapsToLoad = [];
+
+    this._colormapSuccessCounter = 0;
 
     // map of colormaps. The keys are colormap file (no extension) and the objects are THREE.Texture
     this._colorMaps = {};
@@ -2324,7 +2329,7 @@ class ColorMapManager{
     this._textureLoader = new THREE.TextureLoader();
 
     this._colorMaps["none"] = null;
-    this._loadDefaultColormaps();
+
   }
 
 
@@ -2333,7 +2338,7 @@ class ColorMapManager{
   * @param {String} filename - url or the colormap file.
   * @param {bool} setCurrent - true to use this one as default, false not to.
   */
-  loadColormap(filename, setCurrent=true){
+  _loadColormap(filename, setCurrent=true){
     var that = this;
 
     // get the basename (no extension)
@@ -2346,6 +2351,8 @@ class ColorMapManager{
 
       // success
       function ( texture ) {
+        that._colormapSuccessCounter ++;
+
         // add to the map of colormaps
         that._colorMaps[basename] = texture;
 
@@ -2355,8 +2362,8 @@ class ColorMapManager{
           that._currentColormap.colormap = texture;
         }
 
-        if(that._onColormapUpdateCallback){
-          that._onColormapUpdateCallback();
+        if(that._colormapSuccessCounter == that._colormapsToLoad.length ){
+          that._onColormapUpdateCallback && that._onColormapUpdateCallback();
         }
 
       },
@@ -2377,20 +2384,33 @@ class ColorMapManager{
 
 
   /**
-  * [PRIVATE]
-  * Loads all the default textures.
+  *
   */
-  _loadDefaultColormaps(){
+  loadCollection( config ){
     var that = this;
+    var jsonFilename = config.url;
 
-    // for each colormap to be loaded
-    this._defaultMaps.forEach(function( texFilename, index ){
-      // loading the colormap
-      that.loadColormap(
-        that._defaultMapFolder + texFilename,
-        false
-      );
-    });
+
+    AjaxFileLoader.loadTextFile(
+      jsonFilename,
+
+      function( fileContent ){
+        that._defaultMapFolder = jsonFilename.substring(0, Math.max(jsonFilename.lastIndexOf("/"), jsonFilename.lastIndexOf("\\"))) + "/";
+
+        that._colormapsToLoad = JSON.parse(fileContent);
+
+        that._colormapsToLoad.forEach( function(colormapFilename){
+          that._loadColormap(
+            that._defaultMapFolder + colormapFilename,
+            false
+          );
+        });
+      },
+
+      function(){
+        console.warn("Unable to load the colormap list file ( " + jsonFilename + " ).");
+      }
+    );
   }
 
 
@@ -2437,8 +2457,6 @@ class ColorMapManager{
   * @return true if success, return false if fail
   */
   useColormap(id){
-
-
 
     if(this._colorMaps.hasOwnProperty(id)){
       this._currentColormap.id = id;
@@ -3793,18 +3811,31 @@ class GuiController{
   constructor( quadScene ){
 
     this._quadScene = quadScene;
-    this._datGui = new dat.GUI();
+
+
+    //this._datGui = new dat.GUI();
 
     // fake value for dat gui - just to display the init value
     this._resolutionLevel = this._quadScene.getResolutionLevel();
+    this._resolutionLvlRange = [0, 6];
+    this._resolutionLvlSlider = null;
+
 
     // special controller for colormaps
-    this._colormapController = null;
-
-    this._colormapChoice = 0;
-
     this._colormapManager = this._quadScene.getColormapManager();
     this._colormapManager.onColormapUpdate( this._updateColormapList.bind(this) );
+
+
+    this._controlKit = new ControlKit();
+
+    // the main panel
+    this._mainPanel = this._controlKit.addPanel({
+      label: 'BigBrain Explorer',
+      align : 'left',
+      fixed: false,
+      width: 250,
+      position: [window.innerWidth - 250, 0]
+    });
 
     this._initActions();
   }
@@ -3817,15 +3848,15 @@ class GuiController{
   _initActions(){
     var that = this;
 
-    this._datGui.add(this, '_toggleOrientationHelper').name("Toggle compass");
-    this._datGui.add(this, '_toggleBoundingBoxHelper').name("Toggle box");
+    //this._datGui.add(this, '_toggleOrientationHelper').name("Toggle compass");
+    //this._controlKit.addStringInput(this,'_toggleOrientationHelper',{label: 'Toggle compass'})
+    // compass toggle
+    this._mainPanel.addButton('Toggle compass',  this._toggleOrientationHelper.bind(this)  );
 
-    // TODO: add a listner on the resolution lvl so that it's updated
+    // bounding box toggle
+    this._mainPanel.addButton('Toggle bounding box',  this._toggleBoundingBoxHelper.bind(this)  );
 
-    this._datGui.add(this, "_resolutionLevel", 0, 6).name("Resolution level").step(1).listen()
-      .onFinishChange(function(lvl) {
-        that._quadScene.setResolutionLevel(lvl);
-      });
+
   }
 
 
@@ -3854,6 +3885,32 @@ class GuiController{
   */
   updateResolutionLevelUI( lvl ){
     this._resolutionLevel = lvl;
+
+    // last minute build because ControlKit does not allow to refresh
+    // a slider value from the outside.
+    if(!this._resolutionLvlSlider){
+      this._buildResolutionLevelSlider();
+    }
+
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Last minute build of the resolution level slider. This is necessary because
+  * ControlKit does not allow updating a value (and that sucks).
+  */
+  _buildResolutionLevelSlider(){
+    var that = this;
+
+    this._resolutionLvlSlider = this._mainPanel.addSlider(this, '_resolutionLevel', "_resolutionLvlRange",{
+      label: 'Resolution',
+      step: 1,
+      dp: 0,
+      onFinish: function(value){
+        that._quadScene.setResolutionLevel( that._resolutionLevel );
+      }
+    });
   }
 
 
@@ -3865,22 +3922,26 @@ class GuiController{
   _updateColormapList(){
     var that = this;
 
-    if( this._colormapController ){
-      this._datGui.remove(this._colormapController);
-      this._colormapController = null;
-    }
+    var colorMapSelect = {
+      maps: this._colormapManager.getAvailableColormaps(),
+      selection: null
+    };
 
-    this._colormapController = this._datGui.add(
-      this,
-      '_colormapChoice',
-      this._colormapManager.getAvailableColormaps()
-    ).name("Color map");
+    colorMapSelect.selection = colorMapSelect.maps[0];
 
-    this._colormapController.onFinishChange(function(colormapId) {
-      that._colormapManager.useColormap(colormapId);
+    this._mainPanel.addSelect(colorMapSelect,'maps',{
+      label: "Colormap",
+      target: "selection",
+      onChange:function(index){
+        that._colormapManager.useColormap(colorMapSelect.maps[index]);
+      }
     });
 
   }
+
+
+
+
 
 }/* END class GuiController */
 
@@ -4089,7 +4150,7 @@ class QuadScene{
 
     this._stats = null;
     this._initPlaneManager();
-    this._initViews();
+    this._initViews( DomContainer );
     this._levelManager = new LevelManager();
 
 
@@ -4106,7 +4167,7 @@ class QuadScene{
   * [PRIVATE]
   * Initialize the 4 QuadView instances. The 3 first being ortho cam and the last being a global view perspective cam.
   */
-  _initViews(){
+  _initViews( DomContainer ){
     var that = this;
 
     var topLeftView = new QuadView(this._scene, this._renderer, this._cameraDistance);
@@ -4141,7 +4202,7 @@ class QuadScene{
     this._quadViews.push(bottomRight);
 
     // the quadviewinteraction instance deals with mouse things
-    this._quadViewInteraction = new QuadViewInteraction( this._quadViews );
+    this._quadViewInteraction = new QuadViewInteraction( this._quadViews, DomContainer);
     this._quadViewInteraction.setMultiplaneContainer( this._planeManager.getMultiplaneContainer() );
 
     this._quadViewInteraction.onClickPlane(
@@ -4318,6 +4379,8 @@ class QuadScene{
       this._initLevelManager(config);
     }else if(config.datatype == "mesh_collection"){
       this._initMeshCollection(config);
+    }else if(config.datatype == "colormap_collection"){
+      this._colormapManager.loadCollection( config );
     }else{
       console.warn("The data to load has an unknown format.");
     }
@@ -4356,7 +4419,6 @@ class QuadScene{
       );
 
       that._initOrientationHelper( new THREE.Vector3(boxSize[0] / 2, boxSize[1] / 2, boxSize[2] / 2) );
-      that.setResolutionLevel( that._resolutionLevel );
       that._initPlaneInteraction();
       that._ready = true;
 
@@ -4365,7 +4427,6 @@ class QuadScene{
       }
 
     });
-
 
     // the config file failed to load
     this._levelManager.onConfigError( function(url, code){
