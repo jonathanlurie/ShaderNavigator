@@ -3823,6 +3823,7 @@ class GuiController{
     this._resolutionLevel = this._quadScene.getResolutionLevel();
     this._resolutionLvlRange = [0, 6];
     this._resolutionLvlSliderBuilt = false;
+    this._resolutionDescription = '';
 
 
     // special controller for colormaps
@@ -3834,7 +3835,7 @@ class GuiController{
 
     // the main panel
     this._mainPanel = this._controlKit.addPanel({
-      label: 'BigBrain Explorer',
+      label: document.title,  // default title, like the page
       align : 'left',
       fixed: false,
       width: 250,
@@ -3894,6 +3895,8 @@ class GuiController{
   */
   _toggleBoundingBoxHelper(){
     this._quadScene.getBoundingBoxHelper().toggle();
+    //this._resolutionDescription = "lalal";
+    //this._controlKit.update();
   }
 
 
@@ -3926,13 +3929,15 @@ class GuiController{
 
 
       this._navigationSubGroup.addSlider(this, '_resolutionLevel', "_resolutionLvlRange",{
-      label: 'Resolution',
+      label: 'Zoom level',
       step: 1,
       dp: 0,
       onFinish: function(value){
         that._quadScene.setResolutionLevel( that._resolutionLevel );
       }
     });
+
+    this._navigationSubGroup.addStringOutput(this, '_resolutionDescription',{label: "Resolution"});
   }
 
 
@@ -4629,10 +4634,10 @@ class QuadScene{
           that._planeManager.translateMultiplaneY(factor, 0);
           break;
         case 1:
-          that.translateMultiplaneX(factor, 0);
+          that._planeManager.translateMultiplaneX(factor, 0);
           break;
         case 2:
-          that._planeManager._planeManager.translateMultiplaneY(0, -factor);
+          that._planeManager.translateMultiplaneY(0, -factor);
           break;
         default:  // if last view, we dont do anything
           return;
