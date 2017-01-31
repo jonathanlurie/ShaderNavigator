@@ -46,21 +46,13 @@ class GuiController{
   _initActions(){
     var that = this;
 
-    var helperSubGroup = this._mainPanel.addSubGroup({label: 'Helpers'})
+    var helperSubGroup = this._mainPanel.addSubGroup({label: 'Helpers', enable: false})
     helperSubGroup.addButton('Toggle compass',  this._toggleOrientationHelper.bind(this)  );
     helperSubGroup.addButton('Toggle bounding box',  this._toggleBoundingBoxHelper.bind(this)  );
 
 
-    /*
-    this._mainPanel.addSubGroup({label: 'Helpers'})
-      // compass toggle
-      .addButton('Toggle compass',  this._toggleOrientationHelper.bind(this)  )
-      // bounding box toggle
-      .addButton('Toggle bounding box',  this._toggleBoundingBoxHelper.bind(this)  );
-    */
-
-    this._navigationSubGroup = this._mainPanel.addSubGroup({label: 'Navigation'});
-
+    this._navigationSubGroup = this._mainPanel.addSubGroup({label: 'Navigation', enable: true});
+    console.log(this._navigationSubGroup);
 
     this._navigationSubGroup.addButton(
       'Reset orientation',
@@ -99,7 +91,7 @@ class GuiController{
   updateResolutionLevelUI( lvl ){
     this._resolutionLevel = lvl;
     this._resolutionLevelTemp = this._resolutionLevel;
-    this._updateResolutionDescription( this._resolutionLevel );
+
 
     // last minute build because ControlKit does not allow to refresh
     // a slider value from the outside.
@@ -107,6 +99,8 @@ class GuiController{
       this._buildResolutionLevelSlider();
       this._resolutionLvlSliderBuilt = true;
     }
+
+    this._updateResolutionDescription( this._resolutionLevel );
 
   }
 
@@ -148,6 +142,7 @@ class GuiController{
     })
 
     this._navigationSubGroup.addStringOutput(this, '_resolutionDescription',{label: "Resolution"})
+
   }
 
 
@@ -166,7 +161,7 @@ class GuiController{
 
     colorMapSelect.selection = colorMapSelect.maps[0];
 
-    var ColormapsSubGroup = this._mainPanel.addSubGroup({label: 'Colormaps'});
+    var ColormapsSubGroup = this._mainPanel.addSubGroup({label: 'Colormaps', enable: false});
 
     ColormapsSubGroup.addSelect(colorMapSelect,'maps',{
       label: "Choose",

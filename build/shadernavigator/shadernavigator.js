@@ -1383,17 +1383,15 @@ class ChunkCollection{
     this._chunkCounter.loaded += (+ success);
     this._chunkCounter.failled += (+ (!success));
 
-    //console.log(this._chunkCounter);
-
     // all the required chunks are OR loaded OR failled = they all tried to load.
     if( (this._chunkCounter.loaded + this._chunkCounter.failled) == this._chunkCounter.toBeLoaded ){
+      //console.log(">> All required chunks are loaded (lvl: " + this._resolutionLevel + ")");
       console.log(">> All required chunks are loaded");
+    }
 
-      // call a callback if defined
-      if( this._onChunksLoadedCallback ){
-        this._onChunksLoadedCallback();
-      }
-
+    // call a callback if defined
+    if( this._onChunksLoadedCallback ){
+      this._onChunksLoadedCallback(this._resolutionLevel, (this._chunkCounter.toBeLoaded - this._chunkCounter.loaded - this._chunkCounter.failled));
     }
   }
 
@@ -1401,7 +1399,7 @@ class ChunkCollection{
   /**
   * Defines a callback for when all the requested chunks are loaded.
   * This will be called every time we ask for a certain number of chunks and they eventually all have a loading status (success or fail)
-  * @param {callback function} cb - function to call
+  * @param {callback function} cb - function to call with 2 params: the rez lvl, remaining tiles to load
   */
   onChunkLoaded(cb){
     this._onChunksLoadedCallback = cb;
@@ -1443,6 +1441,8 @@ class LevelManager{
     this._onConfigErrorCallback = null;
 
     this._levelsInfo = null;
+
+    this._onChunksLoadedCallback = null;
   }
 
 
@@ -1504,8 +1504,6 @@ class LevelManager{
     var levels = description.scales;
     this._levelsInfo = description.scales;
 
-    console.log(this._levelsInfo);
-
     // the description may contain more than one level (= multirez),
     // if so, we sort by resolution so that 0 is the poorest and n is the finest
     if(this._levelsInfo.length > 0){
@@ -1553,12 +1551,24 @@ class LevelManager{
     ];
 
     // creating a new chunk collection for this specific level
-    this._chunkCollections.push( new ChunkCollection(
+    var chunkCollection = new ChunkCollection(
       resolutionLevel,
       matrix3DSize,
       this._workingDir,
       datatype
-    ));
+    );
+
+    // dealing with some nested callback
+    if( this._onChunksLoadedCallback ){
+      chunkCollection.onChunkLoaded(this._onChunksLoadedCallback);
+    }
+
+    this._chunkCollections.push( chunkCollection );
+  }
+
+
+  onChunkLoaded( cb ){
+    this._onChunksLoadedCallback = cb;
   }
 
 
@@ -3876,21 +3886,13 @@ class GuiController{
   _initActions(){
     var that = this;
 
-    var helperSubGroup = this._mainPanel.addSubGroup({label: 'Helpers'});
+    var helperSubGroup = this._mainPanel.addSubGroup({label: 'Helpers', enable: false});
     helperSubGroup.addButton('Toggle compass',  this._toggleOrientationHelper.bind(this)  );
     helperSubGroup.addButton('Toggle bounding box',  this._toggleBoundingBoxHelper.bind(this)  );
 
 
-    /*
-    this._mainPanel.addSubGroup({label: 'Helpers'})
-      // compass toggle
-      .addButton('Toggle compass',  this._toggleOrientationHelper.bind(this)  )
-      // bounding box toggle
-      .addButton('Toggle bounding box',  this._toggleBoundingBoxHelper.bind(this)  );
-    */
-
-    this._navigationSubGroup = this._mainPanel.addSubGroup({label: 'Navigation'});
-
+    this._navigationSubGroup = this._mainPanel.addSubGroup({label: 'Navigation', enable: true});
+    console.log(this._navigationSubGroup);
 
     this._navigationSubGroup.addButton(
       'Reset orientation',
@@ -3929,7 +3931,7 @@ class GuiController{
   updateResolutionLevelUI( lvl ){
     this._resolutionLevel = lvl;
     this._resolutionLevelTemp = this._resolutionLevel;
-    this._updateResolutionDescription( this._resolutionLevel );
+
 
     // last minute build because ControlKit does not allow to refresh
     // a slider value from the outside.
@@ -3937,6 +3939,8 @@ class GuiController{
       this._buildResolutionLevelSlider();
       this._resolutionLvlSliderBuilt = true;
     }
+
+    this._updateResolutionDescription( this._resolutionLevel );
 
   }
 
@@ -3978,6 +3982,7 @@ class GuiController{
     });
 
     this._navigationSubGroup.addStringOutput(this, '_resolutionDescription',{label: "Resolution"});
+
   }
 
 
@@ -3996,7 +4001,7 @@ class GuiController{
 
     colorMapSelect.selection = colorMapSelect.maps[0];
 
-    var ColormapsSubGroup = this._mainPanel.addSubGroup({label: 'Colormaps'});
+    var ColormapsSubGroup = this._mainPanel.addSubGroup({label: 'Colormaps', enable: false});
 
     ColormapsSubGroup.addSelect(colorMapSelect,'maps',{
       label: "Choose",

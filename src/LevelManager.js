@@ -37,6 +37,8 @@ class LevelManager{
     this._onConfigErrorCallback = null;
 
     this._levelsInfo = null;
+
+    this._onChunksLoadedCallback = null;
   }
 
 
@@ -98,8 +100,6 @@ class LevelManager{
     var levels = description.scales;
     this._levelsInfo = description.scales;
 
-    console.log(this._levelsInfo);
-
     // the description may contain more than one level (= multirez),
     // if so, we sort by resolution so that 0 is the poorest and n is the finest
     if(this._levelsInfo.length > 0){
@@ -147,12 +147,24 @@ class LevelManager{
     ];
 
     // creating a new chunk collection for this specific level
-    this._chunkCollections.push( new ChunkCollection(
+    var chunkCollection = new ChunkCollection(
       resolutionLevel,
       matrix3DSize,
       this._workingDir,
       datatype
-    ));
+    );
+
+    // dealing with some nested callback
+    if( this._onChunksLoadedCallback ){
+      chunkCollection.onChunkLoaded(this._onChunksLoadedCallback);
+    }
+
+    this._chunkCollections.push( chunkCollection );
+  }
+
+
+  onChunkLoaded( cb ){
+    this._onChunksLoadedCallback = cb;
   }
 
 
