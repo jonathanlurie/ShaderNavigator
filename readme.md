@@ -23,9 +23,16 @@ The single file output is `build/shadernavigator/shadernavigator.js`
 
 **Build a minified project:**
 ```sh
-$ npm run min
+$ npm run build-min
 ```
 The single file output is `build/shadernavigator/shadernavigator.min.js`
+
+---
+
+**NOTE:** ShaderNavigator was developed using ES6 standards meaning the regular/not-minified version uses ES6 classes, among other ES6 features. The minified version is automatically generate in ES5 and uses *object prototypes*.  
+While it's easier to maintain the codebase in ES6, the minified version is certainly compatible with more older browsers.
+
+---
 
 **Build the documentation:**
 ```sh
