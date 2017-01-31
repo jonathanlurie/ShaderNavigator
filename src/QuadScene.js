@@ -562,10 +562,10 @@ class QuadScene{
           that._planeManager.translateMultiplaneY(factor, 0);
           break;
         case 1:
-          that.translateMultiplaneX(factor, 0);
+          that._planeManager.translateMultiplaneX(factor, 0);
           break;
         case 2:
-          that._planeManager._planeManager.translateMultiplaneY(0, -factor);
+          that._planeManager.translateMultiplaneY(0, -factor);
           break;
         default:  // if last view, we dont do anything
           return;
