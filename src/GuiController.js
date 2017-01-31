@@ -11,8 +11,10 @@ class GuiController{
 
     // fake value for dat gui - just to display the init value
     this._resolutionLevel = this._quadScene.getResolutionLevel();
+    this._resolutionLevelTemp = this._resolutionLevel;
     this._resolutionLvlRange = [0, 6];
     this._resolutionLvlSliderBuilt = false;
+    this._resolutionDescription = '';
 
 
     // special controller for colormaps
@@ -24,7 +26,7 @@ class GuiController{
 
     // the main panel
     this._mainPanel = this._controlKit.addPanel({
-      label: 'BigBrain Explorer',
+      label: document.title,  // default title, like the page
       align : 'left',
       fixed: false,
       width: 250,
@@ -84,6 +86,8 @@ class GuiController{
   */
   _toggleBoundingBoxHelper(){
     this._quadScene.getBoundingBoxHelper().toggle();
+    //this._resolutionDescription = "lalal";
+    //this._controlKit.update();
   }
 
 
@@ -94,6 +98,8 @@ class GuiController{
   */
   updateResolutionLevelUI( lvl ){
     this._resolutionLevel = lvl;
+    this._resolutionLevelTemp = this._resolutionLevel;
+    this._updateResolutionDescription( this._resolutionLevel );
 
     // last minute build because ControlKit does not allow to refresh
     // a slider value from the outside.
@@ -107,22 +113,41 @@ class GuiController{
 
   /**
   * [PRIVATE]
+  * update the description of resolution level
+  */
+  _updateResolutionDescription( lvl, prefix="" ){
+    this._resolutionDescription = prefix + this._quadScene.getLevelManager().getLevelInfo(lvl, "key");
+    this._controlKit.update();
+  }
+
+
+  /**
+  * [PRIVATE]
   * Last minute build of the resolution level slider. This is necessary because
   * ControlKit does not allow updating a value (and that sucks).
   */
   _buildResolutionLevelSlider(){
     var that = this;
 
-
-
       this._navigationSubGroup.addSlider(this, '_resolutionLevel', "_resolutionLvlRange",{
-      label: 'Resolution',
+      label: 'Zoom level',
       step: 1,
       dp: 0,
+
+      // update the display only while moving the slider
+      onChange: function(value){
+        that._updateResolutionDescription(
+          that._resolutionLevel,
+          that._quadScene.getLevelManager().getLevelInfo(that._resolutionLevelTemp, "key") + " ➤ " );
+      },
+
+      // when mouse release onthe slider
       onFinish: function(value){
         that._quadScene.setResolutionLevel( that._resolutionLevel );
       }
     })
+
+    this._navigationSubGroup.addStringOutput(this, '_resolutionDescription',{label: "Resolution"})
   }
 
 

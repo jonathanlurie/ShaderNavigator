@@ -176,6 +176,14 @@ class QuadScene{
 
 
   /**
+  * @return {LevelManager} so that the UI can query info
+  */
+  getLevelManager(){
+    return this._levelManager;
+  }
+
+
+  /**
   * Shortcut function to set the multiplane position.
   * Handy because accessible from the onReady callback.
   */

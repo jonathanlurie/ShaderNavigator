@@ -1441,6 +1441,8 @@ class LevelManager{
     this._chunkSize = [64, 64, 64]; // will be overwritten using the config file, but it will be 64 anyway.
 
     this._onConfigErrorCallback = null;
+
+    this._levelsInfo = null;
   }
 
 
@@ -1500,11 +1502,14 @@ class LevelManager{
     var that = this;
 
     var levels = description.scales;
+    this._levelsInfo = description.scales;
+
+    console.log(this._levelsInfo);
 
     // the description may contain more than one level (= multirez),
     // if so, we sort by resolution so that 0 is the poorest and n is the finest
-    if(levels.length > 0){
-      levels.sort(function(a,b) {
+    if(this._levelsInfo.length > 0){
+      this._levelsInfo.sort(function(a,b) {
         if (a.resolution[0] > b.resolution[0]){
           return -1;
         }else {
@@ -1513,13 +1518,13 @@ class LevelManager{
       });
     }
 
-    this._determineChunkSize(levels); // most likely 64 for every config anyway
+    this._determineChunkSize(); // most likely 64 for every config anyway
 
     // Compute the cube _boundingBox, that will give some sense of boundaries to the dataset
-    this._computeBoundingBox(levels);
+    this._computeBoundingBox();
 
     // add a chunk collection for each level
-    levels.forEach(function(elem, index){
+    this._levelsInfo.forEach(function(elem, index){
       that._addChunkCollectionLevel(index, elem.size, datatype);
     });
 
@@ -1625,8 +1630,8 @@ class LevelManager{
   * Reads the chunk size from the config data. No matter the level, the chunk size should be the same, this is why we just take the first one.
   * @param {Object} levels - config data
   */
-  _determineChunkSize(levels){
-    this._chunkSize = levels[0].chunk_sizes[0];
+  _determineChunkSize(){
+    this._chunkSize = this._levelsInfo[0].chunk_sizes[0];
   }
 
 
@@ -1635,11 +1640,11 @@ class LevelManager{
   * The size data is available at every resolution level, we'll just take the info from the first level (0) since the size remains consistant all along.
   * @param {Object} levels - config data
   */
-  _computeBoundingBox(levels){
+  _computeBoundingBox(){
     this._boundingBox = [
-      levels[0].size[0] / 64.0,
-      levels[0].size[1] / 64.0,
-      levels[0].size[2] / 64.0
+      this._levelsInfo[0].size[0] / 64.0,
+      this._levelsInfo[0].size[1] / 64.0,
+      this._levelsInfo[0].size[2] / 64.0
     ];
   }
 
@@ -1672,6 +1677,21 @@ class LevelManager{
     this._onConfigErrorCallback = cb;
   }
 
+
+  /**
+  * Useful to get an info from the tileset config file.
+  * @param {Number} levelIndex - the index in the array
+  * @param {String} infoKey - One of the following "chunk_sizes", "encoding", "key", "resolution", "size" or "voxel_offset"
+  * @return depending on infoKey, the return value can be a String or an Array.
+  */
+  getLevelInfo(levelIndex, infoKey){
+    if( levelIndex>=0 &&
+        levelIndex<this._levelsInfo.length &&
+        infoKey in this._levelsInfo[levelIndex]){
+
+      return this._levelsInfo[ levelIndex ][ infoKey ];
+    }
+  }
 
 } /* END CLASS LevelManager */
 
@@ -3821,6 +3841,7 @@ class GuiController{
 
     // fake value for dat gui - just to display the init value
     this._resolutionLevel = this._quadScene.getResolutionLevel();
+    this._resolutionLevelTemp = this._resolutionLevel;
     this._resolutionLvlRange = [0, 6];
     this._resolutionLvlSliderBuilt = false;
     this._resolutionDescription = '';
@@ -3907,6 +3928,8 @@ class GuiController{
   */
   updateResolutionLevelUI( lvl ){
     this._resolutionLevel = lvl;
+    this._resolutionLevelTemp = this._resolutionLevel;
+    this._updateResolutionDescription( this._resolutionLevel );
 
     // last minute build because ControlKit does not allow to refresh
     // a slider value from the outside.
@@ -3920,18 +3943,35 @@ class GuiController{
 
   /**
   * [PRIVATE]
+  * update the description of resolution level
+  */
+  _updateResolutionDescription( lvl, prefix="" ){
+    this._resolutionDescription = prefix + this._quadScene.getLevelManager().getLevelInfo(lvl, "key");
+    this._controlKit.update();
+  }
+
+
+  /**
+  * [PRIVATE]
   * Last minute build of the resolution level slider. This is necessary because
   * ControlKit does not allow updating a value (and that sucks).
   */
   _buildResolutionLevelSlider(){
     var that = this;
 
-
-
       this._navigationSubGroup.addSlider(this, '_resolutionLevel', "_resolutionLvlRange",{
       label: 'Zoom level',
       step: 1,
       dp: 0,
+
+      // update the display only while moving the slider
+      onChange: function(value){
+        that._updateResolutionDescription(
+          that._resolutionLevel,
+          that._quadScene.getLevelManager().getLevelInfo(that._resolutionLevelTemp, "key") + " ➤ " );
+      },
+
+      // when mouse release onthe slider
       onFinish: function(value){
         that._quadScene.setResolutionLevel( that._resolutionLevel );
       }
@@ -4244,6 +4284,14 @@ class QuadScene{
     );
 
 
+  }
+
+
+  /**
+  * @return {LevelManager} so that the UI can query info
+  */
+  getLevelManager(){
+    return this._levelManager;
   }
 
 
