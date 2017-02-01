@@ -1907,6 +1907,8 @@ class QuadViewInteraction{
       height: window.innerHeight
     };
 
+    this._domContainer = document.getElementById(domContainerID);
+
     // updated at every mousemove event by the QuadScene
     this._mouse = {x:0, y:0};
 
@@ -1930,19 +1932,17 @@ class QuadViewInteraction{
 
     // declaring mouse events
     // (on a specific div to prevent conflict with ControlKit)
-    document.getElementById(domContainerID)
-      .addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
-    document.getElementById(domContainerID)
-      .addEventListener( 'mousedown', this._onMouseDown.bind(this), false );
-    document.getElementById(domContainerID)
-      .addEventListener( 'mouseup', this._onMouseUp.bind(this), false );
+    this._domContainer.addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
+    this._domContainer.addEventListener( 'mousedown', this._onMouseDown.bind(this), false );
+    this._domContainer.addEventListener( 'mouseup', this._onMouseUp.bind(this), false );
 
     // declaring keyboard events
     // (on document, otherwise it does not work)
-    document.addEventListener( 'keydown', this._onKeyDown.bind(this), false);
-    document.addEventListener( 'keyup', this._onKeyUp.bind(this), false);
+    //document.addEventListener( 'keydown', this._onKeyDown.bind(this), false);
+    //document.addEventListener( 'keyup', this._onKeyUp.bind(this), false);
 
-
+    this._domContainer.addEventListener( 'keydown', this._onKeyDown.bind(this), false);
+    this._domContainer.addEventListener( 'keyup', this._onKeyUp.bind(this), false);
 
     // function to be called when the mouse is pressed on a view for translation - no R key pressed
     this._onGrabViewTranslateCallback = null;
@@ -1998,6 +1998,8 @@ class QuadViewInteraction{
   * Updating the mouse position may trigger some events like orbit/trackball control activation
   */
   _onMouseMove( event ) {
+    this._focusOnContainer();
+
     this._mouse.x = (event.clientX / this._windowSize.width);
     this._mouse.y = 1 - (event.clientY / this._windowSize.height);
     this._manageQuadViewsMouseActivity();
@@ -2146,6 +2148,7 @@ class QuadViewInteraction{
   * Callback to the event onkeyup, aka. when a keyboard key is released
   */
   _onKeyUp( event ){
+
     switch( event.key ){
       case "r":
         this._rKeyPressed = false;
@@ -2159,6 +2162,8 @@ class QuadViewInteraction{
 
       default:;
     }
+
+    console.log("HEY");
 
     if(this._onDonePlayingCallback){
       this._onDonePlayingCallback();
@@ -2331,6 +2336,10 @@ class QuadViewInteraction{
     this._onClickPlaneCallback[ cameraType ] = callback;
   }
 
+
+  _focusOnContainer(){
+    this._domContainer.tabindex = 1;
+  }
 
 } /* END class QuadViewInteraction */
 
@@ -3898,7 +3907,6 @@ class GuiController{
 
     // rez lvl slider
     this._mainPanel.addRange("Zoom level", 0, 6, 0, 1,
-
       // on change
       function( value ){
         value = Math.floor( value );
@@ -3907,7 +3915,6 @@ class GuiController{
           that._quadScene.getLevelManager().getLevelInfo(that._resolutionLevel, "key") + " ➤ "
         );
       },
-
       // on finish
       function( value ){
         value = Math.floor( value );
@@ -3922,35 +3929,46 @@ class GuiController{
     document.getElementById('Resolution').readOnly = true;
     document.getElementById("Resolution").parentElement.style["margin-top"] = "0px";
 
+    // multiplane position
+    this._mainPanel.addText("Position", "", function(){} );
+    this._mainPanel.overrideStyle("Position", "text-align", "center");
 
+    // multiplane rotation
+    this._mainPanel.addText("Rotation", "", function(){} );
+    this._mainPanel.overrideStyle("Rotation", "margin-top", "0px");
+    this._mainPanel.overrideStyle("Rotation", "text-align", "center");
+    document.getElementById("Rotation").parentElement.style["margin-top"] = "0px";
 
-
-    //
-    this._mainPanel.addText("Position", "", null );
-
-    this._mainPanel.addText("Orientation", "", null );
-    this._mainPanel.overrideStyle("Orientation", "margin-top", "0px");
-    document.getElementById("Orientation").parentElement.style["margin-top"] = "0px";
-
+    // apply button for multiplane position and rotation
     this._mainPanel.addButton("Apply", function(){
+      var newPosition = that._mainPanel.getValue("Position")
+        .split(',')
+        .map(function(elem){return parseFloat(elem)});
 
+      var newRotation = that._mainPanel.getValue("Rotation")
+        .split(',')
+        .map(function(elem){return parseFloat(elem)});
+
+      that._quadScene.setMultiplaneRotation(newRotation[0], newRotation[1], newRotation[2]);
+      that._quadScene.setMultiplanePosition(newPosition[0], newPosition[1], newPosition[2]);
     });
+
     this._mainPanel.overrideStyle("Apply", "width", "100%");
     document.getElementById("Apply").parentElement.style["margin-top"] = "0px";
 
-    // Button reset orientation
-    this._mainPanel.addButton("Reset orientation", function(){
+    // Button reset rotation
+    this._mainPanel.addButton("Reset rotation", function(){
       that._quadScene.setMultiplaneRotation(0, 0, 0);
     });
-    this._mainPanel.overrideStyle("Reset orientation", "width", "100%");
-    document.getElementById("Reset orientation").parentElement.style["margin-top"] = "0px";
+    this._mainPanel.overrideStyle("Reset rotation", "width", "100%");
+    document.getElementById("Reset rotation").parentElement.style["margin-top"] = "0px";
 
   }
 
 
   /**
   * [PRIVATE]
-  * Action to toggle the orientation helper
+  * Action to toggle the rotation helper
   */
   _toggleOrientationHelper(){
     this._quadScene.getOrientationHelper().toggle();
@@ -3975,6 +3993,23 @@ class GuiController{
     this._resolutionLevel = lvl;
     this._mainPanel.setValue("Zoom level", lvl);
     this._updateResolutionDescription( this._resolutionLevel );
+  }
+
+
+  /**
+  * Update the UI from rotation, position and rez lvl (later is not used here)
+  * @param {Object} spaceConfig - { resolutionLvl: Number, position:[x, y, z], rotation:[x, y, z]}
+  */
+  updateMultiplaneUI( spaceConfig ){
+    var positionString = spaceConfig.position.x.toFixed(4) + ' , ';
+    positionString += spaceConfig.position.y.toFixed(4) + ' , ';
+    positionString += spaceConfig.position.z.toFixed(4);
+    this._mainPanel.setValue("Position", positionString);
+
+    var rotationString = spaceConfig.rotation.x.toFixed(4) + ' , ';
+    rotationString += spaceConfig.rotation.y.toFixed(4) + ' , ';
+    rotationString += spaceConfig.rotation.z.toFixed(4);
+    this._mainPanel.setValue("Rotation", rotationString);
   }
 
 
@@ -4508,6 +4543,9 @@ class QuadScene{
         that._onReadyCallback(that);
       }
 
+      // the callback above may have changed the rotation/position from URL
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
+
     });
 
     // the config file failed to load
@@ -4715,6 +4753,7 @@ class QuadScene{
     });
 
     this._quadViewInteraction.onDonePlaying(function(){
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
       that._onUpdateViewCallback && that._onUpdateViewCallback( that.getMultiplaneContainerInfo() );
     });
 

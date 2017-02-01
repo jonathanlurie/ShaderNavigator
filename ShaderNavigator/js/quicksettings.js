@@ -1466,7 +1466,8 @@
 			};
 
 			var self = this;
-			textInput.addEventListener("input", function() {
+			textInput.addEventListener("input", function(e) {
+			  e.stopPropagation();
 				if(callback) {
 					callback(textInput.value);
 				}

@@ -72,33 +72,45 @@ class GuiController{
     document.getElementById("Resolution").parentElement.style["margin-top"] = "0px";
 
     // multiplane position
-    this._mainPanel.addText("Position", "", null );
+    this._mainPanel.addText("Position", "", function(){} );
+    this._mainPanel.overrideStyle("Position", "text-align", "center");
 
     // multiplane rotation
-    this._mainPanel.addText("Orientation", "", null );
-    this._mainPanel.overrideStyle("Orientation", "margin-top", "0px");
-    document.getElementById("Orientation").parentElement.style["margin-top"] = "0px";
+    this._mainPanel.addText("Rotation", "", function(){} );
+    this._mainPanel.overrideStyle("Rotation", "margin-top", "0px");
+    this._mainPanel.overrideStyle("Rotation", "text-align", "center");
+    document.getElementById("Rotation").parentElement.style["margin-top"] = "0px";
 
     // apply button for multiplane position and rotation
     this._mainPanel.addButton("Apply", function(){
+      var newPosition = that._mainPanel.getValue("Position")
+        .split(',')
+        .map(function(elem){return parseFloat(elem)});
 
+      var newRotation = that._mainPanel.getValue("Rotation")
+        .split(',')
+        .map(function(elem){return parseFloat(elem)});
+
+      that._quadScene.setMultiplaneRotation(newRotation[0], newRotation[1], newRotation[2]);
+      that._quadScene.setMultiplanePosition(newPosition[0], newPosition[1], newPosition[2]);
     });
+
     this._mainPanel.overrideStyle("Apply", "width", "100%");
     document.getElementById("Apply").parentElement.style["margin-top"] = "0px";
 
-    // Button reset orientation
-    this._mainPanel.addButton("Reset orientation", function(){
+    // Button reset rotation
+    this._mainPanel.addButton("Reset rotation", function(){
       that._quadScene.setMultiplaneRotation(0, 0, 0);
     });
-    this._mainPanel.overrideStyle("Reset orientation", "width", "100%");
-    document.getElementById("Reset orientation").parentElement.style["margin-top"] = "0px";
+    this._mainPanel.overrideStyle("Reset rotation", "width", "100%");
+    document.getElementById("Reset rotation").parentElement.style["margin-top"] = "0px";
 
   }
 
 
   /**
   * [PRIVATE]
-  * Action to toggle the orientation helper
+  * Action to toggle the rotation helper
   */
   _toggleOrientationHelper(){
     this._quadScene.getOrientationHelper().toggle();
@@ -123,6 +135,23 @@ class GuiController{
     this._resolutionLevel = lvl;
     this._mainPanel.setValue("Zoom level", lvl);
     this._updateResolutionDescription( this._resolutionLevel );
+  }
+
+
+  /**
+  * Update the UI from rotation, position and rez lvl (later is not used here)
+  * @param {Object} spaceConfig - { resolutionLvl: Number, position:[x, y, z], rotation:[x, y, z]}
+  */
+  updateMultiplaneUI( spaceConfig ){
+    var positionString = spaceConfig.position.x.toFixed(4) + ' , ';
+    positionString += spaceConfig.position.y.toFixed(4) + ' , ';
+    positionString += spaceConfig.position.z.toFixed(4)
+    this._mainPanel.setValue("Position", positionString);
+
+    var rotationString = spaceConfig.rotation.x.toFixed(4) + ' , ';
+    rotationString += spaceConfig.rotation.y.toFixed(4) + ' , ';
+    rotationString += spaceConfig.rotation.z.toFixed(4)
+    this._mainPanel.setValue("Rotation", rotationString);
   }
 
 
