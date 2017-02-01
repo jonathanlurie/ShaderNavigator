@@ -106,6 +106,15 @@ class BoundingBoxHelper{
     this._boundingBox3D.visible = !this._boundingBox3D.visible;
   }
 
+
+  /**
+  * Show or hide
+  * @param {Boolean} b - true to show, false to hide.
+  */
+  setVisibility( b ){
+    this._boundingBox3D.visible = b;
+  }
+
 }/* END class BoundingBoxHelper */
 
 export { BoundingBoxHelper };

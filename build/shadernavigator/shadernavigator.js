@@ -1877,6 +1877,15 @@ class OrientationHelper{
   }
 
 
+  /**
+  * Set the visibility of the orientation Helpers
+  * @param {Boolean} b - true to show, false to hide
+  */
+  setVisibility( b ){
+    this._sphere.visible = b;
+  }
+
+
 } /* END class OrientationHelper */
 
 /**
@@ -3851,7 +3860,6 @@ class GuiController{
 
     // fake value for dat gui - just to display the init value
     this._resolutionLevel = this._quadScene.getResolutionLevel();
-    this._resolutionLevelTemp = this._resolutionLevel;
     this._resolutionLvlRange = [0, 6];
     this._resolutionLvlSliderBuilt = false;
     this._resolutionDescription = '';
@@ -3862,16 +3870,7 @@ class GuiController{
     this._colormapManager.onColormapUpdate( this._updateColormapList.bind(this) );
 
 
-    this._controlKit = new ControlKit();
-
-    // the main panel
-    this._mainPanel = this._controlKit.addPanel({
-      label: document.title,  // default title, like the page
-      align : 'left',
-      fixed: false,
-      width: 250,
-      position: [window.innerWidth - 250, 0]
-    });
+    this._mainPanel = QuickSettings.create(window.innerWidth - 250, 0, document.title);
 
 
 
@@ -3886,19 +3885,65 @@ class GuiController{
   _initActions(){
     var that = this;
 
-    var helperSubGroup = this._mainPanel.addSubGroup({label: 'Helpers', enable: false});
-    helperSubGroup.addButton('Toggle compass',  this._toggleOrientationHelper.bind(this)  );
-    helperSubGroup.addButton('Toggle bounding box',  this._toggleBoundingBoxHelper.bind(this)  );
+    // compass toggle
+    this._mainPanel.addBoolean("Compass", 1, function(mustShow){
+      that._quadScene.getOrientationHelper().setVisibility( mustShow );
+    });
 
+    // bounding box toggle
+    this._mainPanel.addBoolean("Bounding box", 1, function(mustShow){
+      that._quadScene.getBoundingBoxHelper().setVisibility( mustShow );
+    });
+    document.getElementById("Bounding box").parentElement.parentElement.style["margin-top"] = "0px";
 
-    this._navigationSubGroup = this._mainPanel.addSubGroup({label: 'Navigation', enable: true});
-    console.log(this._navigationSubGroup);
+    // rez lvl slider
+    this._mainPanel.addRange("Zoom level", 0, 6, 0, 1,
 
-    this._navigationSubGroup.addButton(
-      'Reset orientation',
-      this._resetMultiplaneRotation.bind(this)
+      // on change
+      function( value ){
+        value = Math.floor( value );
+        that._updateResolutionDescription(
+          value,
+          that._quadScene.getLevelManager().getLevelInfo(that._resolutionLevel, "key") + " ➤ "
+        );
+      },
+
+      // on finish
+      function( value ){
+        value = Math.floor( value );
+        that._resolutionLevel = value;
+        that._quadScene.setResolutionLevel( value );
+      }
     );
 
+    // resolution info
+    this._mainPanel.addText("Resolution", "");
+    this._mainPanel.overrideStyle("Resolution", "background-color", "transparent");
+    document.getElementById('Resolution').readOnly = true;
+    document.getElementById("Resolution").parentElement.style["margin-top"] = "0px";
+
+
+
+
+    //
+    this._mainPanel.addText("Position", "", null );
+
+    this._mainPanel.addText("Orientation", "", null );
+    this._mainPanel.overrideStyle("Orientation", "margin-top", "0px");
+    document.getElementById("Orientation").parentElement.style["margin-top"] = "0px";
+
+    this._mainPanel.addButton("Apply", function(){
+
+    });
+    this._mainPanel.overrideStyle("Apply", "width", "100%");
+    document.getElementById("Apply").parentElement.style["margin-top"] = "0px";
+
+    // Button reset orientation
+    this._mainPanel.addButton("Reset orientation", function(){
+      that._quadScene.setMultiplaneRotation(0, 0, 0);
+    });
+    this._mainPanel.overrideStyle("Reset orientation", "width", "100%");
+    document.getElementById("Reset orientation").parentElement.style["margin-top"] = "0px";
 
   }
 
@@ -3918,8 +3963,6 @@ class GuiController{
   */
   _toggleBoundingBoxHelper(){
     this._quadScene.getBoundingBoxHelper().toggle();
-    //this._resolutionDescription = "lalal";
-    //this._controlKit.update();
   }
 
 
@@ -3930,18 +3973,8 @@ class GuiController{
   */
   updateResolutionLevelUI( lvl ){
     this._resolutionLevel = lvl;
-    this._resolutionLevelTemp = this._resolutionLevel;
-
-
-    // last minute build because ControlKit does not allow to refresh
-    // a slider value from the outside.
-    if(!this._resolutionLvlSliderBuilt){
-      this._buildResolutionLevelSlider();
-      this._resolutionLvlSliderBuilt = true;
-    }
-
+    this._mainPanel.setValue("Zoom level", lvl);
     this._updateResolutionDescription( this._resolutionLevel );
-
   }
 
 
@@ -3951,37 +3984,7 @@ class GuiController{
   */
   _updateResolutionDescription( lvl, prefix="" ){
     this._resolutionDescription = prefix + this._quadScene.getLevelManager().getLevelInfo(lvl, "key");
-    this._controlKit.update();
-  }
-
-
-  /**
-  * [PRIVATE]
-  * Last minute build of the resolution level slider. This is necessary because
-  * ControlKit does not allow updating a value (and that sucks).
-  */
-  _buildResolutionLevelSlider(){
-    var that = this;
-
-      this._navigationSubGroup.addSlider(this, '_resolutionLevel', "_resolutionLvlRange",{
-      label: 'Zoom level',
-      step: 1,
-      dp: 0,
-
-      // update the display only while moving the slider
-      onChange: function(value){
-        that._updateResolutionDescription(
-          that._resolutionLevel,
-          that._quadScene.getLevelManager().getLevelInfo(that._resolutionLevelTemp, "key") + " ➤ " );
-      },
-
-      // when mouse release onthe slider
-      onFinish: function(value){
-        that._quadScene.setResolutionLevel( that._resolutionLevel );
-      }
-    });
-
-    this._navigationSubGroup.addStringOutput(this, '_resolutionDescription',{label: "Resolution"});
+    this._mainPanel.setValue("Resolution", this._resolutionDescription);
 
   }
 
@@ -3994,29 +3997,15 @@ class GuiController{
   _updateColormapList(){
     var that = this;
 
-    var colorMapSelect = {
-      maps: this._colormapManager.getAvailableColormaps(),
-      selection: null
-    };
-
-    colorMapSelect.selection = colorMapSelect.maps[0];
-
-    var ColormapsSubGroup = this._mainPanel.addSubGroup({label: 'Colormaps', enable: false});
-
-    ColormapsSubGroup.addSelect(colorMapSelect,'maps',{
-      label: "Choose",
-      target: "selection",
-      onChange:function(index){
-        that._colormapManager.useColormap(colorMapSelect.maps[index]);
+    // color map
+    this._mainPanel.addDropDown("Colormap", this._colormapManager.getAvailableColormaps(),
+      function( dropdownObj ){
+        that._colormapManager.useColormap(dropdownObj.value);
       }
-    });
+    );
 
   }
 
-
-  _resetMultiplaneRotation(){
-    this._quadScene.setMultiplaneRotation(0, 0, 0);
-  }
 
 }/* END class GuiController */
 
@@ -4125,6 +4114,15 @@ class BoundingBoxHelper{
   */
   toggle(){
     this._boundingBox3D.visible = !this._boundingBox3D.visible;
+  }
+
+
+  /**
+  * Show or hide
+  * @param {Boolean} b - true to show, false to hide.
+  */
+  setVisibility( b ){
+    this._boundingBox3D.visible = b;
   }
 
 }/* END class BoundingBoxHelper */

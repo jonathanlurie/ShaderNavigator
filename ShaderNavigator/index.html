@@ -4,11 +4,19 @@
 		<title>BigBrain Quadview</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+    <link href="https://fonts.googleapis.com/css?family=Lato:200,300,400,900" rel="stylesheet">
+
 		<style>
 			body {
 				color: #000;
+        /*
 				font-family:Monospace;
 				font-size:13px;
+        */
+
+        font-family: 'Lato', sans-serif;
+        font-weight: 400;
 				text-align:center;
 
 				background-color: #fff;
@@ -20,6 +28,10 @@
 				position: absolute;
 				top: 0px; width: 100%;
 				padding: 5px;
+        font-size: 14px;
+        font-weight: 400;
+        font-weight: 400;
+        color: rgba(0,0, 0, 0.7);
 
 			}
 
@@ -69,6 +81,8 @@
       }
 
 		</style>
+
+
 	</head>
 	<body>
 
@@ -99,8 +113,8 @@
     <script src="js/TrackballControls.js"></script>
 		<script src="js/Detector.js"></script>
 		<script src="js/stats.min.js"></script>
-    <script src="js/controlKit.js"></script>
-
+    <!--<script src="js/controlKit.js"></script>-->
+    <script src="js/quicksettings.js"></script>
 
     <!-- importing the automatically build module -->
     <script src="../build/shadernavigator/shadernavigator.js"></script>
@@ -207,5 +221,6 @@
 
 		</script>
 
+    <link rel="stylesheet" href="css/quicksettings_override.css" charset="utf-8">
 	</body>
 </html>
