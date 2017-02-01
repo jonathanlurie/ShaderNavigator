@@ -19,6 +19,8 @@ class QuadViewInteraction{
       height: window.innerHeight
     };
 
+    this._domContainer = document.getElementById(domContainerID);
+
     // updated at every mousemove event by the QuadScene
     this._mouse = {x:0, y:0};
 
@@ -42,19 +44,17 @@ class QuadViewInteraction{
 
     // declaring mouse events
     // (on a specific div to prevent conflict with ControlKit)
-    document.getElementById(domContainerID)
-      .addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
-    document.getElementById(domContainerID)
-      .addEventListener( 'mousedown', this._onMouseDown.bind(this), false );
-    document.getElementById(domContainerID)
-      .addEventListener( 'mouseup', this._onMouseUp.bind(this), false );
+    this._domContainer.addEventListener( 'mousemove', this._onMouseMove.bind(this), false );
+    this._domContainer.addEventListener( 'mousedown', this._onMouseDown.bind(this), false );
+    this._domContainer.addEventListener( 'mouseup', this._onMouseUp.bind(this), false );
 
     // declaring keyboard events
     // (on document, otherwise it does not work)
-    document.addEventListener( 'keydown', this._onKeyDown.bind(this), false);
-    document.addEventListener( 'keyup', this._onKeyUp.bind(this), false);
+    //document.addEventListener( 'keydown', this._onKeyDown.bind(this), false);
+    //document.addEventListener( 'keyup', this._onKeyUp.bind(this), false);
 
-
+    this._domContainer.addEventListener( 'keydown', this._onKeyDown.bind(this), false);
+    this._domContainer.addEventListener( 'keyup', this._onKeyUp.bind(this), false);
 
     // function to be called when the mouse is pressed on a view for translation - no R key pressed
     this._onGrabViewTranslateCallback = null;
@@ -275,7 +275,6 @@ class QuadViewInteraction{
     if(this._onDonePlayingCallback){
       this._onDonePlayingCallback();
     }
-
   }
 
 
@@ -442,7 +441,7 @@ class QuadViewInteraction{
 
     this._onClickPlaneCallback[ cameraType ] = callback;
   }
-
+  
 
 } /* END class QuadViewInteraction */
 

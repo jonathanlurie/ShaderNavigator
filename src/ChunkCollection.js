@@ -381,17 +381,15 @@ class ChunkCollection{
     this._chunkCounter.loaded += (+ success);
     this._chunkCounter.failled += (+ (!success));
 
-    //console.log(this._chunkCounter);
-
     // all the required chunks are OR loaded OR failled = they all tried to load.
     if( (this._chunkCounter.loaded + this._chunkCounter.failled) == this._chunkCounter.toBeLoaded ){
+      //console.log(">> All required chunks are loaded (lvl: " + this._resolutionLevel + ")");
       console.log(">> All required chunks are loaded");
+    }
 
-      // call a callback if defined
-      if( this._onChunksLoadedCallback ){
-        this._onChunksLoadedCallback();
-      }
-
+    // call a callback if defined
+    if( this._onChunksLoadedCallback ){
+      this._onChunksLoadedCallback(this._resolutionLevel, (this._chunkCounter.toBeLoaded - this._chunkCounter.loaded - this._chunkCounter.failled));
     }
   }
 
@@ -399,7 +397,7 @@ class ChunkCollection{
   /**
   * Defines a callback for when all the requested chunks are loaded.
   * This will be called every time we ask for a certain number of chunks and they eventually all have a loading status (success or fail)
-  * @param {callback function} cb - function to call
+  * @param {callback function} cb - function to call with 2 params: the rez lvl, remaining tiles to load
   */
   onChunkLoaded(cb){
     this._onChunksLoadedCallback = cb;

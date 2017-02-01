@@ -393,6 +393,9 @@ class QuadScene{
         that._onReadyCallback(that);
       }
 
+      // the callback above may have changed the rotation/position from URL
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
+
     });
 
     // the config file failed to load
@@ -600,6 +603,7 @@ class QuadScene{
     });
 
     this._quadViewInteraction.onDonePlaying(function(){
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
       that._onUpdateViewCallback && that._onUpdateViewCallback( that.getMultiplaneContainerInfo() );
     });
 

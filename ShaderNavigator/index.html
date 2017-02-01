@@ -4,11 +4,19 @@
 		<title>BigBrain Quadview</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400" rel="stylesheet">
+
 		<style>
 			body {
 				color: #000;
+        /*
 				font-family:Monospace;
 				font-size:13px;
+        */
+
+        font-family: 'Lato', sans-serif;
+        font-weight: 400;
 				text-align:center;
 
 				background-color: #fff;
@@ -20,8 +28,15 @@
 				position: absolute;
 				top: 0px; width: 100%;
 				padding: 5px;
-
+        font-size: 14px;
+        font-weight: 400;
+        font-weight: 400;
+        color: rgba(0,0, 0, 0.7);
 			}
+
+      #info p {
+        margin: 5px;
+      }
 
       .key{
         font-size: larger;
@@ -43,6 +58,21 @@
         cursor: default;
       }
 
+      #loadStat{
+        background-color: rgba(255, 255, 255, 0.5);
+        position: absolute;
+        width: 160px;
+        left: 0;
+        bottom: 0;
+        text-align: left;
+        padding: 0;
+        font-size: smaller;
+      }
+
+      #loadStat div{
+        padding-left: 3px;
+      }
+
       .noselect {
         -webkit-touch-callout: none; /* iOS Safari */
         -webkit-user-select: none; /* Chrome/Safari/Opera */
@@ -54,13 +84,30 @@
       }
 
 		</style>
+
+
 	</head>
 	<body>
 
-		<div id="container"></div>
+    <div id="loadStat" class="noselect">
+      <div id="loadStat_0"></div>
+      <div id="loadStat_1"></div>
+      <div id="loadStat_2"></div>
+      <div id="loadStat_3"></div>
+      <div id="loadStat_4"></div>
+      <div id="loadStat_5"></div>
+      <div id="loadStat_6"></div>
+    </div>
+
+    <!-- tab index necessary to get focus and receive keyboard event-->
+		<div id="container" tabindex="1"></div>
+
 		<div id="info" class="noselect">
       <p>
         BigBrain Quadview — use mouse to pan, <span class="key">R</span> + mouse to rotate, <span class="key">T</span> + mouse to transverse rotate, <span class="key">&#8593;</span> and <span class="key">&#8595;</span> to go forward/backward on the view the mouse hovers.
+      </p>
+      <p>
+        <span class="key">Shift</span> + click on the plane on the bottom-left window to center on this point.
       </p>
       <p>
         You can also share the URL because it is specific to the current view.
@@ -71,8 +118,7 @@
     <script src="js/TrackballControls.js"></script>
 		<script src="js/Detector.js"></script>
 		<script src="js/stats.min.js"></script>
-    <script src="js/controlKit.js"></script>
-
+    <script src="js/quicksettings.js"></script>
 
     <!-- importing the automatically build module -->
     <script src="../build/shadernavigator/shadernavigator.js"></script>
@@ -89,6 +135,24 @@
         url: "../data_raster/info2.json"
         //url: "http://132.216.122.238/jpeg/info2.json"
     });
+
+
+    // display some chunk loading stat
+    quadScene.getLevelManager().onChunkLoaded( function(lvl, remaining){
+      var statDiv = document.getElementById('loadStat_' + lvl);
+
+      if( remaining ){
+        statDiv.innerHTML = "["+lvl+"] tiles to load: " + (remaining);
+      }else{
+        try{
+          statDiv.removeChild(statDiv.firstChild);
+        }catch(e){
+          //console.warn(e);
+        }
+      }
+
+    })
+
 
     /*
     // Loads the mesh
@@ -161,5 +225,6 @@
 
 		</script>
 
+    <link rel="stylesheet" href="css/quicksettings_override.css" charset="utf-8">
 	</body>
 </html>

@@ -174,6 +174,15 @@ class OrientationHelper{
   }
 
 
+  /**
+  * Set the visibility of the orientation Helpers
+  * @param {Boolean} b - true to show, false to hide
+  */
+  setVisibility( b ){
+    this._sphere.visible = b;
+  }
+
+
 } /* END class OrientationHelper */
 
 
