@@ -1998,8 +1998,6 @@ class QuadViewInteraction{
   * Updating the mouse position may trigger some events like orbit/trackball control activation
   */
   _onMouseMove( event ) {
-    this._focusOnContainer();
-
     this._mouse.x = (event.clientX / this._windowSize.width);
     this._mouse.y = 1 - (event.clientY / this._windowSize.height);
     this._manageQuadViewsMouseActivity();
@@ -2148,7 +2146,6 @@ class QuadViewInteraction{
   * Callback to the event onkeyup, aka. when a keyboard key is released
   */
   _onKeyUp( event ){
-
     switch( event.key ){
       case "r":
         this._rKeyPressed = false;
@@ -2163,12 +2160,9 @@ class QuadViewInteraction{
       default:;
     }
 
-    console.log("HEY");
-
     if(this._onDonePlayingCallback){
       this._onDonePlayingCallback();
     }
-
   }
 
 
@@ -2335,11 +2329,7 @@ class QuadViewInteraction{
 
     this._onClickPlaneCallback[ cameraType ] = callback;
   }
-
-
-  _focusOnContainer(){
-    this._domContainer.tabindex = 1;
-  }
+  
 
 } /* END class QuadViewInteraction */
 
