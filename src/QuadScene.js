@@ -189,6 +189,7 @@ class QuadScene{
   */
   setMultiplanePosition(x, y, z){
     this._planeManager.setMultiplanePosition( x, y, z);
+    this._guiController.updateMultiplaneUI( this.getMultiplaneContainerInfo() );
   }
 
 
@@ -198,6 +199,7 @@ class QuadScene{
   */
   setMultiplaneRotation(x, y, z){
     this._planeManager.setMultiplaneRotation( x, y, z);
+    this._guiController.updateMultiplaneUI( this.getMultiplaneContainerInfo() );
   }
 
   /**
