@@ -9,6 +9,8 @@ import { PlaneManager } from './PlaneManager.js';
 import { MeshCollection } from './MeshCollection.js';
 import { GuiController } from './GuiController.js';
 import { BoundingBoxHelper } from './BoundingBoxHelper.js';
+import { AnnotationCollection } from './AnnotationCollection.js';
+
 
 
 
@@ -76,15 +78,15 @@ class QuadScene{
     // so that the items are in the proper places compared to the images
     this._adjustedContainer = new THREE.Object3D();
 
-    // contains the annotations (that are not meshes)
-    this._annotationContainer = new THREE.Object3D();
+    // contains the annotations (collection of logics + meshes)
+    this._annotationCollection = new AnnotationCollection();
 
     // contains the meshes
     this._meshContainer = new THREE.Object3D();
 
     // what is inside what:
     this._adjustedContainer.add(this._meshContainer);
-    this._adjustedContainer.add(this._annotationContainer);
+    this._adjustedContainer.add(this._annotationCollection.getContainer3D());
     this._scene.add(this._adjustedContainer);
 
     // renderer construction and setting
@@ -115,9 +117,24 @@ class QuadScene{
     // init the gui controller
     this._guiController = new GuiController(this);
 
+    this._testAnnotation();
+
     this._animate();
+
+
+
   }
 
+
+
+  _testAnnotation(){
+    this._annotationCollection.addAnnotation(
+      [[1, 1, 0], [1, 1, 1]],
+      "my annot"
+    );
+
+    console.log(this._adjustedContainer);
+  }
 
 
 
