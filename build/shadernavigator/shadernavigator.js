@@ -2848,10 +2848,7 @@ class PlaneManager{
     // object that contains all the planes
     this._multiplaneContainer = new THREE.Object3D();
     this._multiplaneContainer.name = "multiplane container";
-    this._multiplaneContainer.opacity = 0.2;
     parent.add( this._multiplaneContainer );
-
-    console.log(this._multiplaneContainer);
 
     this._projectionPlanesHiRez = [];
     this._projectionPlanesLoRez = [];
@@ -2862,7 +2859,6 @@ class PlaneManager{
 
     this._onMultiplaneMoveCallback = null;
     this._onMultiplaneRotateCallback = null;
-
   }
 
 
@@ -4172,7 +4168,7 @@ class Annotation{
   * Constructor of an annotation.
   * @param {Array of Array} points - Array of [x, y, z], if only one, its a point otherwise it can be a linestring (default) or polygon (options.closed must be true)
   * @param {String} name - name, suposedly unique
-  * @param {Object} options - all kind of options: name {String}, isClosed {Boolean}, description {String}, color {String} hexa du type "FF0000", eulerAngle {Array} rotation correction [x, y, z], scale {Array} scale correction [x, y, z], position {Array} offset [x, y, z]
+  * @param {Object} options - all kind of options: name {String}, isClosed {Boolean}, description {String}, color {String} hexa like "#FF0000", eulerAngle {Array} rotation correction [x, y, z], scale {Array} scale correction [x, y, z], position {Array} offset [x, y, z]
   */
   constructor(points, name, options={}){
 
@@ -4180,7 +4176,7 @@ class Annotation{
     this._name = name;
     this._isClosed = (typeof options.isClosed === 'undefined')? false : options.isClosed;
     this._description = (typeof options.description === 'undefined')? "" : options.description;
-    this._color = (typeof options.color === 'undefined')? "FF00FF" : options.color;
+    this._color = (typeof options.color === 'undefined')? "#FF00FF" : options.color;
     this._eulerAngle = (typeof options.eulerAngle === 'undefined')? [0, 0, 0] : options.eulerAngle;
     this._scale = (typeof options.scale === 'undefined')? [1, 1, 1] : options.scale;
     this._position = (typeof options.position === 'undefined')? [0, 0, 0] : options.position;
@@ -4328,9 +4324,10 @@ class Annotation{
     if( this._isValid ){
       var geometry = new THREE.Geometry();
       var material = new THREE.LineBasicMaterial( {
-        linewidth: this._pointRadius * 20,
-        color: new THREE.Color("#FF0000")
-
+        linewidth: 2, // thickness remains the same on screen no matter the proximity
+        color: new THREE.Color(this._color),
+        blending: THREE.MultiplyBlending,
+        depthFunc: THREE.NeverDepth
       });
 
       // adding every point
@@ -4585,25 +4582,13 @@ class QuadScene{
     // init the gui controller
     this._guiController = new GuiController(this);
 
-    this._testAnnotation();
+    //this._testAnnotation();
 
     this._animate();
 
 
 
   }
-
-
-
-  _testAnnotation(){
-    this._annotationCollection.addAnnotation(
-      [[1, 1, 0], [1, 1, 1]],
-      "my annot"
-    );
-
-    console.log(this._adjustedContainer);
-  }
-
 
 
   /**
@@ -5053,14 +5038,14 @@ class QuadScene{
 
     // callback def: arrow down
     this._quadViewInteraction.onArrowDown( function(viewIndex){
-      var factor = 0.01 / Math.pow(2, that._resolutionLevel);
+      var factor = that._levelManager.getBoundingBox()[0] / that._levelManager.getLevelInfo(that._resolutionLevel, "size")[0];
 
       switch (viewIndex) {
         case 0:
-          that._planeManager.translateMultiplaneY(factor, 0);
+          that._planeManager.translateMultiplaneY(-factor, 0);
           break;
         case 1:
-          that._planeManager.translateMultiplaneX(factor, 0);
+          that._planeManager.translateMultiplaneX(-factor, 0);
           break;
         case 2:
           that._planeManager.translateMultiplaneY(0, -factor);
@@ -5072,7 +5057,7 @@ class QuadScene{
 
     // callback def: arrow up
     this._quadViewInteraction.onArrowUp( function(viewIndex){
-      var factor = 0.01 / Math.pow(2, that._resolutionLevel) * -1;
+      var factor = that._levelManager.getBoundingBox()[0] / that._levelManager.getLevelInfo(that._resolutionLevel, "size")[0];
 
       switch (viewIndex) {
         case 0:
@@ -5082,7 +5067,7 @@ class QuadScene{
           that._planeManager.translateMultiplaneX(factor, 0);
           break;
         case 2:
-          that._planeManager.translateMultiplaneY(0, -factor);
+          that._planeManager.translateMultiplaneY(0, factor);
           break;
         default:  // if last view, we dont do anything
           return;
@@ -5136,6 +5121,19 @@ class QuadScene{
   */
   onConfigFileError(cb){
     this._onConfigFileErrorCallback = cb;
+  }
+
+
+  /**
+  * [TEST / DEBUG]
+  */
+  _testAnnotation(){
+    this._annotationCollection.addAnnotation(
+      [[1, 1, 0], [1, 1, 1]],
+      "my annot"
+    );
+
+    console.log(this._adjustedContainer);
   }
 
 

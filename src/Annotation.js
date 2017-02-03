@@ -168,7 +168,9 @@ class Annotation{
       var geometry = new THREE.Geometry();
       var material = new THREE.LineBasicMaterial( {
         linewidth: 2, // thickness remains the same on screen no matter the proximity
-        color: new THREE.Color(this._color)
+        color: new THREE.Color(this._color),
+        blending: THREE.MultiplyBlending,
+        depthFunc: THREE.NeverDepth
       });
 
       // adding every point

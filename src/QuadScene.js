@@ -117,25 +117,13 @@ class QuadScene{
     // init the gui controller
     this._guiController = new GuiController(this);
 
-    this._testAnnotation();
+    //this._testAnnotation();
 
     this._animate();
 
 
 
   }
-
-
-
-  _testAnnotation(){
-    this._annotationCollection.addAnnotation(
-      [[1, 1, 0], [1, 1, 1]],
-      "my annot"
-    );
-
-    console.log(this._adjustedContainer);
-  }
-
 
 
   /**
@@ -585,14 +573,14 @@ class QuadScene{
 
     // callback def: arrow down
     this._quadViewInteraction.onArrowDown( function(viewIndex){
-      var factor = 0.01 / Math.pow(2, that._resolutionLevel);
+      var factor = that._levelManager.getBoundingBox()[0] / that._levelManager.getLevelInfo(that._resolutionLevel, "size")[0];
 
       switch (viewIndex) {
         case 0:
-          that._planeManager.translateMultiplaneY(factor, 0);
+          that._planeManager.translateMultiplaneY(-factor, 0);
           break;
         case 1:
-          that._planeManager.translateMultiplaneX(factor, 0);
+          that._planeManager.translateMultiplaneX(-factor, 0);
           break;
         case 2:
           that._planeManager.translateMultiplaneY(0, -factor);
@@ -604,7 +592,7 @@ class QuadScene{
 
     // callback def: arrow up
     this._quadViewInteraction.onArrowUp( function(viewIndex){
-      var factor = 0.01 / Math.pow(2, that._resolutionLevel) * -1;
+      var factor = that._levelManager.getBoundingBox()[0] / that._levelManager.getLevelInfo(that._resolutionLevel, "size")[0];
 
       switch (viewIndex) {
         case 0:
@@ -614,7 +602,7 @@ class QuadScene{
           that._planeManager.translateMultiplaneX(factor, 0);
           break;
         case 2:
-          that._planeManager.translateMultiplaneY(0, -factor);
+          that._planeManager.translateMultiplaneY(0, factor);
           break;
         default:  // if last view, we dont do anything
           return;
@@ -668,6 +656,19 @@ class QuadScene{
   */
   onConfigFileError(cb){
     this._onConfigFileErrorCallback = cb;
+  }
+
+
+  /**
+  * [TEST / DEBUG]
+  */
+  _testAnnotation(){
+    this._annotationCollection.addAnnotation(
+      [[1, 1, 0], [1, 1, 1]],
+      "my annot"
+    );
+
+    console.log(this._adjustedContainer);
   }
 
 
