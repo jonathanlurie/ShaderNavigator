@@ -17,6 +17,7 @@ class PlaneManager{
 
     // object that contains all the planes
     this._multiplaneContainer = new THREE.Object3D();
+    this._multiplaneContainer.name = "multiplane container";
     parent.add( this._multiplaneContainer )
 
     this._projectionPlanesHiRez = [];
@@ -28,7 +29,6 @@ class PlaneManager{
 
     this._onMultiplaneMoveCallback = null;
     this._onMultiplaneRotateCallback = null;
-
   }
 
 

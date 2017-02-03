@@ -2847,6 +2847,7 @@ class PlaneManager{
 
     // object that contains all the planes
     this._multiplaneContainer = new THREE.Object3D();
+    this._multiplaneContainer.name = "multiplane container";
     parent.add( this._multiplaneContainer );
 
     this._projectionPlanesHiRez = [];
@@ -2858,7 +2859,6 @@ class PlaneManager{
 
     this._onMultiplaneMoveCallback = null;
     this._onMultiplaneRotateCallback = null;
-
   }
 
 
@@ -3873,7 +3873,7 @@ class GuiController{
 
 
 
-    this._initActions();
+    this._initMainPanel();
   }
 
 
@@ -3881,7 +3881,7 @@ class GuiController{
   * [PRIVATE]
   * Adds buttons to the widget
   */
-  _initActions(){
+  _initMainPanel(){
     var that = this;
 
     // compass toggle
@@ -3941,6 +3941,8 @@ class GuiController{
 
       that._quadScene.setMultiplaneRotation(newRotation[0], newRotation[1], newRotation[2]);
       that._quadScene.setMultiplanePosition(newPosition[0], newPosition[1], newPosition[2]);
+
+
     });
 
     this._mainPanel.overrideStyle("Apply", "width", "100%");
@@ -4030,6 +4032,9 @@ class GuiController{
     );
 
   }
+
+
+
 
 
 }/* END class GuiController */
@@ -4153,6 +4158,328 @@ class BoundingBoxHelper{
 }/* END class BoundingBoxHelper */
 
 /**
+* An Annotation can be a single point, a segment, a linestring or a polygon.
+* Each coordinate is in 3D [x, y, z] and can be represented in a 3D space after
+* being converted into a proper THREEjs object.
+*/
+class Annotation{
+
+  /**
+  * Constructor of an annotation.
+  * @param {Array of Array} points - Array of [x, y, z], if only one, its a point otherwise it can be a linestring (default) or polygon (options.closed must be true)
+  * @param {String} name - name, suposedly unique
+  * @param {Object} options - all kind of options: name {String}, isClosed {Boolean}, description {String}, color {String} hexa like "#FF0000", eulerAngle {Array} rotation correction [x, y, z], scale {Array} scale correction [x, y, z], position {Array} offset [x, y, z]
+  */
+  constructor(points, name, options={}){
+
+    this._points = points;
+    this._name = name;
+    this._isClosed = (typeof options.isClosed === 'undefined')? false : options.isClosed;
+    this._description = (typeof options.description === 'undefined')? "" : options.description;
+    this._color = (typeof options.color === 'undefined')? "#FF00FF" : options.color;
+    this._eulerAngle = (typeof options.eulerAngle === 'undefined')? [0, 0, 0] : options.eulerAngle;
+    this._scale = (typeof options.scale === 'undefined')? [1, 1, 1] : options.scale;
+    this._position = (typeof options.position === 'undefined')? [0, 0, 0] : options.position;
+
+    this._isValid = false;
+    this.validateAnnotation();
+
+    this._pointRadius = 0.1;
+
+    // visual object
+    this._object3D = new THREE.Object3D();
+    this._object3D.name = this._name;
+    this._object3D.userData.description = this._description;
+    this._object3D.userData.isClosed = this._isClosed;
+    this._object3D.scale.set(this._scale[0], this._scale[1], this._scale[2]);
+    this._object3D.position.set(this._position[0], this._position[1], this._position[2]);
+    this._object3D.rotation.set(this._eulerAngle[0], this._eulerAngle[1], this._eulerAngle[2]);
+
+    this._meshMustRebuild = true;
+
+    this._buildAnnotationObject3D();
+  }
+
+
+  /**
+  * Defines the size of the sphere for a point annotation.
+  * @param {Number} r - radius
+  */
+  setPointRadius( r ){
+    this._pointRadius = r;
+  }
+
+
+  /**
+  * Routine to validate an annotation. An annotation is valid if it contains at least one point and if this point contains 3 value (for x, y, z)
+  */
+  validateAnnotation(){
+    this._isValid = true;
+
+    // at least one point
+    if(this._points.length){
+      // every point as a 3D coord
+      this._isValid = ! this._points.some( function( point ){
+        return (point.length != 3);
+      });
+    }
+    // no point, no annotation :(
+    else{
+      this._isValid = false;
+    }
+  }
+
+
+  /**
+  * Add a point at the end of the annotation
+  * @param {Array} point - coord [x, y, z]
+  */
+  addPoint( point ){
+    // maintain integrity (and prevent from running validateAnnotation() )
+    if( point.length == 3){
+      this._points.push( point );
+
+      // TODO if a point tunrs into a line
+
+      this._meshMustRebuild = true;
+    }
+  }
+
+
+  /**
+  * Remove a point from the annotation point set.
+  * @param {Number} index - optionnal, if set remove the point at this index. If not set, remove the last
+  */
+  removePoint( index=-1 ){
+    if( this._isValid ){
+      this._points.splice(index, 1);
+      this.validateAnnotation();
+
+      // TODO if a line turns into a point !
+      // TODO if closed, do we still leave it close?
+
+      this._meshMustRebuild = true;
+    }
+
+
+  }
+
+
+  /**
+  * Get the THREE Object that represent the annotation. Build it if not already built.
+  * @return {THREE.Object3D}
+  */
+  getObject3D(){
+    /*
+    if(this._meshMustRebuild){
+      if(this._points.length == 1){
+        this._buildPointAnnotation();
+      }else{
+        this._buildLinestringAnnotation();
+      }
+
+      return this._object3D;
+    }
+    */
+
+    return this._object3D;
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Build a THREE js object that hollows this annotation if it's a point
+  */
+  _buildPointAnnotation(){
+    if( this._isValid ){
+
+      var geometry = new THREE.SphereGeometry( this._pointRadius, 32, 32 );
+      var material = new THREE.MeshBasicMaterial();
+
+      var mesh = new THREE.Mesh( geometry, material );
+      // move the sphere
+      mesh.position.set( this._points[0][0], this._points[0][1], this._points[0][2] );
+      mesh.layers.enable( 0 );
+      mesh.layers.enable( 1 );
+
+      mesh.geometry.dynamic = true;
+      mesh.geometry.verticesNeedUpdate = true;
+
+
+
+
+
+      this._object3D.add( mesh );
+
+      this._meshMustRebuild = false;
+    }
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Build a THREE js object that hollows this annotation if it's a linestring or a polygon
+  */
+  _buildLinestringAnnotation(){
+    if( this._isValid ){
+      var geometry = new THREE.Geometry();
+      var material = new THREE.LineBasicMaterial( {
+        linewidth: 2, // thickness remains the same on screen no matter the proximity
+        color: new THREE.Color(this._color),
+        blending: THREE.MultiplyBlending,
+        depthFunc: THREE.NeverDepth
+      });
+
+      // adding every point
+      this._points.forEach(function(point){
+        geometry.vertices.push( new THREE.Vector3(point[0], point[1], point[2]));
+      });
+
+      // add a the first point again, in the end, to close the loop
+      if(this._isClosed && this._points.length > 2){
+        geometry.vertices.push( new THREE.Vector3(
+            this._points[0][0],
+            this._points[0][1],
+            this._points[0][2]
+          )
+        );
+      }
+
+      geometry.computeLineDistances();
+      var mesh = new THREE.Line( geometry, material );
+      mesh.layers.enable( 0 );
+      mesh.layers.enable( 1 );
+
+      mesh.geometry.dynamic = true;
+      mesh.geometry.verticesNeedUpdate = true;
+
+      this._object3D.add( mesh );
+
+      this._meshMustRebuild = false;
+    }
+  }
+
+
+  _buildAnnotationObject3D(){
+    // this annotation is corrupted
+    if( ! this._isValid ){
+      console.warn("This annotation is not valid. Possible reasons: no points OR points number of dimension is not consistant.");
+      return;
+    }
+
+    if(! this._object3D.children.length ){
+
+      // this is a point
+      if(this._points.length == 1 ){
+        this._buildPointAnnotation();
+      }
+      // this is a linestring or a polygon
+      else{
+        this._buildLinestringAnnotation();
+      }
+
+    }else{
+      console.warn("The object3D/mesh for this annotation is already built. Maybe use a modifying method instead.");
+      return;
+    }
+  }
+
+
+  /**
+  * When we want to close a linstring. Basically adds a point at the end and switch the isClosed boolean.
+  */
+  closeLinestring(){
+    // TODO
+  }
+
+/*
+TODO
+make sure if you use scene.remove(mesh), you also call mesh.geometry.dispose(), mesh.material.dispose() and mesh.texture.dispose() else you'll get memory leaks I think (r71)
+*/
+
+} /* END of class Annotation */
+
+/**
+* An annotation collection contains uniquely named Annotation instances as well
+* as a container for their 3D representations.
+* When adding a new annotation, its name must not be already in the collection.
+* Still, when a name is not specified, a timestamp-based name is automatically
+* picked.
+*/
+class AnnotationCollection {
+
+  /**
+  * Build an empty collection
+  */
+  constructor(){
+    this._collection = {};
+
+    // contains all the Object3D of Annotation instances
+    this._container3D = new THREE.Object3D();
+    this._container3D.name = "annotation collection";
+
+    this._noNameIncrement = 0;
+  }
+
+
+  /**
+  *
+  */
+  getContainer3D(){
+    return this._container3D;
+  }
+
+
+  /**
+  * Add an annotation to the collection
+  * @param {Array of Array} points - Array of [x, y, z], if only one, its a point otherwise it can be a linestring (default) or polygon (options.closed must be true)
+  * @param {String} name - name, suposedly unique
+  * @param {Object} options - all kind of options:
+  * name {String} must be unique or can be null (auto picked based on date),
+  * isClosed {Boolean} makes the diff between a linestring and a polygon - default: false,
+  * description {String} optionnal - default: '',
+  * color {String} - default: "FF0000",
+  * eulerAngle {Array} rotation correction [x, y, z] - default: [0, 0, 0],
+  * scale {Array} scale correction [x, y, z] - default: [1, 1, 1],
+  * position {Array} offset [x, y, z] - default: [0, 0, 0]
+  */
+  addAnnotation(points, name, options = {}){
+    if( name in this._collection){
+      console.warn(name + " is already in the collection");
+      return;
+    }
+
+    // if no name,
+    if(!name){
+      name = "annotation_" + this._noNameIncrement + "_" +  new Date().getMilliseconds();
+      this._noNameIncrement ++;
+    }
+
+    // add the new annotation to the collection
+    this._collection[ name ] = new Annotation( points, name, options);
+
+    // add the visual object to Object3D container
+    this._container3D.add( this._collection[ name ].getObject3D() );
+  }
+
+
+  /**
+  * Remove the anotation from the collection.
+  * @param {String} name - name of the annotation to remove (unique)
+  */
+  removeAnnotation( name ){
+    if(! (name in this._collection) ){
+      console.warn(name + " annotation is not in the collection. Impossible to remove.");
+      return;
+    }
+
+    // remove the 3D representation
+    this._container3D.remove( this._collection[ name ].getObject3D() );
+  }
+
+} /* END of class AnnotationCollection */
+
+/**
 * A QuadScene is a THREE js context where the viewport is split in 4 windows, for each window comes a QuadView.
 * Originally, the purpose of the QuadScene is to display 3 orthogonal views usin othometric cameras, and one additional view using a perspective camera. The later is supposed to be more free of movement, giving an flexible global point of view. The 3 ortho cam are more likely to be in object coordinate so that rotating the main object wont affect what is shown on this views.
 *
@@ -4216,15 +4543,15 @@ class QuadScene{
     // so that the items are in the proper places compared to the images
     this._adjustedContainer = new THREE.Object3D();
 
-    // contains the annotations (that are not meshes)
-    this._annotationContainer = new THREE.Object3D();
+    // contains the annotations (collection of logics + meshes)
+    this._annotationCollection = new AnnotationCollection();
 
     // contains the meshes
     this._meshContainer = new THREE.Object3D();
 
     // what is inside what:
     this._adjustedContainer.add(this._meshContainer);
-    this._adjustedContainer.add(this._annotationContainer);
+    this._adjustedContainer.add(this._annotationCollection.getContainer3D());
     this._scene.add(this._adjustedContainer);
 
     // renderer construction and setting
@@ -4255,10 +4582,13 @@ class QuadScene{
     // init the gui controller
     this._guiController = new GuiController(this);
 
+    //this._testAnnotation();
+
     this._animate();
+
+
+
   }
-
-
 
 
   /**
@@ -4708,14 +5038,14 @@ class QuadScene{
 
     // callback def: arrow down
     this._quadViewInteraction.onArrowDown( function(viewIndex){
-      var factor = 0.01 / Math.pow(2, that._resolutionLevel);
+      var factor = that._levelManager.getBoundingBox()[0] / that._levelManager.getLevelInfo(that._resolutionLevel, "size")[0];
 
       switch (viewIndex) {
         case 0:
-          that._planeManager.translateMultiplaneY(factor, 0);
+          that._planeManager.translateMultiplaneY(-factor, 0);
           break;
         case 1:
-          that._planeManager.translateMultiplaneX(factor, 0);
+          that._planeManager.translateMultiplaneX(-factor, 0);
           break;
         case 2:
           that._planeManager.translateMultiplaneY(0, -factor);
@@ -4727,7 +5057,7 @@ class QuadScene{
 
     // callback def: arrow up
     this._quadViewInteraction.onArrowUp( function(viewIndex){
-      var factor = 0.01 / Math.pow(2, that._resolutionLevel) * -1;
+      var factor = that._levelManager.getBoundingBox()[0] / that._levelManager.getLevelInfo(that._resolutionLevel, "size")[0];
 
       switch (viewIndex) {
         case 0:
@@ -4737,7 +5067,7 @@ class QuadScene{
           that._planeManager.translateMultiplaneX(factor, 0);
           break;
         case 2:
-          that._planeManager.translateMultiplaneY(0, -factor);
+          that._planeManager.translateMultiplaneY(0, factor);
           break;
         default:  // if last view, we dont do anything
           return;
@@ -4791,6 +5121,19 @@ class QuadScene{
   */
   onConfigFileError(cb){
     this._onConfigFileErrorCallback = cb;
+  }
+
+
+  /**
+  * [TEST / DEBUG]
+  */
+  _testAnnotation(){
+    this._annotationCollection.addAnnotation(
+      [[1, 1, 0], [1, 1, 1]],
+      "my annot"
+    );
+
+    console.log(this._adjustedContainer);
   }
 
 

@@ -9,6 +9,8 @@ import { PlaneManager } from './PlaneManager.js';
 import { MeshCollection } from './MeshCollection.js';
 import { GuiController } from './GuiController.js';
 import { BoundingBoxHelper } from './BoundingBoxHelper.js';
+import { AnnotationCollection } from './AnnotationCollection.js';
+
 
 
 
@@ -76,15 +78,15 @@ class QuadScene{
     // so that the items are in the proper places compared to the images
     this._adjustedContainer = new THREE.Object3D();
 
-    // contains the annotations (that are not meshes)
-    this._annotationContainer = new THREE.Object3D();
+    // contains the annotations (collection of logics + meshes)
+    this._annotationCollection = new AnnotationCollection();
 
     // contains the meshes
     this._meshContainer = new THREE.Object3D();
 
     // what is inside what:
     this._adjustedContainer.add(this._meshContainer);
-    this._adjustedContainer.add(this._annotationContainer);
+    this._adjustedContainer.add(this._annotationCollection.getContainer3D());
     this._scene.add(this._adjustedContainer);
 
     // renderer construction and setting
@@ -115,10 +117,13 @@ class QuadScene{
     // init the gui controller
     this._guiController = new GuiController(this);
 
+    //this._testAnnotation();
+
     this._animate();
+
+
+
   }
-
-
 
 
   /**
@@ -568,14 +573,14 @@ class QuadScene{
 
     // callback def: arrow down
     this._quadViewInteraction.onArrowDown( function(viewIndex){
-      var factor = 0.01 / Math.pow(2, that._resolutionLevel);
+      var factor = that._levelManager.getBoundingBox()[0] / that._levelManager.getLevelInfo(that._resolutionLevel, "size")[0];
 
       switch (viewIndex) {
         case 0:
-          that._planeManager.translateMultiplaneY(factor, 0);
+          that._planeManager.translateMultiplaneY(-factor, 0);
           break;
         case 1:
-          that._planeManager.translateMultiplaneX(factor, 0);
+          that._planeManager.translateMultiplaneX(-factor, 0);
           break;
         case 2:
           that._planeManager.translateMultiplaneY(0, -factor);
@@ -587,7 +592,7 @@ class QuadScene{
 
     // callback def: arrow up
     this._quadViewInteraction.onArrowUp( function(viewIndex){
-      var factor = 0.01 / Math.pow(2, that._resolutionLevel) * -1;
+      var factor = that._levelManager.getBoundingBox()[0] / that._levelManager.getLevelInfo(that._resolutionLevel, "size")[0];
 
       switch (viewIndex) {
         case 0:
@@ -597,7 +602,7 @@ class QuadScene{
           that._planeManager.translateMultiplaneX(factor, 0);
           break;
         case 2:
-          that._planeManager.translateMultiplaneY(0, -factor);
+          that._planeManager.translateMultiplaneY(0, factor);
           break;
         default:  // if last view, we dont do anything
           return;
@@ -651,6 +656,19 @@ class QuadScene{
   */
   onConfigFileError(cb){
     this._onConfigFileErrorCallback = cb;
+  }
+
+
+  /**
+  * [TEST / DEBUG]
+  */
+  _testAnnotation(){
+    this._annotationCollection.addAnnotation(
+      [[1, 1, 0], [1, 1, 1]],
+      "my annot"
+    );
+
+    console.log(this._adjustedContainer);
   }
 
 

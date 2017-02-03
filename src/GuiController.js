@@ -25,7 +25,7 @@ class GuiController{
 
 
 
-    this._initActions();
+    this._initMainPanel();
   }
 
 
@@ -33,7 +33,7 @@ class GuiController{
   * [PRIVATE]
   * Adds buttons to the widget
   */
-  _initActions(){
+  _initMainPanel(){
     var that = this;
 
     // compass toggle
@@ -93,6 +93,8 @@ class GuiController{
 
       that._quadScene.setMultiplaneRotation(newRotation[0], newRotation[1], newRotation[2]);
       that._quadScene.setMultiplanePosition(newPosition[0], newPosition[1], newPosition[2]);
+
+
     });
 
     this._mainPanel.overrideStyle("Apply", "width", "100%");
@@ -182,6 +184,9 @@ class GuiController{
     );
 
   }
+
+
+
 
 
 }/* END class GuiController */
