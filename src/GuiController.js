@@ -198,6 +198,8 @@ class GuiController{
   _initAnnotationPanel(){
     var that = this;
 
+
+
     // open file button
     this._annotationPanel.addFileChooser(
       "Annotation file",
@@ -214,6 +216,15 @@ class GuiController{
       }
     );
 
+    // callback when a new annot is added in the core, a new item shows on the menu
+    that._annotationCollection.onAddingAnnotation( function(name){
+      that._annotationPanel.getControl("Annotations").addItem(name);
+      console.log( name );
+    })
+
+    /*
+    this._annotationPanel.getControl("Annotations").removeItem("pouet2");
+    */
 
 
   }

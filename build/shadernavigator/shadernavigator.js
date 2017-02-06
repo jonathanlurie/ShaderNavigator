@@ -4054,7 +4054,8 @@ class GuiController{
   * Create the pannel dedicated to annotaion management
   */
   _initAnnotationPanel(){
-    //var that = this;
+    var that = this;
+
 
 
     // open file button
@@ -4073,6 +4074,15 @@ class GuiController{
       }
     );
 
+    // callback when a new annot is added in the core, a new item shows on the menu
+    that._annotationCollection.onAddingAnnotation( function(name){
+      that._annotationPanel.getControl("Annotations").addItem(name);
+      console.log( name );
+    });
+
+    /*
+    this._annotationPanel.getControl("Annotations").removeItem("pouet2");
+    */
 
 
   }
@@ -4464,6 +4474,7 @@ class AnnotationCollection {
     this._container3D.name = "annotation collection";
 
     this._noNameIncrement = 0;
+    this._onAddingAnnotationCallback = null;
   }
 
 
@@ -4505,6 +4516,11 @@ class AnnotationCollection {
 
     // add the visual object to Object3D container
     this._container3D.add( this._collection[ name ].getObject3D() );
+
+    // a nice callback to do something (mainly from the UI view point)
+    if(this._onAddingAnnotationCallback){
+      this._onAddingAnnotationCallback( name );
+    }
   }
 
 
@@ -4599,6 +4615,16 @@ class AnnotationCollection {
       // add to collection
       that.addAnnotation(annot.points, name, optionObj);
     });
+  }
+
+
+  /**
+  * Defines a callback to when a new annotation is added.
+  * This callback is called with the name of the annotation (unique).
+  * @param {function} cb - callback
+  */
+  onAddingAnnotation( cb ){
+    this._onAddingAnnotationCallback = cb;
   }
 
 
