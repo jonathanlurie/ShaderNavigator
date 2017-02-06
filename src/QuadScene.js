@@ -123,7 +123,7 @@ class QuadScene{
     // init the gui controller
     this._guiController = new GuiController(this);
 
-    this._testAnnotation();
+    //this._testAnnotation();
 
     this._animate();
 
@@ -361,6 +361,8 @@ class QuadScene{
       this._initMeshCollection(config);
     }else if(config.datatype == "colormap_collection"){
       this._colormapManager.loadCollection( config );
+    }else if(config.datatype == "annotation_collection"){
+      this._annotationCollection.loadAnnotations( config );
     }else{
       console.warn("The data to load has an unknown format.");
     }
@@ -689,7 +691,6 @@ class QuadScene{
       "my annot 2"
     );
 
-    console.log(this._adjustedContainer);
   }
 
 

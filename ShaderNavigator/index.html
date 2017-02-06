@@ -114,7 +114,7 @@
       </p>
     </div>
 
-  
+
 		<script src="js/three.js"></script>
     <script src="js/TrackballControls.js"></script>
 		<script src="js/Detector.js"></script>
@@ -169,6 +169,18 @@
     quadScene.loadData({
         datatype: "colormap_collection",
         url: "colormaps/colormaps.json"
+    });
+
+    // loads an some annotations
+    quadScene.loadData({
+        datatype: "annotation_collection",
+        url: "annotations/example.json",
+    });
+
+    // loads an some annotations
+    quadScene.loadData({
+        datatype: "annotation_collection",
+        url: "annotations/example2.json"
     });
 
 

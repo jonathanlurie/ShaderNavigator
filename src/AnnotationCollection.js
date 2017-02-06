@@ -1,6 +1,7 @@
 'use strict'
 
 import { Annotation } from './Annotation.js';
+import { AjaxFileLoader } from './AjaxFileLoader.js';
 
 
 /**
@@ -79,6 +80,56 @@ class AnnotationCollection {
 
     // remove the 3D representation
     this._container3D.remove( this._collection[ name ].getObject3D() );
+  }
+
+
+  /**
+  * Load an annotation file to add its content to the collection.
+  * @param {Object} config - contains config.url and may contain more attributes in the future.
+  */
+  loadAnnotations( config, isCompressed = false ){
+    var that = this;
+
+    // attributes to dig in the annotation file
+    var annotKeys = ["color", "description", "isClosed", "eulerAngle", "scale", "position"];
+
+    var loadingFunction = isCompressed ? AjaxFileLoader.loadCompressedTextFile : AjaxFileLoader.loadTextFile;
+
+    loadingFunction(
+      config.url,
+
+      // success load
+      function( data ){
+        var annotObj = JSON.parse( data );
+        annotObj.annotations.forEach( function( annot ){
+
+          // if an annot has no points, we dont go further
+          if( !("points" in annot) || (annot.points.length == 0)){
+            return;
+          }
+
+          // to be filled on what we find in the annot file
+          var optionObj = {};
+          var name = ("name" in annot) ? annot.name : null;
+
+          // collecting the option data
+          annotKeys.forEach(function(key){
+            if( key in annot ){
+              optionObj[ key ] = annot[ key ];
+            }
+          });
+
+          // add to collection
+          that.addAnnotation(annot.points, name, optionObj);
+        });
+      },
+
+      // fail to load
+      function( errorInfo ){
+        console.warn("Couldnt load the annotation file: " + config.url);
+
+      }
+    );
   }
 
 } /* END of class AnnotationCollection */

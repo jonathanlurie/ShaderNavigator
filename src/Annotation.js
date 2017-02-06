@@ -11,7 +11,7 @@ class Annotation{
   * Constructor of an annotation.
   * @param {Array of Array} points - Array of [x, y, z], if only one, its a point otherwise it can be a linestring (default) or polygon (options.closed must be true)
   * @param {String} name - name, suposedly unique
-  * @param {Object} options - all kind of options: name {String}, isClosed {Boolean}, description {String}, color {String} hexa like "#FF0000", eulerAngle {Array} rotation correction [x, y, z], scale {Array} scale correction [x, y, z], position {Array} offset [x, y, z]
+  * @param {Object} options - all kind of options: isClosed {Boolean}, description {String}, color {String} hexa like "#FF0000", eulerAngle {Array} rotation correction [x, y, z], scale {Array} scale correction [x, y, z], position {Array} offset [x, y, z]
   */
   constructor(points, name, options={}){
 
@@ -169,7 +169,7 @@ class Annotation{
     if( this._isValid ){
       var geometry = new THREE.Geometry();
       var material = new THREE.LineBasicMaterial( {
-        linewidth: 2, // thickness remains the same on screen no matter the proximity
+        linewidth: 1, // thickness remains the same on screen no matter the proximity
         color: new THREE.Color(this._color)
       });
 
@@ -203,6 +203,10 @@ class Annotation{
   }
 
 
+  /**
+  * [PRIVATE]
+  * Builds the annotation, no matter if point or line.
+  */
   _buildAnnotationObject3D(){
     // this annotation is corrupted
     if( ! this._isValid ){

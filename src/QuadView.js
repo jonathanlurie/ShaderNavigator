@@ -190,8 +190,6 @@ class QuadView{
     this._camera.up.z = this._config.up[ 2 ];
     this._camera.fov = this._defaultFov;
     this._camera.lookAt( this._originToLookAt );
-
-    console.log( this._camera.getWorldPosition() );
   }
 
 

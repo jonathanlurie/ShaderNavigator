@@ -280,8 +280,6 @@ class QuadView{
     this._camera.up.z = this._config.up[ 2 ];
     this._camera.fov = this._defaultFov;
     this._camera.lookAt( this._originToLookAt );
-
-    console.log( this._camera.getWorldPosition() );
   }
 
 
@@ -4180,7 +4178,7 @@ class Annotation{
   * Constructor of an annotation.
   * @param {Array of Array} points - Array of [x, y, z], if only one, its a point otherwise it can be a linestring (default) or polygon (options.closed must be true)
   * @param {String} name - name, suposedly unique
-  * @param {Object} options - all kind of options: name {String}, isClosed {Boolean}, description {String}, color {String} hexa like "#FF0000", eulerAngle {Array} rotation correction [x, y, z], scale {Array} scale correction [x, y, z], position {Array} offset [x, y, z]
+  * @param {Object} options - all kind of options: isClosed {Boolean}, description {String}, color {String} hexa like "#FF0000", eulerAngle {Array} rotation correction [x, y, z], scale {Array} scale correction [x, y, z], position {Array} offset [x, y, z]
   */
   constructor(points, name, options={}){
 
@@ -4338,7 +4336,7 @@ class Annotation{
     if( this._isValid ){
       var geometry = new THREE.Geometry();
       var material = new THREE.LineBasicMaterial( {
-        linewidth: 2, // thickness remains the same on screen no matter the proximity
+        linewidth: 1, // thickness remains the same on screen no matter the proximity
         color: new THREE.Color(this._color)
       });
 
@@ -4372,6 +4370,10 @@ class Annotation{
   }
 
 
+  /**
+  * [PRIVATE]
+  * Builds the annotation, no matter if point or line.
+  */
   _buildAnnotationObject3D(){
     // this annotation is corrupted
     if( ! this._isValid ){
@@ -4489,6 +4491,56 @@ class AnnotationCollection {
     this._container3D.remove( this._collection[ name ].getObject3D() );
   }
 
+
+  /**
+  * Load an annotation file to add its content to the collection.
+  * @param {Object} config - contains config.url and may contain more attributes in the future.
+  */
+  loadAnnotations( config, isCompressed = false ){
+    var that = this;
+
+    // attributes to dig in the annotation file
+    var annotKeys = ["color", "description", "isClosed", "eulerAngle", "scale", "position"];
+
+    var loadingFunction = isCompressed ? AjaxFileLoader.loadCompressedTextFile : AjaxFileLoader.loadTextFile;
+
+    loadingFunction(
+      config.url,
+
+      // success load
+      function( data ){
+        var annotObj = JSON.parse( data );
+        annotObj.annotations.forEach( function( annot ){
+
+          // if an annot has no points, we dont go further
+          if( !("points" in annot) || (annot.points.length == 0)){
+            return;
+          }
+
+          // to be filled on what we find in the annot file
+          var optionObj = {};
+          var name = ("name" in annot) ? annot.name : null;
+
+          // collecting the option data
+          annotKeys.forEach(function(key){
+            if( key in annot ){
+              optionObj[ key ] = annot[ key ];
+            }
+          });
+
+          // add to collection
+          that.addAnnotation(annot.points, name, optionObj);
+        });
+      },
+
+      // fail to load
+      function( errorInfo ){
+        console.warn("Couldnt load the annotation file: " + config.url);
+
+      }
+    );
+  }
+
 } /* END of class AnnotationCollection */
 
 /**
@@ -4600,7 +4652,7 @@ class QuadScene{
     // init the gui controller
     this._guiController = new GuiController(this);
 
-    this._testAnnotation();
+    //this._testAnnotation();
 
     this._animate();
 
@@ -4838,6 +4890,8 @@ class QuadScene{
       this._initMeshCollection(config);
     }else if(config.datatype == "colormap_collection"){
       this._colormapManager.loadCollection( config );
+    }else if(config.datatype == "annotation_collection"){
+      this._annotationCollection.loadAnnotations( config );
     }else{
       console.warn("The data to load has an unknown format.");
     }
@@ -5166,7 +5220,6 @@ class QuadScene{
       "my annot 2"
     );
 
-    console.log(this._adjustedContainer);
   }
 
 
