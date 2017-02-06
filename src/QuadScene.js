@@ -362,7 +362,7 @@ class QuadScene{
     }else if(config.datatype == "colormap_collection"){
       this._colormapManager.loadCollection( config );
     }else if(config.datatype == "annotation_collection"){
-      this._annotationCollection.loadAnnotations( config );
+      this._annotationCollection.loadAnnotationFileURL( config );
     }else{
       console.warn("The data to load has an unknown format.");
     }
@@ -676,21 +676,10 @@ class QuadScene{
 
 
   /**
-  * [TEST / DEBUG]
+  * @return {AnnotationCollection} instance of the annotation collection
   */
-  _testAnnotation(){
-    /*
-    this._annotationCollection.addAnnotation(
-      [[1, 1, 0], [1, 1, 1]],
-      "my annot"
-    );
-    */
-
-    this._annotationCollection.addAnnotation(
-      [[1, 1, 1]],
-      "my annot 2"
-    );
-
+  getAnnotationCollection(){
+    return this._annotationCollection;
   }
 
 

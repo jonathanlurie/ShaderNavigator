@@ -87,11 +87,8 @@ class AnnotationCollection {
   * Load an annotation file to add its content to the collection.
   * @param {Object} config - contains config.url and may contain more attributes in the future.
   */
-  loadAnnotations( config, isCompressed = false ){
+  loadAnnotationFileURL( config, isCompressed = false ){
     var that = this;
-
-    // attributes to dig in the annotation file
-    var annotKeys = ["color", "description", "isClosed", "eulerAngle", "scale", "position"];
 
     var loadingFunction = isCompressed ? AjaxFileLoader.loadCompressedTextFile : AjaxFileLoader.loadTextFile;
 
@@ -100,28 +97,7 @@ class AnnotationCollection {
 
       // success load
       function( data ){
-        var annotObj = JSON.parse( data );
-        annotObj.annotations.forEach( function( annot ){
-
-          // if an annot has no points, we dont go further
-          if( !("points" in annot) || (annot.points.length == 0)){
-            return;
-          }
-
-          // to be filled on what we find in the annot file
-          var optionObj = {};
-          var name = ("name" in annot) ? annot.name : null;
-
-          // collecting the option data
-          annotKeys.forEach(function(key){
-            if( key in annot ){
-              optionObj[ key ] = annot[ key ];
-            }
-          });
-
-          // add to collection
-          that.addAnnotation(annot.points, name, optionObj);
-        });
+        that._loadAnnotationFileContent( data );
       },
 
       // fail to load
@@ -131,6 +107,60 @@ class AnnotationCollection {
       }
     );
   }
+
+
+  /**
+  * Read and parse the content if a File object containg json annotations.
+  * @param {File} file - HTML5 File object, most likely opened using a file dialog
+  */
+  loadAnnotationFileDialog( annotFile ){
+    var that = this;
+
+    var fr = new FileReader();
+    fr.onload = function(e){
+      //var jsonObj = JSON.parse(e.target.result);
+      that._loadAnnotationFileContent( e.target.result );
+      //console.log(jsonObj);
+    };
+
+    fr.readAsText(annotFile);
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Generic method to load the string content of an annotation file.
+  * This way we can use it no matter if loading from url/ajax or from html5File/dialog.
+  */
+  _loadAnnotationFileContent( jsonStr ){
+    var that = this;
+    // attributes to dig in the annotation file
+    var annotKeys = ["color", "description", "isClosed", "eulerAngle", "scale", "position"];
+
+    var annotObj = JSON.parse( jsonStr );
+    annotObj.annotations.forEach( function( annot ){
+
+      // if an annot has no points, we dont go further
+      if( !("points" in annot) || (annot.points.length == 0)){
+        return;
+      }
+
+      // to be filled on what we find in the annot file
+      var optionObj = {};
+      var name = ("name" in annot) ? annot.name : null;
+
+      // collecting the option data
+      annotKeys.forEach(function(key){
+        if( key in annot ){
+          optionObj[ key ] = annot[ key ];
+        }
+      });
+
+      // add to collection
+      that.addAnnotation(annot.points, name, optionObj);
+    });
+  }
+
 
 } /* END of class AnnotationCollection */
 

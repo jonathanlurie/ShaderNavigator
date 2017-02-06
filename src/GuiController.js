@@ -15,17 +15,19 @@ class GuiController{
     this._resolutionLvlSliderBuilt = false;
     this._resolutionDescription = '';
 
-
     // special controller for colormaps
     this._colormapManager = this._quadScene.getColormapManager();
     this._colormapManager.onColormapUpdate( this._updateColormapList.bind(this) );
 
+    // Annotations
+    this._annotationCollection = this._quadScene.getAnnotationCollection();
 
-    this._mainPanel = QuickSettings.create(window.innerWidth - 250, 0, document.title);
+    this._mainPanel = QuickSettings.create(window.innerWidth - 210, 0, document.title);
 
-
+    this._annotationPanel = QuickSettings.create(window.innerWidth - 420, 0, "Annotations");
 
     this._initMainPanel();
+    this._initAnnotationPanel();
   }
 
 
@@ -186,7 +188,21 @@ class GuiController{
   }
 
 
+  /**
+  * [PRIVATE]
+  * Create the pannel dedicated to annotaion management
+  */
+  _initAnnotationPanel(){
+    var that = this;
 
+    this._annotationPanel.addFileChooser(
+      "Annotation file",
+      "Open",
+      "",
+      function( file ){
+        that._annotationCollection.loadAnnotationFileDialog( file );
+      });
+  }
 
 
 }/* END class GuiController */

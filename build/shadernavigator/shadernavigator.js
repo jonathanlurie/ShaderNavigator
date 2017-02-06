@@ -3873,17 +3873,19 @@ class GuiController{
     this._resolutionLvlSliderBuilt = false;
     this._resolutionDescription = '';
 
-
     // special controller for colormaps
     this._colormapManager = this._quadScene.getColormapManager();
     this._colormapManager.onColormapUpdate( this._updateColormapList.bind(this) );
 
+    // Annotations
+    this._annotationCollection = this._quadScene.getAnnotationCollection();
 
-    this._mainPanel = QuickSettings.create(window.innerWidth - 250, 0, document.title);
+    this._mainPanel = QuickSettings.create(window.innerWidth - 210, 0, document.title);
 
-
+    this._annotationPanel = QuickSettings.create(window.innerWidth - 420, 0, "Annotations");
 
     this._initMainPanel();
+    this._initAnnotationPanel();
   }
 
 
@@ -4044,7 +4046,25 @@ class GuiController{
   }
 
 
+  /**
+  * [PRIVATE]
+  *
+  */
+  _initAnnotationPanel(){
+    var that = this;
 
+
+    this._annotationPanel.addFileChooser(
+      "Annotation file",
+      "Open",
+      "",
+      function( file ){
+        console.log(file);
+
+        that._annotationCollection.loadAnnotationFileDialog( file );
+
+      });
+  }
 
 
 }/* END class GuiController */
@@ -4496,11 +4516,8 @@ class AnnotationCollection {
   * Load an annotation file to add its content to the collection.
   * @param {Object} config - contains config.url and may contain more attributes in the future.
   */
-  loadAnnotations( config, isCompressed = false ){
+  loadAnnotationFileURL( config, isCompressed = false ){
     var that = this;
-
-    // attributes to dig in the annotation file
-    var annotKeys = ["color", "description", "isClosed", "eulerAngle", "scale", "position"];
 
     var loadingFunction = isCompressed ? AjaxFileLoader.loadCompressedTextFile : AjaxFileLoader.loadTextFile;
 
@@ -4509,28 +4526,7 @@ class AnnotationCollection {
 
       // success load
       function( data ){
-        var annotObj = JSON.parse( data );
-        annotObj.annotations.forEach( function( annot ){
-
-          // if an annot has no points, we dont go further
-          if( !("points" in annot) || (annot.points.length == 0)){
-            return;
-          }
-
-          // to be filled on what we find in the annot file
-          var optionObj = {};
-          var name = ("name" in annot) ? annot.name : null;
-
-          // collecting the option data
-          annotKeys.forEach(function(key){
-            if( key in annot ){
-              optionObj[ key ] = annot[ key ];
-            }
-          });
-
-          // add to collection
-          that.addAnnotation(annot.points, name, optionObj);
-        });
+        that._loadAnnotationFileContent( data );
       },
 
       // fail to load
@@ -4539,6 +4535,54 @@ class AnnotationCollection {
 
       }
     );
+  }
+
+
+  /**
+  * Read and parse the content if a File object containg json annotations.
+  * @param {File} file - HTML5 File object, most likely opened using a file dialog
+  */
+  loadAnnotationFileDialog( annotFile ){
+    var that = this;
+
+    var fr = new FileReader();
+    fr.onload = function(e){
+      //var jsonObj = JSON.parse(e.target.result);
+      that._loadAnnotationFileContent( e.target.result );
+      //console.log(jsonObj);
+    };
+
+    fr.readAsText(annotFile);
+  }
+
+
+  _loadAnnotationFileContent( jsonStr ){
+    var that = this;
+    // attributes to dig in the annotation file
+    var annotKeys = ["color", "description", "isClosed", "eulerAngle", "scale", "position"];
+
+    var annotObj = JSON.parse( jsonStr );
+    annotObj.annotations.forEach( function( annot ){
+
+      // if an annot has no points, we dont go further
+      if( !("points" in annot) || (annot.points.length == 0)){
+        return;
+      }
+
+      // to be filled on what we find in the annot file
+      var optionObj = {};
+      var name = ("name" in annot) ? annot.name : null;
+
+      // collecting the option data
+      annotKeys.forEach(function(key){
+        if( key in annot ){
+          optionObj[ key ] = annot[ key ];
+        }
+      });
+
+      // add to collection
+      that.addAnnotation(annot.points, name, optionObj);
+    });
   }
 
 } /* END of class AnnotationCollection */
@@ -4891,7 +4935,7 @@ class QuadScene{
     }else if(config.datatype == "colormap_collection"){
       this._colormapManager.loadCollection( config );
     }else if(config.datatype == "annotation_collection"){
-      this._annotationCollection.loadAnnotations( config );
+      this._annotationCollection.loadAnnotationFileURL( config );
     }else{
       console.warn("The data to load has an unknown format.");
     }
@@ -5205,21 +5249,10 @@ class QuadScene{
 
 
   /**
-  * [TEST / DEBUG]
+  * @return {AnnotationCollection} instance of the annotation collection
   */
-  _testAnnotation(){
-    /*
-    this._annotationCollection.addAnnotation(
-      [[1, 1, 0], [1, 1, 1]],
-      "my annot"
-    );
-    */
-
-    this._annotationCollection.addAnnotation(
-      [[1, 1, 1]],
-      "my annot 2"
-    );
-
+  getAnnotationCollection(){
+    return this._annotationCollection;
   }
 
 
