@@ -93,11 +93,17 @@ class QuadScene{
     this._renderer = new THREE.WebGLRenderer( { antialias: true } );
     this._renderer.setPixelRatio( window.devicePixelRatio );
     this._renderer.setSize( window.innerWidth, window.innerHeight );
+
+
     this._domContainer.appendChild( this._renderer.domElement );
 
     // TODO: use object real size (maybe)
     // a default camera distance we use instead of cube real size.
-    this._cameraDistance = 10;
+    this._cameraDistance = 50;
+
+    // fog - the distance will be auto adjusted
+    this._scene.fog = new THREE.Fog(0xeeeeee, this._cameraDistance, this._cameraDistance * 2);
+    this._renderer.setClearColor( this._scene.fog.color );
 
     // to feed the renderer. will be init
     this._windowSize = {
@@ -117,7 +123,7 @@ class QuadScene{
     // init the gui controller
     this._guiController = new GuiController(this);
 
-    //this._testAnnotation();
+    this._testAnnotation();
 
     this._animate();
 
@@ -425,9 +431,17 @@ class QuadScene{
     this._levelManager.setResolutionLevel( this._resolutionLevel );
     this._planeManager.updateScaleFromRezLvl( this._resolutionLevel );
 
+    // update size of the orientation helper
     this._syncOrientationHelperScale();
+
+    // update the fog distance to progressively hide annotation
+    var fogDistance = this._orientationHelper.getRadius() * 3;
+    this._scene.fog.far = this._cameraDistance + fogDistance;
+
+    // update the ortho cam frustrum
     this._updateOthoCamFrustrum();
 
+    // update the UI
     this._guiController.updateResolutionLevelUI( lvl );
 
     if(this._onUpdateViewCallback){

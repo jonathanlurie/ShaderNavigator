@@ -208,7 +208,7 @@ class QuadView{
       bottom: 0,
       width: 0.5,
       height: 0.5,
-      position: [ -this._objectSize/2, this._objectSize/2, -this._objectSize/3 ],
+      position: [ -this._objectSize/10, this._objectSize/10, -this._objectSize/15 ],
       up: [ 0, 0, -1 ]
     };
     this._viewName = "bottom_right";
@@ -231,14 +231,14 @@ class QuadView{
       window.innerHeight / - orthographicCameraFovFactor // bottom
       //9.99,//this._objectSize * 0.9, //this._near,
       //10.01//this._objectSize * 1.1 //this._far
+      //1,
+      //10.1
     );
-
 
     this._camera.left_orig = window.innerWidth / - orthographicCameraFovFactor;
     this._camera.right_orig = window.innerWidth / orthographicCameraFovFactor;
     this._camera.top_orig = window.innerHeight / orthographicCameraFovFactor;
     this._camera.bottom_orig = window.innerHeight / - orthographicCameraFovFactor;
-
 
     /*
     this._camera.left_orig = this._camera.left;
@@ -281,6 +281,7 @@ class QuadView{
     this._camera.fov = this._defaultFov;
     this._camera.lookAt( this._originToLookAt );
 
+    console.log( this._camera.getWorldPosition() );
   }
 
 
@@ -1721,6 +1722,8 @@ class OrientationHelper{
     var yColor = 0x00EB4E;
     var zColor = 0x0088ff;
 
+    this._initRadius = initRadius;
+
     var geometryX = new THREE.CircleGeometry( initRadius, 64 );
     var geometryY = new THREE.CircleGeometry( initRadius, 64 );
     var geometryZ = new THREE.CircleGeometry( initRadius, 64 );
@@ -1883,6 +1886,15 @@ class OrientationHelper{
   */
   setVisibility( b ){
     this._sphere.visible = b;
+  }
+
+
+  /**
+  * @return {Number} the actual radius of orientation helper, considering the ajustment to
+  * resolution level.
+  */
+  getRadius(){
+    return (this._initRadius * this._sphere.scale.x);
   }
 
 
@@ -2523,7 +2535,7 @@ class ColorMapManager{
 
 } /* END class ColorMapManager */
 
-var texture3d_frag = "const int maxNbChunks = 8;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying vec4 worldCoord;\nvarying vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||\n            chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||\n            chunkPosition.z<0.0 || chunkPosition.z>=1.0 );\n}\nvoid getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){\n  float numberOfImagePerStripY = 64.0;\n  float numberOfPixelPerSide = 64.0;\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY;\n  float stripX = chunkPosition.x;\n  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  colorFromTexture = texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){\n  vec3 chunkSystemCoordinate = vec3((textureOrigin.x - world.x)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.z - world.z)*(-1.0)/chunkSize);\n  return chunkSystemCoordinate;\n}\nvoid main( void ) {\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(1.0, 0.0 , 0.0, 1.0);\n  vec3 chunkPosition;\n  bool hasColorFromChunk = false;\n  if(nbChunks >= 1){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);\n    if( isInsideChunk(chunkPosition) ){\n      getColorFrom3DTexture(textures[0], chunkPosition, color);\n      hasColorFromChunk = true;\n    }\n    if(nbChunks >= 2){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);\n      if( isInsideChunk(chunkPosition) ){\n        getColorFrom3DTexture(textures[1], chunkPosition, color);\n        hasColorFromChunk = true;\n      }\n      if(nbChunks >= 3){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);\n        if( isInsideChunk(chunkPosition) ){\n          getColorFrom3DTexture(textures[2], chunkPosition, color);\n          hasColorFromChunk = true;\n        }\n        if(nbChunks >= 4){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);\n          if( isInsideChunk(chunkPosition) ){\n            getColorFrom3DTexture(textures[3], chunkPosition, color);\n            hasColorFromChunk = true;\n          }\n          if(nbChunks >= 5){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);\n            if( isInsideChunk(chunkPosition) ){\n              getColorFrom3DTexture(textures[4], chunkPosition, color);\n              hasColorFromChunk = true;\n            }\n            if(nbChunks >= 6){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);\n              if( isInsideChunk(chunkPosition) ){\n                getColorFrom3DTexture(textures[5], chunkPosition, color);\n                hasColorFromChunk = true;\n              }\n              if(nbChunks >= 7){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);\n                if( isInsideChunk(chunkPosition) ){\n                  getColorFrom3DTexture(textures[6], chunkPosition, color);\n                  hasColorFromChunk = true;\n                }\n                if(nbChunks == 8){\n                  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);\n                  if( isInsideChunk(chunkPosition) ){\n                    getColorFrom3DTexture(textures[7], chunkPosition, color);\n                    hasColorFromChunk = true;\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(hasColorFromChunk){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a > 0.0){\n        gl_FragColor = colorFromColorMap;\n      }else{\n        discard;\n      }\n    }else{\n      gl_FragColor = color;\n    }\n  }else{\n    discard;\n  }\n}\n";
+var texture3d_frag = "const int maxNbChunks = 8;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying vec4 worldCoord;\nvarying vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||\n            chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||\n            chunkPosition.z<0.0 || chunkPosition.z>=1.0 );\n}\nvoid getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){\n  float numberOfImagePerStripY = 64.0;\n  float numberOfPixelPerSide = 64.0;\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY;\n  float stripX = chunkPosition.x;\n  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  colorFromTexture = texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){\n  vec3 chunkSystemCoordinate = vec3((textureOrigin.x - world.x)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.z - world.z)*(-1.0)/chunkSize);\n  return chunkSystemCoordinate;\n}\nvoid main( void ) {\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(1.0, 0.0 , 0.0, 1.0);\n  vec3 chunkPosition;\n  bool hasColorFromChunk = false;\n  if(nbChunks >= 1){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);\n    if( isInsideChunk(chunkPosition) ){\n      getColorFrom3DTexture(textures[0], chunkPosition, color);\n      hasColorFromChunk = true;\n    }\n    if(nbChunks >= 2){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);\n      if( isInsideChunk(chunkPosition) ){\n        getColorFrom3DTexture(textures[1], chunkPosition, color);\n        hasColorFromChunk = true;\n      }\n      if(nbChunks >= 3){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);\n        if( isInsideChunk(chunkPosition) ){\n          getColorFrom3DTexture(textures[2], chunkPosition, color);\n          hasColorFromChunk = true;\n        }\n        if(nbChunks >= 4){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);\n          if( isInsideChunk(chunkPosition) ){\n            getColorFrom3DTexture(textures[3], chunkPosition, color);\n            hasColorFromChunk = true;\n          }\n          if(nbChunks >= 5){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);\n            if( isInsideChunk(chunkPosition) ){\n              getColorFrom3DTexture(textures[4], chunkPosition, color);\n              hasColorFromChunk = true;\n            }\n            if(nbChunks >= 6){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);\n              if( isInsideChunk(chunkPosition) ){\n                getColorFrom3DTexture(textures[5], chunkPosition, color);\n                hasColorFromChunk = true;\n              }\n              if(nbChunks >= 7){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);\n                if( isInsideChunk(chunkPosition) ){\n                  getColorFrom3DTexture(textures[6], chunkPosition, color);\n                  hasColorFromChunk = true;\n                }\n                if(nbChunks == 8){\n                  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);\n                  if( isInsideChunk(chunkPosition) ){\n                    getColorFrom3DTexture(textures[7], chunkPosition, color);\n                    hasColorFromChunk = true;\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(hasColorFromChunk){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a > 0.0){\n        colorFromColorMap.a = 0.85;\n        gl_FragColor = colorFromColorMap;\n      }else{\n        discard;\n      }\n    }else{\n      color.a = 0.85;\n      gl_FragColor = color;\n    }\n  }else{\n    gl_FragColor = vec4(1.0, 1.0 , 1.0, 0.0);\n  }\n}\n";
 
 var texture3d_vert = "uniform float chunkSize;\nuniform sampler2D colorMap;\nvarying vec2 vUv;\nvarying vec4 worldCoord;\nvoid main()\n{\n  vUv = uv;\n  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );\n  gl_Position = projectionMatrix * mvPosition;\n  worldCoord = modelMatrix * vec4( position, 1.0 );\n}\n";
 
@@ -4558,11 +4570,17 @@ class QuadScene{
     this._renderer = new THREE.WebGLRenderer( { antialias: true } );
     this._renderer.setPixelRatio( window.devicePixelRatio );
     this._renderer.setSize( window.innerWidth, window.innerHeight );
+
+
     this._domContainer.appendChild( this._renderer.domElement );
 
     // TODO: use object real size (maybe)
     // a default camera distance we use instead of cube real size.
-    this._cameraDistance = 10;
+    this._cameraDistance = 50;
+
+    // fog - the distance will be auto adjusted
+    this._scene.fog = new THREE.Fog(0xeeeeee, this._cameraDistance, this._cameraDistance * 2);
+    this._renderer.setClearColor( this._scene.fog.color );
 
     // to feed the renderer. will be init
     this._windowSize = {
@@ -4582,7 +4600,7 @@ class QuadScene{
     // init the gui controller
     this._guiController = new GuiController(this);
 
-    //this._testAnnotation();
+    this._testAnnotation();
 
     this._animate();
 
@@ -4890,9 +4908,21 @@ class QuadScene{
     this._levelManager.setResolutionLevel( this._resolutionLevel );
     this._planeManager.updateScaleFromRezLvl( this._resolutionLevel );
 
+    // update size of the orientation helper
     this._syncOrientationHelperScale();
+
+    // update the fog distance to progressively hide annotation
+    var fogDistance = this._orientationHelper.getRadius() * 3;
+    this._scene.fog.far = this._cameraDistance + fogDistance;
+    console.log( fogDistance );
+
+
+
+
+    // update the ortho cam frustrum
     this._updateOthoCamFrustrum();
 
+    // update the UI
     this._guiController.updateResolutionLevelUI( lvl );
 
     if(this._onUpdateViewCallback){

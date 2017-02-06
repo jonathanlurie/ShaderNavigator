@@ -118,7 +118,7 @@ class QuadView{
       bottom: 0,
       width: 0.5,
       height: 0.5,
-      position: [ -this._objectSize/2, this._objectSize/2, -this._objectSize/3 ],
+      position: [ -this._objectSize/10, this._objectSize/10, -this._objectSize/15 ],
       up: [ 0, 0, -1 ]
     }
     this._viewName = "bottom_right";
@@ -141,14 +141,14 @@ class QuadView{
       window.innerHeight / - orthographicCameraFovFactor // bottom
       //9.99,//this._objectSize * 0.9, //this._near,
       //10.01//this._objectSize * 1.1 //this._far
+      //1,
+      //10.1
     );
-
 
     this._camera.left_orig = window.innerWidth / - orthographicCameraFovFactor;
     this._camera.right_orig = window.innerWidth / orthographicCameraFovFactor;
     this._camera.top_orig = window.innerHeight / orthographicCameraFovFactor;
     this._camera.bottom_orig = window.innerHeight / - orthographicCameraFovFactor;
-
 
     /*
     this._camera.left_orig = this._camera.left;
@@ -191,6 +191,7 @@ class QuadView{
     this._camera.fov = this._defaultFov;
     this._camera.lookAt( this._originToLookAt );
 
+    console.log( this._camera.getWorldPosition() );
   }
 
 
