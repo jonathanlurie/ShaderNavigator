@@ -435,7 +435,7 @@ class QuadScene{
     this._syncOrientationHelperScale();
 
     // update the fog distance to progressively hide annotation
-    var fogDistance = this._orientationHelper.getRadius() * 3;
+    var fogDistance = this._orientationHelper.getRadius() * 4;
     this._scene.fog.far = this._cameraDistance + fogDistance;
 
     // update the ortho cam frustrum
@@ -677,9 +677,16 @@ class QuadScene{
   * [TEST / DEBUG]
   */
   _testAnnotation(){
+    /*
     this._annotationCollection.addAnnotation(
       [[1, 1, 0], [1, 1, 1]],
       "my annot"
+    );
+    */
+
+    this._annotationCollection.addAnnotation(
+      [[1, 1, 1]],
+      "my annot 2"
     );
 
     console.log(this._adjustedContainer);

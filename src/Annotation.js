@@ -20,6 +20,7 @@ class Annotation{
     this._isClosed = (typeof options.isClosed === 'undefined')? false : options.isClosed;
     this._description = (typeof options.description === 'undefined')? "" : options.description;
     this._color = (typeof options.color === 'undefined')? "#FF00FF" : options.color;
+    if( this._color[0] != "#"){ this._color = "#" + this._color; }
     this._eulerAngle = (typeof options.eulerAngle === 'undefined')? [0, 0, 0] : options.eulerAngle;
     this._scale = (typeof options.scale === 'undefined')? [1, 1, 1] : options.scale;
     this._position = (typeof options.position === 'undefined')? [0, 0, 0] : options.position;
@@ -135,25 +136,26 @@ class Annotation{
   */
   _buildPointAnnotation(){
     if( this._isValid ){
+      var geometry = new THREE.BufferGeometry();
+			var position = new Float32Array( this._points[0] );
 
-      var geometry = new THREE.SphereGeometry( this._pointRadius, 32, 32 );
-      var material = new THREE.MeshBasicMaterial();
+      var material = new THREE.PointsMaterial({
+        size: 10,
+        color: new THREE.Color(this._color),
+        sizeAttenuation: false
+      });
 
-      var mesh = new THREE.Mesh( geometry, material );
-      // move the sphere
-      mesh.position.set( this._points[0][0], this._points[0][1], this._points[0][2] );
-      mesh.layers.enable( 0 );
-      mesh.layers.enable( 1 );
+      geometry.addAttribute( 'position', new THREE.BufferAttribute( position, 3 ) );
+      geometry.computeBoundingSphere();
+      geometry.dynamic = true;
+      geometry.verticesNeedUpdate = true;
 
-      mesh.geometry.dynamic = true;
-      mesh.geometry.verticesNeedUpdate = true;
+      var point = new THREE.Points( geometry, material );
 
+      point.layers.enable( 0 );
+      point.layers.enable( 1 );
 
-
-
-
-      this._object3D.add( mesh );
-
+      this._object3D.add( point );
       this._meshMustRebuild = false;
     }
   }
@@ -168,9 +170,7 @@ class Annotation{
       var geometry = new THREE.Geometry();
       var material = new THREE.LineBasicMaterial( {
         linewidth: 2, // thickness remains the same on screen no matter the proximity
-        color: new THREE.Color(this._color),
-        blending: THREE.MultiplyBlending,
-        depthFunc: THREE.NeverDepth
+        color: new THREE.Color(this._color)
       });
 
       // adding every point
