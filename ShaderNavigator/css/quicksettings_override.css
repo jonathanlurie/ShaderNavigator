@@ -32,6 +32,7 @@
   font-weight: 400;
 }
 
+.qs_file_chooser_label,
 .qs_button,
 .qs_select {
   font-family: 'Lato', sans-serif;

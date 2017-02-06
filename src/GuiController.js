@@ -22,9 +22,12 @@ class GuiController{
     // Annotations
     this._annotationCollection = this._quadScene.getAnnotationCollection();
 
-    this._mainPanel = QuickSettings.create(window.innerWidth - 210, 0, document.title);
+    var panelWidth = 200;
+    var panelSpace = 5;
 
-    this._annotationPanel = QuickSettings.create(window.innerWidth - 420, 0, "Annotations");
+    this._mainPanel = QuickSettings.create(panelSpace, 0, document.title);
+
+    this._annotationPanel = QuickSettings.create(panelWidth + panelSpace*2 , 0, "Annotations");
 
     this._initMainPanel();
     this._initAnnotationPanel();
@@ -195,6 +198,7 @@ class GuiController{
   _initAnnotationPanel(){
     var that = this;
 
+    // open file button
     this._annotationPanel.addFileChooser(
       "Annotation file",
       "Open",
@@ -202,6 +206,16 @@ class GuiController{
       function( file ){
         that._annotationCollection.loadAnnotationFileDialog( file );
       });
+
+    // dropdown menu
+    this._annotationPanel.addDropDown("Annotations", [],
+      function( dropdownObj ){
+        console.log( dropdownObj.value );
+      }
+    );
+
+
+
   }
 
 

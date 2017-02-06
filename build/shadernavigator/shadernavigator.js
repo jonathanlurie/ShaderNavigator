@@ -3880,9 +3880,12 @@ class GuiController{
     // Annotations
     this._annotationCollection = this._quadScene.getAnnotationCollection();
 
-    this._mainPanel = QuickSettings.create(window.innerWidth - 210, 0, document.title);
+    var panelWidth = 200;
+    var panelSpace = 5;
 
-    this._annotationPanel = QuickSettings.create(window.innerWidth - 420, 0, "Annotations");
+    this._mainPanel = QuickSettings.create(panelSpace, 0, document.title);
+
+    this._annotationPanel = QuickSettings.create(panelWidth + panelSpace*2 , 0, "Annotations");
 
     this._initMainPanel();
     this._initAnnotationPanel();
@@ -4048,22 +4051,30 @@ class GuiController{
 
   /**
   * [PRIVATE]
-  *
+  * Create the pannel dedicated to annotaion management
   */
   _initAnnotationPanel(){
-    var that = this;
+    //var that = this;
 
 
+    // open file button
     this._annotationPanel.addFileChooser(
       "Annotation file",
       "Open",
       "",
       function( file ){
-        console.log(file);
-
         that._annotationCollection.loadAnnotationFileDialog( file );
-
       });
+
+    // dropdown menu
+    this._annotationPanel.addDropDown("Annotations", [],
+      function( dropdownObj ){
+        console.log( dropdownObj.value );
+      }
+    );
+
+
+
   }
 
 
@@ -4556,6 +4567,11 @@ class AnnotationCollection {
   }
 
 
+  /**
+  * [PRIVATE]
+  * Generic method to load the string content of an annotation file.
+  * This way we can use it no matter if loading from url/ajax or from html5File/dialog.
+  */
   _loadAnnotationFileContent( jsonStr ){
     var that = this;
     // attributes to dig in the annotation file
@@ -4584,6 +4600,7 @@ class AnnotationCollection {
       that.addAnnotation(annot.points, name, optionObj);
     });
   }
+
 
 } /* END of class AnnotationCollection */
 
@@ -4822,6 +4839,12 @@ class QuadScene{
   initStat(){
     this._stats = new Stats();
     this._domContainer.appendChild( this._stats.dom );
+
+    // place it on top right
+    this._stats.dom.style.right = '0';
+    this._stats.dom.style.left = 'initial';
+    this._stats.dom.style.top = '0';
+    this._stats.dom.style.position = 'absolute';
   }
 
 
@@ -5264,3 +5287,4 @@ exports.QuadScene = QuadScene;
 Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
+//# sourceMappingURL=shadernavigator.js.map

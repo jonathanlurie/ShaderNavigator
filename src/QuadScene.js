@@ -249,6 +249,12 @@ class QuadScene{
   initStat(){
     this._stats = new Stats();
     this._domContainer.appendChild( this._stats.dom );
+
+    // place it on top right
+    this._stats.dom.style.right = '0';
+    this._stats.dom.style.left = 'initial';
+    this._stats.dom.style.top = '0';
+    this._stats.dom.style.position = 'absolute';
   }
 
 
