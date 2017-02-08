@@ -1130,13 +1130,15 @@
 		 */
 		addHTML: function(title, html) {
 			var container = this._createContainer();
-			var label = createLabel("<b>" + title + ":</b> ", container);
+			var label = '';//createLabel("<b>" + title + ":</b> ", container);
 
 			var div = createElement("div", null, null, container);
 			div.innerHTML = html;
+      div.id = title,
 			this._controls[title] = {
 				label: label,
 				control: div,
+        container: div.parentElement,
 				getValue: function() {
 					return this.control.innerHTML;
 				},

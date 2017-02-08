@@ -6,8 +6,9 @@
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 
     <link href="https://fonts.googleapis.com/css?family=Lato:300,400" rel="stylesheet">
+    <link rel="stylesheet" href="css/font-awesome/css/font-awesome.min.css">
 
-		<style>
+    <style>
 			body {
 				color: #000;
         /*
@@ -83,6 +84,18 @@
                                   not supported by any browser */
       }
 
+      .small-icon{
+        margin: 5px;
+        color: rgb(0, 149, 204);
+        font-size: 1.3em;
+        transition: all 0.2s;
+        cursor: pointer;
+      }
+
+      .small-icon:hover{
+        color: rgb(142, 225, 251);
+      }
+
 		</style>
 
 
@@ -134,6 +147,8 @@
     quadScene.loadData({
         datatype: "precomputed_octree_tiles",
         url: "../data_raster/info2.json"
+        //url: "../data_rasterSSD/info2.json"
+
         //url: "http://132.216.122.238/jpeg/info2.json"
     });
 

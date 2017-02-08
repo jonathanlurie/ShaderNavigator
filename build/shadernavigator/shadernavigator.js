@@ -4065,7 +4065,13 @@ class GuiController{
       "",
       function( file ){
         that._annotationCollection.loadAnnotationFileDialog( file );
-      });
+      }
+    );
+
+    // save annot button
+    this._annotationPanel.addButton("Export annotations", null);
+    this._annotationPanel.overrideStyle("Export annotations", "width", "100%");
+    document.getElementById("Export annotations").parentElement.style["margin-top"] = "0px";
 
     // dropdown menu
     this._annotationPanel.addDropDown("Annotations", [],
@@ -4073,6 +4079,8 @@ class GuiController{
         console.log( dropdownObj.value );
       }
     );
+
+
 
     // callback when a new annot is added in the core, a new item shows on the menu
     that._annotationCollection.onAddingAnnotation( function(name){
@@ -4084,7 +4092,80 @@ class GuiController{
     this._annotationPanel.getControl("Annotations").removeItem("pouet2");
     */
 
+    // editable field for annotation name
+    this._annotationPanel.addText("Annotation name", "", function(){} );
+    this._annotationPanel.overrideStyle("Annotation name", "text-align", "center");
 
+    this._annotationPanel.addTextArea("Annotation description", "", function(){} );
+    document.getElementById("Annotation description").parentElement.style["margin-top"] = "0px";
+
+    this._annotationPanel.addHTML("panelEditExistingAnnot", this._buildPanelEditExistingAnnot());
+    document.getElementById("panelEditExistingAnnot").parentElement.style["margin-top"] = "0px";
+
+    //this._annotationPanel.hideControl("panelEditExistingAnnot");
+    //this._annotationPanel.showControl("panelEditExistingAnnot");
+
+    this._annotationPanel.addButton("Start new annotation", function(){
+      that._annotationPanel.hideControl("panelEditExistingAnnot");
+      that._annotationPanel.showControl("panelCreateAnnot");
+      that._annotationPanel.showControl("Validate annotation");
+      that._annotationPanel.hideControl("Start new annotation");
+      that._annotationPanel.disableControl("Annotations");
+      that._annotationPanel.disableControl("Export annotations");
+      that._annotationPanel.disableControl("Annotation file");
+    });
+    this._annotationPanel.overrideStyle("Start new annotation", "width", "100%");
+
+
+    this._annotationPanel.addButton("Validate annotation", function(){
+      that._annotationPanel.showControl("panelEditExistingAnnot");
+      that._annotationPanel.hideControl("panelCreateAnnot");
+      that._annotationPanel.hideControl("Validate annotation");
+      that._annotationPanel.showControl("Start new annotation");
+      that._annotationPanel.enableControl("Annotations");
+      that._annotationPanel.enableControl("Export annotations");
+      that._annotationPanel.enableControl("Annotation file");
+    });
+    this._annotationPanel.overrideStyle("Validate annotation", "width", "100%");
+    this._annotationPanel.hideControl("Validate annotation");
+
+
+
+    this._annotationPanel.addHTML("panelCreateAnnot", this._buildPanelCreateAnnot());
+    document.getElementById("panelCreateAnnot").parentElement.style["margin-top"] = "0px";
+    this._annotationPanel.hideControl("panelCreateAnnot");
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Builds the HTML edit panel for annotations
+  */
+  _buildPanelEditExistingAnnot(){
+    var htmlStr = `
+    <div>
+      <i class="fa fa-check small-icon" aria-hidden="true"></i>
+      <i class="fa fa-eye small-icon" aria-hidden="true"></i>
+      <i class="fa fa-crosshairs small-icon" aria-hidden="true"></i>
+      <i class="fa fa-paint-brush small-icon" aria-hidden="true"></i>
+      <i class="fa fa-trash small-icon" aria-hidden="true"></i>
+    </div>
+    `;
+
+    return htmlStr;
+  }
+
+
+  _buildPanelCreateAnnot(){
+    var htmlStr = `
+    <div>
+      <i class="fa fa-undo small-icon" aria-hidden="true"></i>
+      <i class="fa fa-paint-brush small-icon" aria-hidden="true"></i>
+      <i class="fa fa-trash small-icon" aria-hidden="true"></i>
+    </div>
+    `;
+
+    return htmlStr;
   }
 
 
