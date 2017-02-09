@@ -46,15 +46,6 @@ class Annotation{
 
 
   /**
-  * Defines the size of the sphere for a point annotation.
-  * @param {Number} r - radius
-  */
-  setPointRadius( r ){
-    this._pointRadius = r;
-  }
-
-
-  /**
   * Routine to validate an annotation. An annotation is valid if it contains at least one point and if this point contains 3 value (for x, y, z)
   */
   validateAnnotation(){
@@ -79,13 +70,30 @@ class Annotation{
   * @param {Array} point - coord [x, y, z]
   */
   addPoint( point ){
+    if(this._isClosed){
+      console.warn( "The annotation is a closed polygon. You must to first remove the last point to open the loop." );
+      return;
+    }
+
     // maintain integrity (and prevent from running validateAnnotation() )
     if( point.length == 3){
       this._points.push( point );
 
-      // TODO if a point tunrs into a line
+      // this point annotation just turned into a line annotation (let's celebrate!)
+      if( this._points.length == 2 ){
+        this.flushObject3D();
+        this._buildLinestringAnnotation();
+      }
+      // the line is getting longer
+      else{
+        var lineMesh = this._object3D.children[0];
+        lineMesh.geometry.vertices.push( new THREE.Vector3(point[0], point[1], point[2]) );
+        lineMesh.geometry.computeBoundingSphere();
+        lineMesh.geometry.dynamic = true;
+        lineMesh.geometry.verticesNeedUpdate = true;
+      }
 
-      this._meshMustRebuild = true;
+      this.validateAnnotation();
     }
   }
 
@@ -94,6 +102,7 @@ class Annotation{
   * Remove a point from the annotation point set.
   * @param {Number} index - optionnal, if set remove the point at this index. If not set, remove the last
   */
+  /*
   removePoint( index=-1 ){
     if( this._isValid ){
       this._points.splice(index, 1);
@@ -102,10 +111,45 @@ class Annotation{
       // TODO if a line turns into a point !
       // TODO if closed, do we still leave it close?
 
-      this._meshMustRebuild = true;
+    }
+  }
+  */
+
+
+  /**
+  * Remove the last point of the annot and adapt the shape if it becomes a
+  * point or even of length 0.
+  */
+  removeLastPoint(){
+    // open the loop
+    if(this._isClosed){
+      console.warn("The polygon just got open.");
+      this._isClosed = false;
     }
 
+    if( this._isValid ){
+      this._points.pop();
 
+      // no more point into this annot
+      if(this._points.length == 0){
+        this.flushObject3D();
+      }else
+      // the line turns into a point
+      if(this._points.length == 1){
+        this.flushObject3D();
+        this._buildPointAnnotation();
+      }
+      // the lines is getting shorter
+      else{
+        var lineMesh = this._object3D.children[0];
+        lineMesh.geometry.vertices.pop();
+        lineMesh.geometry.computeBoundingSphere();
+        lineMesh.geometry.dynamic = true;
+        lineMesh.geometry.verticesNeedUpdate = true;
+      }
+
+      this.validateAnnotation();
+    }
   }
 
 
@@ -233,11 +277,74 @@ class Annotation{
 
 
   /**
+  * [PRIVATE]
+  * remove all the childrens from the graphic representation of this annot.
+  * This is useful when a single-point annot turns into a line annot and vice-versa.
+  */
+  flushObject3D(){
+    var that = this;
+
+    this._object3D.children.forEach(function(child){
+      this._object3D.remove( child );
+    });
+  }
+
+
+  /**
   * When we want to close a linstring. Basically adds a point at the end and switch the isClosed boolean.
   */
   closeLinestring(){
-    // TODO
+    // cannot close it if already closed
+    if(this._isClosed){
+      console.warn("The annotation linestring is already closed.");
+      return;
+    }
+
+    // an annot needs at least 3 points to be closed
+    if( this._points.length > 2 ){
+      this._isClosed = true;
+
+      this.addPoint( this._points[ this._points.length - 1 ] );
+    }
   }
+
+
+  /**
+  * update the name of this annotation.
+  * @param {String} name - the new name
+  */
+  updateName( name ){
+    this._name = name;
+    var mesh = this._object3D.name = name;
+  }
+
+
+  /**
+  * Update the description.
+  * @param {String} d - the new description
+  */
+  updateDescription( d ){
+    this._description = d;
+    this._object3D.userData.description = d;
+  }
+
+
+  /**
+  * Update the color.
+  * @param {String} c - should be like "FF0000" or "#FF0000"
+  */
+  updateColor( c ){
+    this._color = c;
+
+    if( this._color[0] != "#"){
+      this._color = "#" + this._color;
+    }
+
+    if(this._object3D.children.length){
+      this._object3D.children[0].material.color.set( this._color );
+    }
+  }
+
 
 /*
 TODO

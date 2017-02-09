@@ -31,6 +31,7 @@ class GuiController{
 
     this._initMainPanel();
     this._initAnnotationPanel();
+    this._initAnnotationPanelCallback();
   }
 
 
@@ -296,11 +297,11 @@ class GuiController{
   _buildPanelEditExistingAnnot(){
     var htmlStr = `
     <div>
-      <i class="fa fa-check small-icon" aria-hidden="true"></i>
-      <i class="fa fa-eye small-icon" aria-hidden="true"></i>
-      <i class="fa fa-crosshairs small-icon" aria-hidden="true"></i>
-      <i class="fa fa-paint-brush small-icon" aria-hidden="true"></i>
-      <i class="fa fa-trash small-icon" aria-hidden="true"></i>
+      <i id="existingAnnotValidate" class="fa fa-check small-icon" aria-hidden="true"></i>
+      <i id="existingAnnotToggleView" class="fa fa-eye small-icon" aria-hidden="true"></i>
+      <i id="existingAnnotTarget" class="fa fa-crosshairs small-icon" aria-hidden="true"></i>
+      <i id="existingAnnotColorPicker" class="fa fa-paint-brush small-icon" aria-hidden="true"></i>
+      <i  id="existingAnnotDelete" class="fa fa-trash small-icon" aria-hidden="true"></i>
     </div>
     `;
 
@@ -315,13 +316,62 @@ class GuiController{
   _buildPanelCreateAnnot(){
     var htmlStr = `
     <div>
-      <i class="fa fa-undo small-icon" aria-hidden="true"></i>
-      <i class="fa fa-paint-brush small-icon" aria-hidden="true"></i>
-      <i class="fa fa-trash small-icon" aria-hidden="true"></i>
+      <i id="newAnnotUndo" class="fa fa-undo small-icon" aria-hidden="true"></i>
+      <i id="newAnnotPaintColorPicker" class="fa fa-paint-brush small-icon" aria-hidden="true"></i>
+      <i id="newAnnotDelete" class="fa fa-trash small-icon" aria-hidden="true"></i>
     </div>
     `;
 
     return htmlStr;
+  }
+
+
+  _initAnnotationPanelCallback(){
+
+    // existing annotations -------------------------
+
+    // check - validate the change of name/description if any
+    document.getElementById("existingAnnotValidate").onclick = function(e){
+      console.log(e);
+    }
+
+    // eye - show/hide the annot
+    document.getElementById("existingAnnotToggleView").onclick = function(e){
+      console.log(e);
+    }
+
+    // target - center the annot
+    document.getElementById("existingAnnotTarget").onclick = function(e){
+      console.log(e);
+    }
+
+    // paint brush - change annot color
+    document.getElementById("existingAnnotColorPicker").onclick = function(e){
+      console.log(e);
+    }
+
+    // trashbin - delete the annot
+    document.getElementById("existingAnnotDelete").onclick = function(e){
+      console.log(e);
+    }
+
+    // new annotations -------------------------
+
+    // Undo - remove the last point added
+    document.getElementById("newAnnotUndo").onclick = function(e){
+      console.log(e);
+    }
+
+    // Paint brush - change color of the annot
+    document.getElementById("newAnnotPaintColorPicker").onclick = function(e){
+      console.log(e);
+    }
+
+    // trashbin - delete the annot
+    document.getElementById("newAnnotDelete").onclick = function(e){
+      console.log(e);
+    }
+
   }
 
 

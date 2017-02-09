@@ -3889,6 +3889,7 @@ class GuiController{
 
     this._initMainPanel();
     this._initAnnotationPanel();
+    this._initAnnotationPanelCallback();
   }
 
 
@@ -4096,41 +4097,51 @@ class GuiController{
     this._annotationPanel.addText("Annotation name", "", function(){} );
     this._annotationPanel.overrideStyle("Annotation name", "text-align", "center");
 
+    // editable description of the annot
     this._annotationPanel.addTextArea("Annotation description", "", function(){} );
     document.getElementById("Annotation description").parentElement.style["margin-top"] = "0px";
 
+    // Pannel of buttons for dealing with existing annot
     this._annotationPanel.addHTML("panelEditExistingAnnot", this._buildPanelEditExistingAnnot());
     document.getElementById("panelEditExistingAnnot").parentElement.style["margin-top"] = "0px";
 
-    //this._annotationPanel.hideControl("panelEditExistingAnnot");
-    //this._annotationPanel.showControl("panelEditExistingAnnot");
 
+    // Button to create a new annotation
     this._annotationPanel.addButton("Start new annotation", function(){
+      // show and hide the relevant componants
       that._annotationPanel.hideControl("panelEditExistingAnnot");
       that._annotationPanel.showControl("panelCreateAnnot");
       that._annotationPanel.showControl("Validate annotation");
       that._annotationPanel.hideControl("Start new annotation");
+
+      // prevent the user from doing stupid interactions
       that._annotationPanel.disableControl("Annotations");
       that._annotationPanel.disableControl("Export annotations");
       that._annotationPanel.disableControl("Annotation file");
+
+
     });
     this._annotationPanel.overrideStyle("Start new annotation", "width", "100%");
 
-
+    // Button to validate a homemade annotation
     this._annotationPanel.addButton("Validate annotation", function(){
+      // show and hide the relevant componants
       that._annotationPanel.showControl("panelEditExistingAnnot");
       that._annotationPanel.hideControl("panelCreateAnnot");
       that._annotationPanel.hideControl("Validate annotation");
       that._annotationPanel.showControl("Start new annotation");
+
+      // allow the user to interact
       that._annotationPanel.enableControl("Annotations");
       that._annotationPanel.enableControl("Export annotations");
       that._annotationPanel.enableControl("Annotation file");
+
+
     });
     this._annotationPanel.overrideStyle("Validate annotation", "width", "100%");
     this._annotationPanel.hideControl("Validate annotation");
 
-
-
+    // homemade annot options
     this._annotationPanel.addHTML("panelCreateAnnot", this._buildPanelCreateAnnot());
     document.getElementById("panelCreateAnnot").parentElement.style["margin-top"] = "0px";
     this._annotationPanel.hideControl("panelCreateAnnot");
@@ -4144,11 +4155,11 @@ class GuiController{
   _buildPanelEditExistingAnnot(){
     var htmlStr = `
     <div>
-      <i class="fa fa-check small-icon" aria-hidden="true"></i>
-      <i class="fa fa-eye small-icon" aria-hidden="true"></i>
-      <i class="fa fa-crosshairs small-icon" aria-hidden="true"></i>
-      <i class="fa fa-paint-brush small-icon" aria-hidden="true"></i>
-      <i class="fa fa-trash small-icon" aria-hidden="true"></i>
+      <i id="existingAnnotValidate" class="fa fa-check small-icon" aria-hidden="true"></i>
+      <i id="existingAnnotToggleView" class="fa fa-eye small-icon" aria-hidden="true"></i>
+      <i id="existingAnnotTarget" class="fa fa-crosshairs small-icon" aria-hidden="true"></i>
+      <i id="existingAnnotColorPicker" class="fa fa-paint-brush small-icon" aria-hidden="true"></i>
+      <i  id="existingAnnotDelete" class="fa fa-trash small-icon" aria-hidden="true"></i>
     </div>
     `;
 
@@ -4156,6 +4167,10 @@ class GuiController{
   }
 
 
+  /**
+  * [PRIVATE]
+  * Builds the pannel with buttons to create a new annotation
+  */
   _buildPanelCreateAnnot(){
     var htmlStr = `
     <div>
@@ -4166,6 +4181,15 @@ class GuiController{
     `;
 
     return htmlStr;
+  }
+
+
+  _initAnnotationPanelCallback(){
+
+    document.getElementById("existingAnnotValidate").onclick = function(){
+      console.log(arguments);
+    };
+
   }
 
 

@@ -25,6 +25,8 @@ class AnnotationCollection {
 
     this._noNameIncrement = 0;
     this._onAddingAnnotationCallback = null;
+
+    this._tempAnnotation = null;
   }
 
 
@@ -41,7 +43,6 @@ class AnnotationCollection {
   * @param {Array of Array} points - Array of [x, y, z], if only one, its a point otherwise it can be a linestring (default) or polygon (options.closed must be true)
   * @param {String} name - name, suposedly unique
   * @param {Object} options - all kind of options:
-  * name {String} must be unique or can be null (auto picked based on date),
   * isClosed {Boolean} makes the diff between a linestring and a polygon - default: false,
   * description {String} optionnal - default: '',
   * color {String} - default: "FF0000",
@@ -55,11 +56,8 @@ class AnnotationCollection {
       return;
     }
 
-    // if no name,
-    if(!name){
-      name = "annotation_" + this._noNameIncrement + "_" +  new Date().getMilliseconds();
-      this._noNameIncrement ++;
-    }
+    // if no name, we make one
+    name = name || this._getNewAnnotationName();
 
     // add the new annotation to the collection
     this._collection[ name ] = new Annotation( points, name, options);
@@ -75,6 +73,16 @@ class AnnotationCollection {
 
 
   /**
+  * [PRIVATE]
+  * returns an incremental fake name so that our annotation does not remain unnamed.
+  */
+  _getNewAnnotationName(){
+    this._noNameIncrement ++;
+    return "annotation_" + this._noNameIncrement + "_" + new Date().toISOString();
+  }
+
+
+  /**
   * Remove the anotation from the collection.
   * @param {String} name - name of the annotation to remove (unique)
   */
@@ -86,6 +94,9 @@ class AnnotationCollection {
 
     // remove the 3D representation
     this._container3D.remove( this._collection[ name ].getObject3D() );
+
+    // remove the logic object
+    delete this._collection[ name ];
   }
 
 
@@ -176,6 +187,59 @@ class AnnotationCollection {
   onAddingAnnotation( cb ){
     this._onAddingAnnotationCallback = cb;
   }
+
+
+  /**
+  * Init a temporary annotation with a single point.
+  * @param {THREE.Vector3} firstPoint - a threejs vector
+  */
+  createTemporaryAnnotation( firstPoint ){
+    if( this._tempAnnotation ){
+      console.warn("A temporaray annotation is already created. Validate it or discard it before creating a new one.");
+      return;
+    }
+
+    this._tempAnnotation = new Annotation(
+      [ [firstPoint.x, firstPoint.y, firstPoint.z] ]
+      this._getNewAnnotationName(),
+      {
+        description: "No description yet",
+        isClosed: false
+      }
+    );
+
+    // add the visual object to Object3D container
+    this._container3D.add( this._tempAnnotation );
+
+  }
+
+
+  /**
+  * Delete the temporaray annotation, meaning reseting the logic object but also
+  * clearing up its graphical representation.
+  */
+  deleteTemporaryAnnotation(){
+    if(! this._tempAnnotation ){
+      console.warn("No temporary annotation to delete.");
+      return;
+    }
+
+    // remove the 3D representation
+    this._container3D.remove( this._tempAnnotation );
+
+    // remove the logic object
+    this._tempAnnotation = null;
+  }
+
+
+  /**
+  * Get the temporary annotation.
+  * @return {Annotation}
+  */
+  getTemporaryAnnotation(){
+    return this._tempAnnotation;
+  }
+
 
 
 } /* END of class AnnotationCollection */
