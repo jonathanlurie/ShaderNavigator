@@ -26,6 +26,7 @@ class AnnotationCollection {
     this._noNameIncrement = 0;
     this._onAddingAnnotationCallback = null;
 
+    this._annotCreationEnabled = false;
     this._tempAnnotation = null;
   }
 
@@ -73,12 +74,30 @@ class AnnotationCollection {
 
 
   /**
+  * Add to collection the temporary annotation that is currently being created.
+  */
+  addTemporaryAnnotation(){
+    if( this._annotCreationEnabled && this._tempAnnotation ){
+      // only adds if the annot contains points
+      if( this._tempAnnotation.getNummberOfPoints() ){
+        this._collection[ this._tempAnnotation.getName() ] = this._tempAnnotation;
+      }else{
+        console.warn("The temporary annotation cannot be added to the collection because it is empty.");
+      }
+
+      this._tempAnnotation = null;
+      this.disableAnnotCreation();
+    }
+  }
+
+
+  /**
   * [PRIVATE]
   * returns an incremental fake name so that our annotation does not remain unnamed.
   */
   _getNewAnnotationName(){
     this._noNameIncrement ++;
-    return "annotation_" + this._noNameIncrement + "_" + new Date().toISOString();
+    return new Date().toISOString() + "_" + this._noNameIncrement;
   }
 
 
@@ -199,8 +218,13 @@ class AnnotationCollection {
       return;
     }
 
+    if( ! this._annotCreationEnabled ){
+      console.warn("annotation creation must be enabled first. Call enableAnnotCreation()");
+      return;
+    }
+
     this._tempAnnotation = new Annotation(
-      [ [firstPoint.x, firstPoint.y, firstPoint.z] ]
+      [ [firstPoint.x, firstPoint.y, firstPoint.z] ],
       this._getNewAnnotationName(),
       {
         description: "No description yet",
@@ -209,7 +233,7 @@ class AnnotationCollection {
     );
 
     // add the visual object to Object3D container
-    this._container3D.add( this._tempAnnotation );
+    this._container3D.add( this._tempAnnotation.getObject3D() );
 
   }
 
@@ -225,7 +249,7 @@ class AnnotationCollection {
     }
 
     // remove the 3D representation
-    this._container3D.remove( this._tempAnnotation );
+    this._container3D.remove( this._tempAnnotation.getObject3D() );
 
     // remove the logic object
     this._tempAnnotation = null;
@@ -241,6 +265,28 @@ class AnnotationCollection {
   }
 
 
+  /**
+  * Enable the begning of creating a new annotation
+  */
+  enableAnnotCreation(){
+    this._annotCreationEnabled = true;
+  }
+
+
+  /**
+  * Disable the annotation creation
+  */
+  disableAnnotCreation(){
+    this._annotCreationEnabled = false;
+  }
+
+
+  /**
+  * @return true if the annottaion creation process has started
+  */
+  isAnnotCreationEnabled(){
+    return this._annotCreationEnabled;
+  }
 
 } /* END of class AnnotationCollection */
 

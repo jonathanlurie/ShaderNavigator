@@ -3880,14 +3880,16 @@ class GuiController{
     // Annotations
     this._annotationCollection = this._quadScene.getAnnotationCollection();
 
+    // to specify shift+click on the ortho cam plane projections
+    this._quadViewInteraction = this._quadScene.getQuadViewInteraction();
+
     var panelWidth = 200;
     var panelSpace = 5;
 
     this._mainPanel = QuickSettings.create(panelSpace, 0, document.title);
+    this._initMainPanel();
 
     this._annotationPanel = QuickSettings.create(panelWidth + panelSpace*2 , 0, "Annotations");
-
-    this._initMainPanel();
     this._initAnnotationPanel();
     this._initAnnotationPanelCallback();
   }
@@ -4119,7 +4121,9 @@ class GuiController{
       that._annotationPanel.disableControl("Export annotations");
       that._annotationPanel.disableControl("Annotation file");
 
-
+      // enable creation
+      // (the temp annot will 'really' be created at the first click)
+      that._annotationCollection.enableAnnotCreation();
     });
     this._annotationPanel.overrideStyle("Start new annotation", "width", "100%");
 
@@ -4136,6 +4140,8 @@ class GuiController{
       that._annotationPanel.enableControl("Export annotations");
       that._annotationPanel.enableControl("Annotation file");
 
+      // done with the creation
+      that._annotationCollection.addTemporaryAnnotation();
 
     });
     this._annotationPanel.overrideStyle("Validate annotation", "width", "100%");
@@ -4174,9 +4180,9 @@ class GuiController{
   _buildPanelCreateAnnot(){
     var htmlStr = `
     <div>
-      <i class="fa fa-undo small-icon" aria-hidden="true"></i>
-      <i class="fa fa-paint-brush small-icon" aria-hidden="true"></i>
-      <i class="fa fa-trash small-icon" aria-hidden="true"></i>
+      <i id="newAnnotUndo" class="fa fa-undo small-icon" aria-hidden="true"></i>
+      <i id="newAnnotPaintColorPicker" class="fa fa-paint-brush small-icon" aria-hidden="true"></i>
+      <i id="newAnnotDelete" class="fa fa-trash small-icon" aria-hidden="true"></i>
     </div>
     `;
 
@@ -4185,11 +4191,90 @@ class GuiController{
 
 
   _initAnnotationPanelCallback(){
+    var that = this;
 
-    document.getElementById("existingAnnotValidate").onclick = function(){
-      console.log(arguments);
+    // existing annotations -------------------------
+
+    // check - validate the change of name/description if any
+    document.getElementById("existingAnnotValidate").onclick = function(e){
+      console.log(e);
     };
 
+    // eye - show/hide the annot
+    document.getElementById("existingAnnotToggleView").onclick = function(e){
+      console.log(e);
+    };
+
+    // target - center the annot
+    document.getElementById("existingAnnotTarget").onclick = function(e){
+      console.log(e);
+    };
+
+    // paint brush - change annot color
+    document.getElementById("existingAnnotColorPicker").onclick = function(e){
+      console.log(e);
+    };
+
+    // trashbin - delete the annot
+    document.getElementById("existingAnnotDelete").onclick = function(e){
+      console.log(e);
+    };
+
+    // new annotations -------------------------
+
+    // Undo - remove the last point added
+    document.getElementById("newAnnotUndo").onclick = function(e){
+      console.log(e);
+    };
+
+    // Paint brush - change color of the annot
+    document.getElementById("newAnnotPaintColorPicker").onclick = function(e){
+      console.log(e);
+    };
+
+    // trashbin - delete the annot
+    document.getElementById("newAnnotDelete").onclick = function(e){
+      console.log(e);
+    };
+
+
+    //
+    this._quadViewInteraction.onClickPlane(
+      "ortho",
+
+      function( point ){
+        console.log("From GUI:");
+        console.log(point);
+
+        // the annotation creation processes is enabled
+        if( that._annotationCollection.isAnnotCreationEnabled() ){
+          var temporaryAnnot = that._annotationCollection.getTemporaryAnnotation();
+
+          // appending a new point
+          if( temporaryAnnot ){
+            temporaryAnnot.addPoint( [point.x, point.y, point.z] );
+          }
+          // init the temporary annot
+          else{
+            that._annotationCollection.createTemporaryAnnotation( point );
+            that._displayAnnotInfo( that._annotationCollection.getTemporaryAnnotation() );
+          }
+
+        }
+      }
+    );
+
+  }
+
+
+  /**
+  * Display annotation info in the text box.
+  * @param {Annotation} annot - an instance of annotation,
+  * most likely the temporary one from the collection.
+  */
+  _displayAnnotInfo( annot ){
+    this._annotationPanel.setValue("Annotation name", annot.getName());
+    this._annotationPanel.setValue("Annotation description", annot.getDescription());
   }
 
 
@@ -4359,15 +4444,6 @@ class Annotation{
 
 
   /**
-  * Defines the size of the sphere for a point annotation.
-  * @param {Number} r - radius
-  */
-  setPointRadius( r ){
-    this._pointRadius = r;
-  }
-
-
-  /**
   * Routine to validate an annotation. An annotation is valid if it contains at least one point and if this point contains 3 value (for x, y, z)
   */
   validateAnnotation(){
@@ -4392,13 +4468,30 @@ class Annotation{
   * @param {Array} point - coord [x, y, z]
   */
   addPoint( point ){
+    if(this._isClosed){
+      console.warn( "The annotation is a closed polygon. You must to first remove the last point to open the loop." );
+      return;
+    }
+
     // maintain integrity (and prevent from running validateAnnotation() )
     if( point.length == 3){
       this._points.push( point );
 
-      // TODO if a point tunrs into a line
+      // this point annotation just turned into a line annotation (let's celebrate!)
+      if( this._points.length >= 2 ){
+        this.flushObject3D();
+        this._buildLinestringAnnotation();
+      }
 
-      this._meshMustRebuild = true;
+      /*
+      NOTE: it would have been better to just add a point to an existing buffer
+      in order to make the lin longer, unfortunatelly THREEjs makes it very
+      cumbersome (impossible) to extend an existing buffergeometry a simple way.
+      In the end, the most convenient is to delete/recreate the whole thing.
+      Sorry for that.
+      */
+
+      this.validateAnnotation();
     }
   }
 
@@ -4407,6 +4500,7 @@ class Annotation{
   * Remove a point from the annotation point set.
   * @param {Number} index - optionnal, if set remove the point at this index. If not set, remove the last
   */
+  /*
   removePoint( index=-1 ){
     if( this._isValid ){
       this._points.splice(index, 1);
@@ -4415,10 +4509,45 @@ class Annotation{
       // TODO if a line turns into a point !
       // TODO if closed, do we still leave it close?
 
-      this._meshMustRebuild = true;
+    }
+  }
+  */
+
+
+  /**
+  * Remove the last point of the annot and adapt the shape if it becomes a
+  * point or even of length 0.
+  */
+  removeLastPoint(){
+    // open the loop
+    if(this._isClosed){
+      console.warn("The polygon just got open.");
+      this._isClosed = false;
     }
 
+    if( this._isValid ){
+      this._points.pop();
 
+      // no more point into this annot
+      if(this._points.length == 0){
+        this.flushObject3D();
+      }else
+      // the line turns into a point
+      if(this._points.length == 1){
+        this.flushObject3D();
+        this._buildPointAnnotation();
+      }
+      // the lines is getting shorter
+      else{
+        var lineMesh = this._object3D.children[0];
+        lineMesh.geometry.vertices.pop();
+        lineMesh.geometry.computeBoundingSphere();
+        lineMesh.geometry.dynamic = true;
+        lineMesh.geometry.verticesNeedUpdate = true;
+      }
+
+      this.validateAnnotation();
+    }
   }
 
 
@@ -4480,28 +4609,36 @@ class Annotation{
   */
   _buildLinestringAnnotation(){
     if( this._isValid ){
-      var geometry = new THREE.Geometry();
+      //var geometry = new THREE.Geometry();
+      var geometry = new THREE.BufferGeometry();
+
+
       var material = new THREE.LineBasicMaterial( {
         linewidth: 1, // thickness remains the same on screen no matter the proximity
         color: new THREE.Color(this._color)
       });
 
+      var bufferSize = this._points.length * 3 + (+this._isClosed)*3;
+      var vertices = new Float32Array(bufferSize);
+
       // adding every point
-      this._points.forEach(function(point){
-        geometry.vertices.push( new THREE.Vector3(point[0], point[1], point[2]));
+      this._points.forEach(function(point, index){
+        vertices[index*3 ] = point[0];
+        vertices[index*3 + 1] = point[1];
+        vertices[index*3 + 2] = point[2];
       });
 
       // add a the first point again, in the end, to close the loop
       if(this._isClosed && this._points.length > 2){
-        geometry.vertices.push( new THREE.Vector3(
-            this._points[0][0],
-            this._points[0][1],
-            this._points[0][2]
-          )
-        );
+        vertices[bufferSize - 3] = this._points[0][0];
+        vertices[bufferSize - 2] = this._points[0][1];
+        vertices[bufferSize - 1] = this._points[0][2];
       }
 
-      geometry.computeLineDistances();
+      geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+      geometry.getAttribute("position").dynamic = true;
+
+      //geometry.computeLineDistances();
       var mesh = new THREE.Line( geometry, material );
       mesh.layers.enable( 0 );
       mesh.layers.enable( 1 );
@@ -4546,11 +4683,104 @@ class Annotation{
 
 
   /**
+  * [PRIVATE]
+  * remove all the childrens from the graphic representation of this annot.
+  * This is useful when a single-point annot turns into a line annot and vice-versa.
+  */
+  flushObject3D(){
+    var that = this;
+
+    this._object3D.children.forEach(function(child){
+      that._object3D.remove( child );
+    });
+  }
+
+
+  /**
   * When we want to close a linstring. Basically adds a point at the end and switch the isClosed boolean.
   */
   closeLinestring(){
-    // TODO
+    // cannot close it if already closed
+    if(this._isClosed){
+      console.warn("The annotation linestring is already closed.");
+      return;
+    }
+
+    // an annot needs at least 3 points to be closed
+    if( this._points.length > 2 ){
+      this._isClosed = true;
+
+      this.addPoint( this._points[ this._points.length - 1 ] );
+    }
   }
+
+
+  /**
+  * @return {String} the name of this annotation
+  */
+  getName(){
+    return this._name;
+  }
+
+  /**
+  * update the name of this annotation.
+  * @param {String} name - the new name
+  */
+  updateName( name ){
+    this._name = name;
+    var mesh = this._object3D.name = name;
+  }
+
+
+  /**
+  * @return {String} the description of this annotation
+  */
+  getDescription(){
+    return this._description;
+  }
+
+  /**
+  * Update the description.
+  * @param {String} d - the new description
+  */
+  updateDescription( d ){
+    this._description = d;
+    this._object3D.userData.description = d;
+  }
+
+
+  /**
+  * @return {String} the color of the annotation in hexadecimal
+  */
+  getColor(){
+    return this._color;
+  }
+
+
+  /**
+  * Update the color.
+  * @param {String} c - should be like "FF0000" or "#FF0000"
+  */
+  updateColor( c ){
+    this._color = c;
+
+    if( this._color[0] != "#"){
+      this._color = "#" + this._color;
+    }
+
+    if(this._object3D.children.length){
+      this._object3D.children[0].material.color.set( this._color );
+    }
+  }
+
+
+  /**
+  * @return {Number} the number of points in this annotation
+  */
+  getNummberOfPoints(){
+    return this._points.length;
+  }
+
 
 /*
 TODO
@@ -4580,6 +4810,9 @@ class AnnotationCollection {
 
     this._noNameIncrement = 0;
     this._onAddingAnnotationCallback = null;
+
+    this._annotCreationEnabled = false;
+    this._tempAnnotation = null;
   }
 
 
@@ -4596,7 +4829,6 @@ class AnnotationCollection {
   * @param {Array of Array} points - Array of [x, y, z], if only one, its a point otherwise it can be a linestring (default) or polygon (options.closed must be true)
   * @param {String} name - name, suposedly unique
   * @param {Object} options - all kind of options:
-  * name {String} must be unique or can be null (auto picked based on date),
   * isClosed {Boolean} makes the diff between a linestring and a polygon - default: false,
   * description {String} optionnal - default: '',
   * color {String} - default: "FF0000",
@@ -4610,11 +4842,8 @@ class AnnotationCollection {
       return;
     }
 
-    // if no name,
-    if(!name){
-      name = "annotation_" + this._noNameIncrement + "_" +  new Date().getMilliseconds();
-      this._noNameIncrement ++;
-    }
+    // if no name, we make one
+    name = name || this._getNewAnnotationName();
 
     // add the new annotation to the collection
     this._collection[ name ] = new Annotation( points, name, options);
@@ -4630,6 +4859,34 @@ class AnnotationCollection {
 
 
   /**
+  * Add to collection the temporary annotation that is currently being created.
+  */
+  addTemporaryAnnotation(){
+    if( this._annotCreationEnabled && this._tempAnnotation ){
+      // only adds if the annot contains points
+      if( this._tempAnnotation.getNummberOfPoints() ){
+        this._collection[ this._tempAnnotation.getName() ] = this._tempAnnotation;
+      }else{
+        console.warn("The temporary annotation cannot be added to the collection because it is empty.");
+      }
+
+      this._tempAnnotation = null;
+      this.disableAnnotCreation();
+    }
+  }
+
+
+  /**
+  * [PRIVATE]
+  * returns an incremental fake name so that our annotation does not remain unnamed.
+  */
+  _getNewAnnotationName(){
+    this._noNameIncrement ++;
+    return new Date().toISOString() + "_" + this._noNameIncrement;
+  }
+
+
+  /**
   * Remove the anotation from the collection.
   * @param {String} name - name of the annotation to remove (unique)
   */
@@ -4641,6 +4898,9 @@ class AnnotationCollection {
 
     // remove the 3D representation
     this._container3D.remove( this._collection[ name ].getObject3D() );
+
+    // remove the logic object
+    delete this._collection[ name ];
   }
 
 
@@ -4733,6 +4993,86 @@ class AnnotationCollection {
   }
 
 
+  /**
+  * Init a temporary annotation with a single point.
+  * @param {THREE.Vector3} firstPoint - a threejs vector
+  */
+  createTemporaryAnnotation( firstPoint ){
+    if( this._tempAnnotation ){
+      console.warn("A temporaray annotation is already created. Validate it or discard it before creating a new one.");
+      return;
+    }
+
+    if( ! this._annotCreationEnabled ){
+      console.warn("annotation creation must be enabled first. Call enableAnnotCreation()");
+      return;
+    }
+
+    this._tempAnnotation = new Annotation(
+      [ [firstPoint.x, firstPoint.y, firstPoint.z] ],
+      this._getNewAnnotationName(),
+      {
+        description: "No description yet",
+        isClosed: false
+      }
+    );
+
+    // add the visual object to Object3D container
+    this._container3D.add( this._tempAnnotation.getObject3D() );
+
+  }
+
+
+  /**
+  * Delete the temporaray annotation, meaning reseting the logic object but also
+  * clearing up its graphical representation.
+  */
+  deleteTemporaryAnnotation(){
+    if(! this._tempAnnotation ){
+      console.warn("No temporary annotation to delete.");
+      return;
+    }
+
+    // remove the 3D representation
+    this._container3D.remove( this._tempAnnotation.getObject3D() );
+
+    // remove the logic object
+    this._tempAnnotation = null;
+  }
+
+
+  /**
+  * Get the temporary annotation.
+  * @return {Annotation}
+  */
+  getTemporaryAnnotation(){
+    return this._tempAnnotation;
+  }
+
+
+  /**
+  * Enable the begning of creating a new annotation
+  */
+  enableAnnotCreation(){
+    this._annotCreationEnabled = true;
+  }
+
+
+  /**
+  * Disable the annotation creation
+  */
+  disableAnnotCreation(){
+    this._annotCreationEnabled = false;
+  }
+
+
+  /**
+  * @return true if the annottaion creation process has started
+  */
+  isAnnotCreationEnabled(){
+    return this._annotCreationEnabled;
+  }
+
 } /* END of class AnnotationCollection */
 
 /**
@@ -4782,10 +5122,9 @@ class QuadScene{
 
     this._boundingBoxHelper = new BoundingBoxHelper( this._scene );
 
-    var axisHelper = new THREE.AxisHelper( 1 );
-    axisHelper.layers.enable(1);
-
-    this._scene.add( axisHelper );
+    //var axisHelper = new THREE.AxisHelper( 1 );
+    //axisHelper.layers.enable(1);
+    //this._scene.add( axisHelper );
 
     this._scene.add( new THREE.AmbientLight( 0x444444 ) );
 
@@ -4904,6 +5243,16 @@ class QuadScene{
     );
 
 
+  }
+
+
+  /**
+  * return the quadview interaction.
+  * Useful to specify interaction callback from the outside.
+  * @return {QuadViewInteraction}
+  */
+  getQuadViewInteraction(){
+    return this._quadViewInteraction;
   }
 
 

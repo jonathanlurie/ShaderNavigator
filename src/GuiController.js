@@ -22,14 +22,16 @@ class GuiController{
     // Annotations
     this._annotationCollection = this._quadScene.getAnnotationCollection();
 
+    // to specify shift+click on the ortho cam plane projections
+    this._quadViewInteraction = this._quadScene.getQuadViewInteraction();
+
     var panelWidth = 200;
     var panelSpace = 5;
 
     this._mainPanel = QuickSettings.create(panelSpace, 0, document.title);
+    this._initMainPanel();
 
     this._annotationPanel = QuickSettings.create(panelWidth + panelSpace*2 , 0, "Annotations");
-
-    this._initMainPanel();
     this._initAnnotationPanel();
     this._initAnnotationPanelCallback();
   }
@@ -261,7 +263,9 @@ class GuiController{
       that._annotationPanel.disableControl("Export annotations");
       that._annotationPanel.disableControl("Annotation file");
 
-
+      // enable creation
+      // (the temp annot will 'really' be created at the first click)
+      that._annotationCollection.enableAnnotCreation();
     });
     this._annotationPanel.overrideStyle("Start new annotation", "width", "100%");
 
@@ -278,6 +282,8 @@ class GuiController{
       that._annotationPanel.enableControl("Export annotations");
       that._annotationPanel.enableControl("Annotation file");
 
+      // done with the creation
+      that._annotationCollection.addTemporaryAnnotation();
 
     });
     this._annotationPanel.overrideStyle("Validate annotation", "width", "100%");
@@ -327,6 +333,7 @@ class GuiController{
 
 
   _initAnnotationPanelCallback(){
+    var that = this;
 
     // existing annotations -------------------------
 
@@ -372,6 +379,44 @@ class GuiController{
       console.log(e);
     }
 
+
+    //
+    this._quadViewInteraction.onClickPlane(
+      "ortho",
+
+      function( point ){
+        console.log("From GUI:");
+        console.log(point);
+
+        // the annotation creation processes is enabled
+        if( that._annotationCollection.isAnnotCreationEnabled() ){
+          var temporaryAnnot = that._annotationCollection.getTemporaryAnnotation();
+
+          // appending a new point
+          if( temporaryAnnot ){
+            temporaryAnnot.addPoint( [point.x, point.y, point.z] );
+          }
+          // init the temporary annot
+          else{
+            that._annotationCollection.createTemporaryAnnotation( point );
+            that._displayAnnotInfo( that._annotationCollection.getTemporaryAnnotation() );
+          }
+
+        }
+      }
+    )
+
+  }
+
+
+  /**
+  * Display annotation info in the text box.
+  * @param {Annotation} annot - an instance of annotation,
+  * most likely the temporary one from the collection.
+  */
+  _displayAnnotInfo( annot ){
+    this._annotationPanel.setValue("Annotation name", annot.getName());
+    this._annotationPanel.setValue("Annotation description", annot.getDescription());
   }
 
 

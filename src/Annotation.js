@@ -80,18 +80,18 @@ class Annotation{
       this._points.push( point );
 
       // this point annotation just turned into a line annotation (let's celebrate!)
-      if( this._points.length == 2 ){
+      if( this._points.length >= 2 ){
         this.flushObject3D();
         this._buildLinestringAnnotation();
       }
-      // the line is getting longer
-      else{
-        var lineMesh = this._object3D.children[0];
-        lineMesh.geometry.vertices.push( new THREE.Vector3(point[0], point[1], point[2]) );
-        lineMesh.geometry.computeBoundingSphere();
-        lineMesh.geometry.dynamic = true;
-        lineMesh.geometry.verticesNeedUpdate = true;
-      }
+
+      /*
+      NOTE: it would have been better to just add a point to an existing buffer
+      in order to make the lin longer, unfortunatelly THREEjs makes it very
+      cumbersome (impossible) to extend an existing buffergeometry a simple way.
+      In the end, the most convenient is to delete/recreate the whole thing.
+      Sorry for that.
+      */
 
       this.validateAnnotation();
     }
@@ -211,28 +211,36 @@ class Annotation{
   */
   _buildLinestringAnnotation(){
     if( this._isValid ){
-      var geometry = new THREE.Geometry();
+      //var geometry = new THREE.Geometry();
+      var geometry = new THREE.BufferGeometry();
+
+
       var material = new THREE.LineBasicMaterial( {
         linewidth: 1, // thickness remains the same on screen no matter the proximity
         color: new THREE.Color(this._color)
       });
 
+      var bufferSize = this._points.length * 3 + (+this._isClosed)*3;
+      var vertices = new Float32Array(bufferSize);
+
       // adding every point
-      this._points.forEach(function(point){
-        geometry.vertices.push( new THREE.Vector3(point[0], point[1], point[2]));
-      })
+      this._points.forEach(function(point, index){
+        vertices[index*3 ] = point[0];
+        vertices[index*3 + 1] = point[1];
+        vertices[index*3 + 2] = point[2];
+      });
 
       // add a the first point again, in the end, to close the loop
       if(this._isClosed && this._points.length > 2){
-        geometry.vertices.push( new THREE.Vector3(
-            this._points[0][0],
-            this._points[0][1],
-            this._points[0][2]
-          )
-        );
+        vertices[bufferSize - 3] = this._points[0][0];
+        vertices[bufferSize - 2] = this._points[0][1];
+        vertices[bufferSize - 1] = this._points[0][2];
       }
 
-      geometry.computeLineDistances();
+      geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+      geometry.getAttribute("position").dynamic = true;
+
+      //geometry.computeLineDistances();
       var mesh = new THREE.Line( geometry, material );
       mesh.layers.enable( 0 );
       mesh.layers.enable( 1 );
@@ -285,7 +293,7 @@ class Annotation{
     var that = this;
 
     this._object3D.children.forEach(function(child){
-      this._object3D.remove( child );
+      that._object3D.remove( child );
     });
   }
 
@@ -310,6 +318,13 @@ class Annotation{
 
 
   /**
+  * @return {String} the name of this annotation
+  */
+  getName(){
+    return this._name;
+  }
+
+  /**
   * update the name of this annotation.
   * @param {String} name - the new name
   */
@@ -320,12 +335,27 @@ class Annotation{
 
 
   /**
+  * @return {String} the description of this annotation
+  */
+  getDescription(){
+    return this._description;
+  }
+
+  /**
   * Update the description.
   * @param {String} d - the new description
   */
   updateDescription( d ){
     this._description = d;
     this._object3D.userData.description = d;
+  }
+
+
+  /**
+  * @return {String} the color of the annotation in hexadecimal
+  */
+  getColor(){
+    return this._color;
   }
 
 
@@ -343,6 +373,14 @@ class Annotation{
     if(this._object3D.children.length){
       this._object3D.children[0].material.color.set( this._color );
     }
+  }
+
+
+  /**
+  * @return {Number} the number of points in this annotation
+  */
+  getNummberOfPoints(){
+    return this._points.length;
   }
 
 
