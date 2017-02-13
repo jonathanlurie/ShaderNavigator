@@ -162,7 +162,7 @@ class QuadView{
       up: [ -1, 0, 0 ]
     };
     this._viewName = "top_left";
-    this._backgroundColor = new THREE.Color().setRGB( 0.8, 0.8, 0.8 );
+    this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
   }
 
 
@@ -179,7 +179,7 @@ class QuadView{
       up: [ 0, -1, 0 ]
     };
     this._viewName = "top_right";
-    this._backgroundColor = new THREE.Color().setRGB( 0.9, 0.9, 0.9 );
+    this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
   }
 
   /**
@@ -195,7 +195,7 @@ class QuadView{
       up: [ 0, 1, 0 ]
     };
     this._viewName = "bottom_left";
-    this._backgroundColor = new THREE.Color().setRGB( 0.9, 0.9, 0.9 );
+    this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
   }
 
 
