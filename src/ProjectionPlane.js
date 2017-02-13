@@ -48,6 +48,13 @@ class ProjectionPlane{
 
 
   /**
+  * @return {Number} resolution level for this plane
+  */
+  getResolutionLevel(){
+    return this._resolutionLevel;
+  }
+
+  /**
   * Build all the subplanes with fake textures and fake origins. The purpose is just to create a compatible data structure able to receive relevant texture data when time comes.
   */
   _buildSubPlanes(){
@@ -298,6 +305,20 @@ class ProjectionPlane{
   }
 
 
+  /**
+  * Hide this plane (the THEE.Object3D)
+  */
+  hide(){
+    this._plane.visible = false;
+  }
+
+
+  /**
+  * Show this plane (the THEE.Object3D)
+  */
+  show(){
+    this._plane.visible = true;
+  }
 
 
 } /* END class ProjectionPlane */

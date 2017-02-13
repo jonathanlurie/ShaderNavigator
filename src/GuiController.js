@@ -6,9 +6,6 @@ class GuiController{
 
     this._quadScene = quadScene;
 
-
-    //this._datGui = new dat.GUI();
-
     // fake value for dat gui - just to display the init value
     this._resolutionLevel = this._quadScene.getResolutionLevel();
     this._resolutionLvlRange = [0, 6];
@@ -24,6 +21,9 @@ class GuiController{
 
     // to specify shift+click on the ortho cam plane projections
     this._quadViewInteraction = this._quadScene.getQuadViewInteraction();
+
+    // the plane manager
+    this._planeManager = this._quadScene.getPlaneManager();
 
     var panelWidth = 200;
     var panelSpace = 5;
@@ -54,6 +54,19 @@ class GuiController{
       that._quadScene.getBoundingBoxHelper().setVisibility( mustShow );
     });
     document.getElementById("Bounding box").parentElement.parentElement.style["margin-top"] = "0px";
+
+    // Lo-rez plane view toggle
+    this._mainPanel.addBoolean("Lo-res projection", 1, function(mustShow){
+      if(mustShow){
+        that._planeManager.disableLayerHiRez(1);
+        that._planeManager.showLowRezPlane();
+      }else{
+        that._planeManager.enableLayerHiRez(1);
+        that._planeManager.hideLowRezPlane();
+      }
+
+    });
+    document.getElementById("Lo-res projection").parentElement.parentElement.style["margin-top"] = "0px";
 
     // rez lvl slider
     this._mainPanel.addRange("Zoom level", 0, 6, 0, 1,

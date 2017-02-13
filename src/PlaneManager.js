@@ -29,6 +29,10 @@ class PlaneManager{
 
     this._onMultiplaneMoveCallback = null;
     this._onMultiplaneRotateCallback = null;
+
+    this._resolutionLevelLoRezDelta = 2;
+
+    this._isLowRezPlaneVisible = true;
   }
 
 
@@ -206,7 +210,10 @@ class PlaneManager{
   */
   updateScaleFromRezLvl(lvl){
     this._updateScaleFromRezLvlPlaneArray(lvl, this._projectionPlanesHiRez);
-    this._updateScaleFromRezLvlPlaneArray(lvl - 2, this._projectionPlanesLoRez);
+
+    if(this._isLowRezPlaneVisible){
+      this._updateScaleFromRezLvlPlaneArray(lvl - this._resolutionLevelLoRezDelta, this._projectionPlanesLoRez);
+    }
   }
 
 
@@ -228,7 +235,10 @@ class PlaneManager{
   */
   updateUniforms(){
     this._updateUniformsPlaneArray(this._projectionPlanesHiRez);
-    this._updateUniformsPlaneArray(this._projectionPlanesLoRez);
+
+    if(this._isLowRezPlaneVisible){
+      this._updateUniformsPlaneArray(this._projectionPlanesLoRez);
+    }
   }
 
 
@@ -376,6 +386,31 @@ class PlaneManager{
     this._onMultiplaneMoveCallback && this._onMultiplaneMoveCallback( this._multiplaneContainer.position );
 
   }
+
+
+  hideLowRezPlane(){
+    this._projectionPlanesLoRez.forEach( function(projPlane){
+      projPlane.hide();
+    });
+  }
+
+
+  showLowRezPlane(){
+    this._isLowRezPlaneVisible = true;
+
+    this._projectionPlanesLoRez.forEach( function(projPlane){
+      projPlane.show();
+    });
+
+    this._updateScaleFromRezLvlPlaneArray(
+      this._projectionPlanesHiRez[0].getResolutionLevel() - this._resolutionLevelLoRezDelta,
+      this._projectionPlanesLoRez
+    );
+
+    this._updateUniformsPlaneArray(this._projectionPlanesLoRez);
+
+  }
+
 
 } /* END CLASS PlaneManager */
 

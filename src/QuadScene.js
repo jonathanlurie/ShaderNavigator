@@ -253,6 +253,14 @@ class QuadScene{
 
 
   /**
+  * @return {PlaneManager} the instance of PlaneManager, mainly for UI things.
+  */
+  getPlaneManager(){
+    return this._planeManager;
+  }
+
+
+  /**
   * Add a statistics widget
   */
   initStat(){

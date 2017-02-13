@@ -2588,6 +2588,13 @@ class ProjectionPlane{
 
 
   /**
+  * @return {Number} resolution level for this plane
+  */
+  getResolutionLevel(){
+    return this._resolutionLevel;
+  }
+
+  /**
   * Build all the subplanes with fake textures and fake origins. The purpose is just to create a compatible data structure able to receive relevant texture data when time comes.
   */
   _buildSubPlanes(){
@@ -2838,6 +2845,20 @@ class ProjectionPlane{
   }
 
 
+  /**
+  * Hide this plane (the THEE.Object3D)
+  */
+  hide(){
+    this._plane.visible = false;
+  }
+
+
+  /**
+  * Show this plane (the THEE.Object3D)
+  */
+  show(){
+    this._plane.visible = true;
+  }
 
 
 } /* END class ProjectionPlane */
@@ -2869,6 +2890,10 @@ class PlaneManager{
 
     this._onMultiplaneMoveCallback = null;
     this._onMultiplaneRotateCallback = null;
+
+    this._resolutionLevelLoRezDelta = 2;
+
+    this._isLowRezPlaneVisible = true;
   }
 
 
@@ -3046,7 +3071,10 @@ class PlaneManager{
   */
   updateScaleFromRezLvl(lvl){
     this._updateScaleFromRezLvlPlaneArray(lvl, this._projectionPlanesHiRez);
-    this._updateScaleFromRezLvlPlaneArray(lvl - 2, this._projectionPlanesLoRez);
+
+    if(this._isLowRezPlaneVisible){
+      this._updateScaleFromRezLvlPlaneArray(lvl - this._resolutionLevelLoRezDelta, this._projectionPlanesLoRez);
+    }
   }
 
 
@@ -3068,7 +3096,10 @@ class PlaneManager{
   */
   updateUniforms(){
     this._updateUniformsPlaneArray(this._projectionPlanesHiRez);
-    this._updateUniformsPlaneArray(this._projectionPlanesLoRez);
+
+    if(this._isLowRezPlaneVisible){
+      this._updateUniformsPlaneArray(this._projectionPlanesLoRez);
+    }
   }
 
 
@@ -3216,6 +3247,31 @@ class PlaneManager{
     this._onMultiplaneMoveCallback && this._onMultiplaneMoveCallback( this._multiplaneContainer.position );
 
   }
+
+
+  hideLowRezPlane(){
+    this._projectionPlanesLoRez.forEach( function(projPlane){
+      projPlane.hide();
+    });
+  }
+
+
+  showLowRezPlane(){
+    this._isLowRezPlaneVisible = true;
+
+    this._projectionPlanesLoRez.forEach( function(projPlane){
+      projPlane.show();
+    });
+
+    this._updateScaleFromRezLvlPlaneArray(
+      this._projectionPlanesHiRez[0].getResolutionLevel() - this._resolutionLevelLoRezDelta,
+      this._projectionPlanesLoRez
+    );
+
+    this._updateUniformsPlaneArray(this._projectionPlanesLoRez);
+
+  }
+
 
 } /* END CLASS PlaneManager */
 
@@ -3864,9 +3920,6 @@ class GuiController{
 
     this._quadScene = quadScene;
 
-
-    //this._datGui = new dat.GUI();
-
     // fake value for dat gui - just to display the init value
     this._resolutionLevel = this._quadScene.getResolutionLevel();
     this._resolutionLvlRange = [0, 6];
@@ -3882,6 +3935,9 @@ class GuiController{
 
     // to specify shift+click on the ortho cam plane projections
     this._quadViewInteraction = this._quadScene.getQuadViewInteraction();
+
+    // the plane manager
+    this._planeManager = this._quadScene.getPlaneManager();
 
     var panelWidth = 200;
     var panelSpace = 5;
@@ -3912,6 +3968,19 @@ class GuiController{
       that._quadScene.getBoundingBoxHelper().setVisibility( mustShow );
     });
     document.getElementById("Bounding box").parentElement.parentElement.style["margin-top"] = "0px";
+
+    // Lo-rez plane view toggle
+    this._mainPanel.addBoolean("Lo-res projection", 1, function(mustShow){
+      if(mustShow){
+        that._planeManager.disableLayerHiRez(1);
+        that._planeManager.showLowRezPlane();
+      }else{
+        that._planeManager.enableLayerHiRez(1);
+        that._planeManager.hideLowRezPlane();
+      }
+
+    });
+    document.getElementById("Lo-res projection").parentElement.parentElement.style["margin-top"] = "0px";
 
     // rez lvl slider
     this._mainPanel.addRange("Zoom level", 0, 6, 0, 1,
@@ -5310,6 +5379,14 @@ class QuadScene{
     });
     */
 
+  }
+
+
+  /**
+  * @return {PlaneManager} the instance of PlaneManager, mainly for UI things.
+  */
+  getPlaneManager(){
+    return this._planeManager;
   }
 
 
