@@ -5155,6 +5155,7 @@ class AnnotationCollection {
 class QuadScene{
 
   constructor(DomContainer, rez=0){
+    var that = this;
     window.addEventListener( 'resize', this._updateSize.bind(this), false );
 
     this._ready = false;
@@ -5254,9 +5255,14 @@ class QuadScene{
 
     //this._testAnnotation();
 
-    this._animate();
+    //this._animate();
 
 
+    // To prevent GL rendering issue (lack of texture updates)
+    // we force a refresh about 5 times per sec
+    setInterval(function(){
+      that._render();
+    }, 200);
 
   }
 
@@ -5471,19 +5477,13 @@ class QuadScene{
 
     // TODO: make somethink better for refresh once per sec!
     if(this._ready){
-      if(this._counterRefresh % 30 == 0){
-        this._updateAllPlanesShaderUniforms();
-      }
-      this._counterRefresh ++;
+      this._updateAllPlanesShaderUniforms();
+
+      // refresh each view
+      this._quadViews.forEach(function(view){
+        view.renderView();
+      });
     }
-
-    // in case the window was resized
-    //this._updateSize();
-
-    // refresh each view
-    this._quadViews.forEach(function(view){
-      view.renderView();
-    });
 
   }
 
@@ -5564,6 +5564,7 @@ class QuadScene{
       // the callback above may have changed the rotation/position from URL
       that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
 
+      that._render();
     });
 
     // the config file failed to load
@@ -5698,6 +5699,8 @@ class QuadScene{
           return;
       }
 
+      that._render();
+
     });
 
     // callback def: regular rotation (using R key)
@@ -5715,6 +5718,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+
+      that._render();
     });
 
     // callback def: transverse rotation (using T key)
@@ -5738,6 +5743,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+
+      that._render();
     });
 
     // callback def: arrow down
@@ -5757,6 +5764,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+
+      that._render();
     });
 
     // callback def: arrow up
@@ -5776,11 +5785,15 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+
+      that._render();
     });
 
     this._quadViewInteraction.onDonePlaying(function(){
       that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
       that._onUpdateViewCallback && that._onUpdateViewCallback( that.getMultiplaneContainerInfo() );
+
+      that._render();
     });
 
   }
