@@ -193,13 +193,15 @@ class ProjectionPlane{
     uniforms.textures.value = textureData.textures;
     uniforms.textureOrigins.value = textureData.origins;
     uniforms.chunkSize.value = chunkSizeWC;
-
     uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
     uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
 
-
-    //uniforms.colorMap.value = THREE.ImageUtils.loadTexture( "colormaps/rainbow.png" );
-    //this._shaderMaterials[i].needsUpdate = true;  // apparently useless
+    uniforms.nbChunks.needsUpdate = true;
+    uniforms.textures.needsUpdate = true;
+    uniforms.textureOrigins.needsUpdate = true;
+    uniforms.chunkSize.needsUpdate = true;
+    uniforms.useColorMap.needsUpdate = true;
+    uniforms.colorMap.needsUpdate = true;
 
   }
 

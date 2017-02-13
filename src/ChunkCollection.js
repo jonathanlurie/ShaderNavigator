@@ -57,6 +57,7 @@ class ChunkCollection{
     }
 
     this._onChunksLoadedCallback = null;
+    this._onAllChunksLoadedCallback = null;
 
   }
 
@@ -381,15 +382,18 @@ class ChunkCollection{
     this._chunkCounter.loaded += (+ success);
     this._chunkCounter.failled += (+ (!success));
 
+    var remaining = this._chunkCounter.toBeLoaded - this._chunkCounter.loaded - this._chunkCounter.failled;
+
     // all the required chunks are OR loaded OR failled = they all tried to load.
-    if( (this._chunkCounter.loaded + this._chunkCounter.failled) == this._chunkCounter.toBeLoaded ){
-      //console.log(">> All required chunks are loaded (lvl: " + this._resolutionLevel + ")");
-      console.log(">> All required chunks are loaded");
+    if( !remaining ){
+      if(this._onAllChunksLoadedCallback){
+        this._onAllChunksLoadedCallback();
+      }
     }
 
     // call a callback if defined
     if( this._onChunksLoadedCallback ){
-      this._onChunksLoadedCallback(this._resolutionLevel, (this._chunkCounter.toBeLoaded - this._chunkCounter.loaded - this._chunkCounter.failled));
+      this._onChunksLoadedCallback(this._resolutionLevel, remaining);
     }
   }
 
@@ -403,6 +407,15 @@ class ChunkCollection{
     this._onChunksLoadedCallback = cb;
   }
 
+
+  /**
+  * Defines a callback for when all the required tile of the current level are loaded.
+  * Called with no argument.
+  */
+  onAllChunksLoaded( cb ){
+    console.log('define');
+    this._onAllChunksLoadedCallback = cb;
+  }
 
 } /* END CLASS ChunkCollection */
 

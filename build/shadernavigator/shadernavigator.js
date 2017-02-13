@@ -1058,6 +1058,7 @@ class ChunkCollection{
     };
 
     this._onChunksLoadedCallback = null;
+    this._onAllChunksLoadedCallback = null;
 
   }
 
@@ -1382,15 +1383,18 @@ class ChunkCollection{
     this._chunkCounter.loaded += (+ success);
     this._chunkCounter.failled += (+ (!success));
 
+    var remaining = this._chunkCounter.toBeLoaded - this._chunkCounter.loaded - this._chunkCounter.failled;
+
     // all the required chunks are OR loaded OR failled = they all tried to load.
-    if( (this._chunkCounter.loaded + this._chunkCounter.failled) == this._chunkCounter.toBeLoaded ){
-      //console.log(">> All required chunks are loaded (lvl: " + this._resolutionLevel + ")");
-      console.log(">> All required chunks are loaded");
+    if( !remaining ){
+      if(this._onAllChunksLoadedCallback){
+        this._onAllChunksLoadedCallback();
+      }
     }
 
     // call a callback if defined
     if( this._onChunksLoadedCallback ){
-      this._onChunksLoadedCallback(this._resolutionLevel, (this._chunkCounter.toBeLoaded - this._chunkCounter.loaded - this._chunkCounter.failled));
+      this._onChunksLoadedCallback(this._resolutionLevel, remaining);
     }
   }
 
@@ -1404,6 +1408,15 @@ class ChunkCollection{
     this._onChunksLoadedCallback = cb;
   }
 
+
+  /**
+  * Defines a callback for when all the required tile of the current level are loaded.
+  * Called with no argument.
+  */
+  onAllChunksLoaded( cb ){
+    console.log('define');
+    this._onAllChunksLoadedCallback = cb;
+  }
 
 } /* END CLASS ChunkCollection */
 
@@ -1442,6 +1455,7 @@ class LevelManager{
     this._levelsInfo = null;
 
     this._onChunksLoadedCallback = null;
+    this._onAllChunksLoadedCallback = null;
   }
 
 
@@ -1557,9 +1571,14 @@ class LevelManager{
       datatype
     );
 
-    // dealing with some nested callback
+    // dealing with some nested callback (new chunk is loaded)
     if( this._onChunksLoadedCallback ){
       chunkCollection.onChunkLoaded(this._onChunksLoadedCallback);
+    }
+
+    // dealing with some nested callback (all chunks are loaded)
+    if( this._onAllChunksLoadedCallback ){
+      chunkCollection.onAllChunksLoaded(this._onAllChunksLoadedCallback);
     }
 
     this._chunkCollections.push( chunkCollection );
@@ -1570,6 +1589,10 @@ class LevelManager{
     this._onChunksLoadedCallback = cb;
   }
 
+
+  onAllChunksLoaded( cb ){
+    this._onAllChunksLoadedCallback = cb;
+  }
 
   /**
   * Change the level of resolution. Boundaries and "integrity" are checked.
@@ -2733,13 +2756,15 @@ class ProjectionPlane{
     uniforms.textures.value = textureData.textures;
     uniforms.textureOrigins.value = textureData.origins;
     uniforms.chunkSize.value = chunkSizeWC;
-
     uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
     uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
 
-
-    //uniforms.colorMap.value = THREE.ImageUtils.loadTexture( "colormaps/rainbow.png" );
-    //this._shaderMaterials[i].needsUpdate = true;  // apparently useless
+    uniforms.nbChunks.needsUpdate = true;
+    uniforms.textures.needsUpdate = true;
+    uniforms.textureOrigins.needsUpdate = true;
+    uniforms.chunkSize.needsUpdate = true;
+    uniforms.useColorMap.needsUpdate = true;
+    uniforms.colorMap.needsUpdate = true;
 
   }
 
@@ -3163,7 +3188,7 @@ class PlaneManager{
     var normalPlane = this.getWorldVectorN(planeIndex);
     this._multiplaneContainer.rotateOnAxis ( normalPlane, rad );
 
-    this.updateUniforms();
+    //this.updateUniforms();
 
     this._onMultiplaneRotateCallback && this._onMultiplaneRotateCallback();
   }
@@ -3242,7 +3267,7 @@ class PlaneManager{
     this._multiplaneContainer.translateOnAxis( uVector, uDistance );
     this._multiplaneContainer.translateOnAxis( vVector, vDistance );
 
-    this.updateUniforms();
+    //this.updateUniforms();
 
     this._onMultiplaneMoveCallback && this._onMultiplaneMoveCallback( this._multiplaneContainer.position );
 
@@ -5255,15 +5280,14 @@ class QuadScene{
 
     //this._testAnnotation();
 
-    //this._animate();
+    this._animate();
 
-
-    // To prevent GL rendering issue (lack of texture updates)
-    // we force a refresh about 5 times per sec
     setInterval(function(){
-      that._render();
-    }, 200);
-
+      if(that._ready){
+        that._planeManager.updateUniforms();
+      }
+    }, 500);
+    
   }
 
 
@@ -5454,6 +5478,7 @@ class QuadScene{
   * To feed the animation feature built in WebGL.
   */
   _animate(){
+
     this._render();
 
     if(this._stats){
@@ -5477,12 +5502,14 @@ class QuadScene{
 
     // TODO: make somethink better for refresh once per sec!
     if(this._ready){
-      this._updateAllPlanesShaderUniforms();
+      //this._planeManager.updateUniforms();
 
       // refresh each view
       this._quadViews.forEach(function(view){
         view.renderView();
       });
+
+
     }
 
   }
@@ -5540,6 +5567,12 @@ class QuadScene{
     // the config file was succesfully loaded
     this._levelManager.loadConfig(config);
 
+    // when tiles are all loaded, we refresh the textures
+    this._levelManager.onAllChunksLoaded( function(){
+      console.log(">> All required chunks are loaded");
+      that._planeManager.updateUniforms();
+    });
+
     this._levelManager.onReady(function(){
       var boxSize = that._levelManager.getBoundingBox();
 
@@ -5574,6 +5607,9 @@ class QuadScene{
       }
     });
 
+
+
+
   }
 
 
@@ -5603,15 +5639,6 @@ class QuadScene{
     if(this._onUpdateViewCallback){
       this._onUpdateViewCallback( this.getMultiplaneContainerInfo() );
     }
-  }
-
-
-
-  /**
-  * Updates the uniforms to send to the shader of the plane. Will trigger chunk loading for those which are not already in memory.
-  */
-  _updateAllPlanesShaderUniforms(){
-    this._planeManager.updateUniforms();
   }
 
 
@@ -5698,8 +5725,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
-
-      that._render();
+      that._planeManager.updateUniforms();
+      //that._render();
 
     });
 
@@ -5718,8 +5745,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      that._planeManager.updateUniforms();
 
-      that._render();
     });
 
     // callback def: transverse rotation (using T key)
@@ -5743,8 +5770,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      that._planeManager.updateUniforms();
 
-      that._render();
     });
 
     // callback def: arrow down
@@ -5764,8 +5791,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      that._planeManager.updateUniforms();
 
-      that._render();
     });
 
     // callback def: arrow up
@@ -5785,15 +5812,13 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      that._planeManager.updateUniforms();
 
-      that._render();
     });
 
     this._quadViewInteraction.onDonePlaying(function(){
       that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
       that._onUpdateViewCallback && that._onUpdateViewCallback( that.getMultiplaneContainerInfo() );
-
-      that._render();
     });
 
   }

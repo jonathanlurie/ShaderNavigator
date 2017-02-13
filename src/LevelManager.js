@@ -39,6 +39,7 @@ class LevelManager{
     this._levelsInfo = null;
 
     this._onChunksLoadedCallback = null;
+    this._onAllChunksLoadedCallback = null;
   }
 
 
@@ -154,9 +155,14 @@ class LevelManager{
       datatype
     );
 
-    // dealing with some nested callback
+    // dealing with some nested callback (new chunk is loaded)
     if( this._onChunksLoadedCallback ){
       chunkCollection.onChunkLoaded(this._onChunksLoadedCallback);
+    }
+
+    // dealing with some nested callback (all chunks are loaded)
+    if( this._onAllChunksLoadedCallback ){
+      chunkCollection.onAllChunksLoaded(this._onAllChunksLoadedCallback);
     }
 
     this._chunkCollections.push( chunkCollection );
@@ -167,6 +173,10 @@ class LevelManager{
     this._onChunksLoadedCallback = cb;
   }
 
+
+  onAllChunksLoaded( cb ){
+    this._onAllChunksLoadedCallback = cb;
+  }
 
   /**
   * Change the level of resolution. Boundaries and "integrity" are checked.

@@ -302,7 +302,7 @@ class PlaneManager{
     var normalPlane = this.getWorldVectorN(planeIndex);
     this._multiplaneContainer.rotateOnAxis ( normalPlane, rad );
 
-    this.updateUniforms();
+    //this.updateUniforms();
 
     this._onMultiplaneRotateCallback && this._onMultiplaneRotateCallback();
   }
@@ -381,7 +381,7 @@ class PlaneManager{
     this._multiplaneContainer.translateOnAxis( uVector, uDistance );
     this._multiplaneContainer.translateOnAxis( vVector, vDistance );
 
-    this.updateUniforms();
+    //this.updateUniforms();
 
     this._onMultiplaneMoveCallback && this._onMultiplaneMoveCallback( this._multiplaneContainer.position );
 

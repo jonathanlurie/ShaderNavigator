@@ -162,6 +162,8 @@ THREE.TrackballControls = function ( object, domElement ) {
 
 			if ( angle ) {
 
+        //console.log(angle);
+
 				_eye.copy( _this.object.position ).sub( _this.target );
 
 				eyeDirection.copy( _eye ).normalize();

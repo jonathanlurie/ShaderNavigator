@@ -125,15 +125,14 @@ class QuadScene{
 
     //this._testAnnotation();
 
-    //this._animate();
+    this._animate();
 
-
-    // To prevent GL rendering issue (lack of texture updates)
-    // we force a refresh about 5 times per sec
     setInterval(function(){
-      that._render();
-    }, 200);
-
+      if(that._ready){
+        that._planeManager.updateUniforms();
+      }
+    }, 500);
+    
   }
 
 
@@ -324,6 +323,7 @@ class QuadScene{
   * To feed the animation feature built in WebGL.
   */
   _animate(){
+
     this._render();
 
     if(this._stats){
@@ -347,12 +347,14 @@ class QuadScene{
 
     // TODO: make somethink better for refresh once per sec!
     if(this._ready){
-      this._updateAllPlanesShaderUniforms();
+      //this._planeManager.updateUniforms();
 
       // refresh each view
       this._quadViews.forEach(function(view){
         view.renderView();
       });
+
+
     }
 
   }
@@ -410,6 +412,12 @@ class QuadScene{
     // the config file was succesfully loaded
     this._levelManager.loadConfig(config);
 
+    // when tiles are all loaded, we refresh the textures
+    this._levelManager.onAllChunksLoaded( function(){
+      console.log(">> All required chunks are loaded");
+      that._planeManager.updateUniforms();
+    });
+
     this._levelManager.onReady(function(){
       var boxSize = that._levelManager.getBoundingBox();
 
@@ -444,6 +452,9 @@ class QuadScene{
       }
     });
 
+
+
+
   }
 
 
@@ -473,15 +484,6 @@ class QuadScene{
     if(this._onUpdateViewCallback){
       this._onUpdateViewCallback( this.getMultiplaneContainerInfo() );
     }
-  }
-
-
-
-  /**
-  * Updates the uniforms to send to the shader of the plane. Will trigger chunk loading for those which are not already in memory.
-  */
-  _updateAllPlanesShaderUniforms(){
-    this._planeManager.updateUniforms();
   }
 
 
@@ -568,8 +570,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
-
-      that._render();
+      that._planeManager.updateUniforms();
+      //that._render();
 
     });
 
@@ -588,8 +590,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      that._planeManager.updateUniforms();
 
-      that._render();
     });
 
     // callback def: transverse rotation (using T key)
@@ -613,8 +615,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      that._planeManager.updateUniforms();
 
-      that._render();
     });
 
     // callback def: arrow down
@@ -634,8 +636,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      that._planeManager.updateUniforms();
 
-      that._render();
     });
 
     // callback def: arrow up
@@ -655,15 +657,13 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      that._planeManager.updateUniforms();
 
-      that._render();
     });
 
     this._quadViewInteraction.onDonePlaying(function(){
       that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
       that._onUpdateViewCallback && that._onUpdateViewCallback( that.getMultiplaneContainerInfo() );
-
-      that._render();
     });
 
   }
