@@ -162,7 +162,7 @@ class QuadView{
       up: [ -1, 0, 0 ]
     };
     this._viewName = "top_left";
-    this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
+    this._backgroundColor = new THREE.Color().setRGB( 0, 1, 0 );
   }
 
 
@@ -179,7 +179,7 @@ class QuadView{
       up: [ 0, -1, 0 ]
     };
     this._viewName = "top_right";
-    this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
+    this._backgroundColor = new THREE.Color().setRGB( 1, 0, 0 );
   }
 
   /**
@@ -195,7 +195,7 @@ class QuadView{
       up: [ 0, 1, 0 ]
     };
     this._viewName = "bottom_left";
-    this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
+    this._backgroundColor = new THREE.Color().setRGB( 0, 0, 1 );
   }
 
 
@@ -1243,15 +1243,22 @@ class ChunkCollection{
   * out of bound or to complete the Sampler2D array for the fragment shader.
   */
   _createFakeTexture(){
-
+    /*
     this._fakeTextureData = {
       texture: new THREE.DataTexture(
-          new Uint8Array(1),
-          1,
-          1,
+          new Uint8Array(0),
+          0,
+          0,
           THREE.LuminanceFormat,  // format, luminance is for 1-band image
           THREE.UnsignedByteType  // type for our Uint8Array
         ),
+      origin: new THREE.Vector3(0, 0, 0),
+      validity: false
+    };
+    */
+
+    this._fakeTextureData = {
+      texture: null,
       origin: new THREE.Vector3(0, 0, 0),
       validity: false
     };
@@ -1370,6 +1377,135 @@ class ChunkCollection{
       nbValid: validChunksCounter
     };
 
+  }
+
+
+  getInvolvedTextureIndexes(cornerPositions){
+
+    var cornerOrigins = [
+      this.getIndex3DFromWorldPosition( [cornerPositions[0].x, cornerPositions[0].y, cornerPositions[0].z] ),
+      this.getIndex3DFromWorldPosition( [cornerPositions[1].x, cornerPositions[1].y, cornerPositions[1].z] ),
+      this.getIndex3DFromWorldPosition( [cornerPositions[2].x, cornerPositions[2].y, cornerPositions[2].z] ),
+      this.getIndex3DFromWorldPosition( [cornerPositions[3].x, cornerPositions[3].y, cornerPositions[3].z] )
+    ];
+
+    var min = [
+      Math.min(cornerOrigins[0][0], cornerOrigins[1][0], cornerOrigins[2][0], cornerOrigins[3][0]),
+      Math.min(cornerOrigins[0][1], cornerOrigins[1][1], cornerOrigins[2][1], cornerOrigins[3][1]),
+      Math.min(cornerOrigins[0][2], cornerOrigins[1][2], cornerOrigins[2][2], cornerOrigins[3][2])
+    ];
+
+    var max = [
+      Math.max(cornerOrigins[0][0], cornerOrigins[1][0], cornerOrigins[2][0], cornerOrigins[3][0]),
+      Math.max(cornerOrigins[0][1], cornerOrigins[1][1], cornerOrigins[2][1], cornerOrigins[3][1]),
+      Math.max(cornerOrigins[0][2], cornerOrigins[1][2], cornerOrigins[2][2], cornerOrigins[3][2])
+    ];
+
+    /*
+    //console.log(cornerPositions);
+    if(max[0] - min[0] > 1 || max[1] - min[1] > 1 || max[2] - min[2] > 1 ){
+      console.log(cornerOrigins);
+      console.log(min);
+      console.log(max);
+      console.log("----------------------------");
+    }
+    */
+
+    // build the chunk index of the 8 closest chunks from position
+    var indexes3D = [
+      [
+        min[0],
+        min[1],
+        min[2]
+      ],
+      [
+        min[0],
+        min[1],
+        max[2]
+      ],
+      [
+        min[0],
+        max[1],
+        min[2]
+      ],
+      [
+        min[0],
+        max[1],
+        max[2]
+      ],
+      [
+        max[0],
+        min[1],
+        min[2]
+      ],
+      [
+        max[0],
+        min[1],
+        max[2]
+      ],
+      [
+        max[0],
+        max[1],
+        min[2]
+      ],
+      [
+        max[0],
+        max[1],
+        max[2]
+      ]
+    ];
+
+    return indexes3D;
+
+  }
+
+
+  getInvolvedTextureData(cornerPositions){
+    var involvedIndexes = this.getInvolvedTextureIndexes(cornerPositions);
+
+    var involvedIndexes2 = this._get8ClosestToPositions(
+      [
+        (cornerPositions[0].x + cornerPositions[1].x + cornerPositions[2].x + cornerPositions[3].x)/4,
+        (cornerPositions[0].y + cornerPositions[1].y + cornerPositions[2].y + cornerPositions[3].y)/4,
+        (cornerPositions[0].z + cornerPositions[1].z + cornerPositions[2].z + cornerPositions[3].z)/4
+      ]
+    );
+
+    console.log(involvedIndexes);
+    console.log(involvedIndexes2);
+    console.log('------------------------------------');
+
+
+    var validChunksCounter = 0;
+    var validChunksTexture = [];
+    var notValidChunksTexture = [];
+    var validChunksOrigin = [];
+    var notValidChunksOrigin = [];
+    var that = this;
+
+    involvedIndexes.forEach(function(index){
+      var aTextureData = that.getTextureAtIndex3D(index);
+
+      // this texture data is valid
+      if(aTextureData.valid){
+        validChunksTexture.push( aTextureData.texture );
+        validChunksOrigin.push( aTextureData.origin );
+      }
+      // is not valid
+      else{
+        notValidChunksTexture.push( aTextureData.texture );
+        notValidChunksOrigin.push( aTextureData.origin );
+      }
+
+    });
+
+    validChunksCounter = validChunksTexture.length;
+
+    return {
+      textures: validChunksTexture.concat( notValidChunksTexture ),
+      origins: validChunksOrigin.concat( notValidChunksOrigin ),
+      nbValid: validChunksCounter
+    };
   }
 
 
@@ -1655,6 +1791,12 @@ class LevelManager{
     //console.log(this._resolutionLevel + " " + position[0] + " " + position[1] + " " +position[2]);
 
     return the8ClosestTextureData;
+  }
+
+
+  getInvolvedTextureDataByLvl(cornerPositions, lvl){
+    var involvedTextureData = this._chunkCollections[ lvl ].getInvolvedTextureData(cornerPositions);
+    return involvedTextureData;
   }
 
 
@@ -2556,7 +2698,7 @@ class ColorMapManager{
 
 } /* END class ColorMapManager */
 
-var texture3d_frag = "const int maxNbChunks = 8;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying vec4 worldCoord;\nvarying vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||\n            chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||\n            chunkPosition.z<0.0 || chunkPosition.z>=1.0 );\n}\nvoid getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){\n  float numberOfImagePerStripY = 64.0;\n  float numberOfPixelPerSide = 64.0;\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY;\n  float stripX = chunkPosition.x;\n  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  colorFromTexture = texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){\n  vec3 chunkSystemCoordinate = vec3((textureOrigin.x - world.x)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.z - world.z)*(-1.0)/chunkSize);\n  return chunkSystemCoordinate;\n}\nvoid main( void ) {\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(1.0, 0.0 , 0.0, 1.0);\n  vec3 chunkPosition;\n  bool hasColorFromChunk = false;\n  if(nbChunks >= 1){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);\n    if( isInsideChunk(chunkPosition) ){\n      getColorFrom3DTexture(textures[0], chunkPosition, color);\n      hasColorFromChunk = true;\n    }\n    if(nbChunks >= 2){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);\n      if( isInsideChunk(chunkPosition) ){\n        getColorFrom3DTexture(textures[1], chunkPosition, color);\n        hasColorFromChunk = true;\n      }\n      if(nbChunks >= 3){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);\n        if( isInsideChunk(chunkPosition) ){\n          getColorFrom3DTexture(textures[2], chunkPosition, color);\n          hasColorFromChunk = true;\n        }\n        if(nbChunks >= 4){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);\n          if( isInsideChunk(chunkPosition) ){\n            getColorFrom3DTexture(textures[3], chunkPosition, color);\n            hasColorFromChunk = true;\n          }\n          if(nbChunks >= 5){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);\n            if( isInsideChunk(chunkPosition) ){\n              getColorFrom3DTexture(textures[4], chunkPosition, color);\n              hasColorFromChunk = true;\n            }\n            if(nbChunks >= 6){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);\n              if( isInsideChunk(chunkPosition) ){\n                getColorFrom3DTexture(textures[5], chunkPosition, color);\n                hasColorFromChunk = true;\n              }\n              if(nbChunks >= 7){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);\n                if( isInsideChunk(chunkPosition) ){\n                  getColorFrom3DTexture(textures[6], chunkPosition, color);\n                  hasColorFromChunk = true;\n                }\n                if(nbChunks == 8){\n                  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);\n                  if( isInsideChunk(chunkPosition) ){\n                    getColorFrom3DTexture(textures[7], chunkPosition, color);\n                    hasColorFromChunk = true;\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(hasColorFromChunk){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a > 0.0){\n        colorFromColorMap.a = 0.85;\n        gl_FragColor = colorFromColorMap;\n      }else{\n        discard;\n      }\n    }else{\n      color.a = 0.85;\n      gl_FragColor = color;\n    }\n  }else{\n    gl_FragColor = vec4(1.0, 1.0 , 1.0, 0.0);\n  }\n}\n";
+var texture3d_frag = "const int maxNbChunks = 8;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying vec4 worldCoord;\nvarying vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||\n            chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||\n            chunkPosition.z<0.0 || chunkPosition.z>=1.0 );\n}\nvoid getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){\n  float numberOfImagePerStripY = 64.0;\n  float numberOfPixelPerSide = 64.0;\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY;\n  float stripX = chunkPosition.x;\n  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  colorFromTexture = texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){\n  vec3 chunkSystemCoordinate = vec3((world.x - textureOrigin.x)/chunkSize,\n                                    1.0 - (world.y - textureOrigin.y )/chunkSize,\n                                    1.0 - (world.z - textureOrigin.z )/chunkSize);\n  return chunkSystemCoordinate;\n}\nvoid main( void ) {\n  if(nbChunks == 0){\n    discard;\n    return;\n  }\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(1.0, 0.0 , 0.0, 1.0);\n  vec3 chunkPosition;\n  bool hasColorFromChunk = false;\n  if(nbChunks >= 1){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);\n    if( isInsideChunk(chunkPosition) ){\n      getColorFrom3DTexture(textures[0], chunkPosition, color);\n      hasColorFromChunk = true;\n    } else if(nbChunks >= 2){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);\n      if( isInsideChunk(chunkPosition) ){\n        getColorFrom3DTexture(textures[1], chunkPosition, color);\n        hasColorFromChunk = true;\n      } else if(nbChunks >= 3){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);\n        if( isInsideChunk(chunkPosition) ){\n          getColorFrom3DTexture(textures[2], chunkPosition, color);\n          hasColorFromChunk = true;\n        } else if(nbChunks >= 4){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);\n          if( isInsideChunk(chunkPosition) ){\n            getColorFrom3DTexture(textures[3], chunkPosition, color);\n            hasColorFromChunk = true;\n          } else if(nbChunks >= 5){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);\n            if( isInsideChunk(chunkPosition) ){\n              getColorFrom3DTexture(textures[4], chunkPosition, color);\n              hasColorFromChunk = true;\n            } else if(nbChunks >= 6){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);\n              if( isInsideChunk(chunkPosition) ){\n                getColorFrom3DTexture(textures[5], chunkPosition, color);\n                hasColorFromChunk = true;\n              } else if(nbChunks >= 7){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);\n                if( isInsideChunk(chunkPosition) ){\n                  getColorFrom3DTexture(textures[6], chunkPosition, color);\n                  hasColorFromChunk = true;\n                } else if(nbChunks == 8){\n                  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);\n                  if( isInsideChunk(chunkPosition) ){\n                    getColorFrom3DTexture(textures[7], chunkPosition, color);\n                    hasColorFromChunk = true;\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(hasColorFromChunk){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a > 0.0){\n        gl_FragColor = colorFromColorMap;\n      }else{\n        discard;\n      }\n    }else{\n      gl_FragColor = color;\n    }\n  }else{\n    gl_FragColor = vec4(1.0, 1.0 , 1.0, 0.0);\n  }\n}\n";
 
 var texture3d_vert = "uniform float chunkSize;\nuniform sampler2D colorMap;\nvarying vec2 vUv;\nvarying vec4 worldCoord;\nvoid main()\n{\n  vUv = uv;\n  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );\n  gl_Position = projectionMatrix * mvPosition;\n  worldCoord = modelMatrix * vec4( position, 1.0 );\n}\n";
 
@@ -2583,20 +2725,27 @@ class ProjectionPlane{
     this._plane = new THREE.Object3D();
     this._plane.name = "projection plane";
 
-    //this._subPlaneSize = chunkSize / 2; // ORIG
-    //this._subPlaneSize = chunkSize * 0.7; // OPTIM
     this._subPlaneSize = chunkSize / Math.sqrt(2);
 
-    // list of subplanes
-    this._subPlanes = [];
+    // relative position of each corner each subplane
+    this._subPlaneCorners = [
+      new THREE.Vector3(-1 * this._subPlaneSize/2, this._subPlaneSize/2, 0),  // NW
+      new THREE.Vector3(this._subPlaneSize/2, this._subPlaneSize/2, 0),  // NE
+      new THREE.Vector3(-1 * this._subPlaneSize/2, -1 * this._subPlaneSize/2, 0),  // SW
+      new THREE.Vector3(-1 * this._subPlaneSize/2, -1 * this._subPlaneSize/2, 0),  // SE
+    ];
+
+    console.log(this._subPlaneCorners);
+
 
     // one shader material per sub-plane
     this._shaderMaterials = [];
 
     // number of rows and cols of sub-planes to compose the _plane
 
-    this._subPlaneDim = {row: 7, col: 15}; // OPTIM
-    //this._subPlaneDim = {row: 8, col: 17}; // TEST
+    //this._subPlaneDim = {row: 7, col: 15}; // OPTIM
+    //this._subPlaneDim = {row: 10, col: 20}; // TEST
+    this._subPlaneDim = {row: 6, col: 13}; // TEST
 
     // to be aggregated
     this._colormapManager = colormapManager;
@@ -2607,6 +2756,8 @@ class ProjectionPlane{
     this._resolutionLevel = 0;
 
     this._buildSubPlanes();
+
+
   }
 
 
@@ -2680,13 +2831,18 @@ class ProjectionPlane{
         var subPlaneMaterial = subPlaneMaterial_original.clone();
         var mesh = new THREE.Mesh( subPlaneGeometry, subPlaneMaterial );
 
-        mesh.position.set(-this._subPlaneDim.col*this._subPlaneSize/2 + i*this._subPlaneSize + this._subPlaneSize/2, -this._subPlaneDim.row*this._subPlaneSize/2 + j*this._subPlaneSize + this._subPlaneSize/2, 0.0);
+        mesh.position.set(
+          this._subPlaneSize * (-0.5*this._subPlaneDim.col + i + 0.5),
+          this._subPlaneSize * (-0.5*this._subPlaneDim.row + j + 0.5),
+          0.0
+        );
 
         this._plane.add( mesh );
-        this._subPlanes.push( mesh );
         this._shaderMaterials.push( subPlaneMaterial );
       }
     }
+
+    console.log(this._plane.children[10]);
 
   }
 
@@ -2704,23 +2860,23 @@ class ProjectionPlane{
   * Debugging. Chanfe the color of the mesh of the plane, bit first, the plane material has to be set as a mesh.
   */
   setMeshColor(c){
-    this._subPlanes[0].material.color = c;
+    this._plane.children[0].material.color = c;
   }
 
 
   /**
   * fetch each texture info, build a uniform and
   */
-  updateUniforms(){
+  updateUniforms_REGULAR8(){
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     var textureData = 0;
 
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
-      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
-      //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
+      var center = this._plane.children[i].localToWorld(new THREE.Vector3(0, 0, 0));
 
-      //textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
+
+
       textureData = this._levelManager.get8ClosestTextureDataByLvl(
         [center.x, center.y, center.z],
         this._resolutionLevel
@@ -2732,11 +2888,45 @@ class ProjectionPlane{
   }
 
 
+  /**
+  * Like updateUniforms but instead of using the 8 closest, it uses only the ones
+  * that are involved.
+  */
+  updateUniforms(){
+    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+    var textureData = 0;
+
+    //console.log(this._subPlaneCorners);
+
+    for(var i=0; i<nbSubPlanes; i++){
+      // corners of the sub-plane in world coordinates
+      var corners = [
+        this._plane.children[i].localToWorld( this._subPlaneCorners[0].clone() ), // NW
+        this._plane.children[i].localToWorld( this._subPlaneCorners[1].clone() ), // NE
+        this._plane.children[i].localToWorld( this._subPlaneCorners[2].clone() ), // SW
+        this._plane.children[i].localToWorld( this._subPlaneCorners[3].clone() )  // SE
+      ];
+
+      //console.log(corners);
+
+      textureData = this._levelManager.getInvolvedTextureDataByLvl(
+        corners,
+        this._resolutionLevel
+      );
+
+
+
+      this._updateSubPlaneUniform(i, textureData);
+    }
+
+  }
+
+
   printSubPlaneCenterWorld(){
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
-      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
+      var center = this._plane.children[i].localToWorld(new THREE.Vector3(0, 0, 0));
     }
   }
 
@@ -2748,24 +2938,45 @@ class ProjectionPlane{
   * @param {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
   */
   _updateSubPlaneUniform(i, textureData){
-    //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
-    var chunkSizeWC = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
-
     var uniforms = this._shaderMaterials[i].uniforms;
-    uniforms.nbChunks.value = textureData.nbValid;
-    uniforms.textures.value = textureData.textures;
-    uniforms.textureOrigins.value = textureData.origins;
-    uniforms.chunkSize.value = chunkSizeWC;
+
+    // update colormap no  matter what
     uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
     uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
 
+    var mustUpdate = true;
+
+    /*
+    console.log( uniforms.textures.value );
+    console.log( textureData.nbValid );
+    console.log("---------------------------------");
+    */
+
+    for(i=0; i<textureData.nbValid; i++){
+      if(!textureData.textures[i]){
+        mustUpdate = false;
+        break;
+      }
+    }
+
+    if( mustUpdate ){
+      //console.log("UP");
+      var chunkSizeWC = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
+      uniforms.nbChunks.value = textureData.nbValid;
+      uniforms.textures.value = textureData.textures;
+      uniforms.textureOrigins.value = textureData.origins;
+      uniforms.chunkSize.value = chunkSizeWC;
+    }
+
+    /*
+    // this does not change a damn thing
     uniforms.nbChunks.needsUpdate = true;
     uniforms.textures.needsUpdate = true;
     uniforms.textureOrigins.needsUpdate = true;
     uniforms.chunkSize.needsUpdate = true;
     uniforms.useColorMap.needsUpdate = true;
     uniforms.colorMap.needsUpdate = true;
-
+    */
   }
 
 
@@ -2854,7 +3065,7 @@ class ProjectionPlane{
   * Enable a given layer in the visibility mask, so that it's visible by a camera with the same layer activated.
   */
   enableLayer( l ){
-    this._subPlanes.forEach(function(sp){
+    this._plane.children.forEach(function(sp){
       sp.layers.enable(l);
     });
   }
@@ -2864,7 +3075,7 @@ class ProjectionPlane{
   * Disable a given layer in the visibility mask, so that it's not visible by a camera with a different layer activated.
   */
   disableLayer( l ){
-    this._subPlanes.forEach(function(sp){
+    this._plane.children.forEach(function(sp){
       sp.layers.disable(l);
     });
   }
@@ -3970,9 +4181,9 @@ class GuiController{
     this._mainPanel = QuickSettings.create(panelSpace, 0, document.title);
     this._initMainPanel();
 
-    this._annotationPanel = QuickSettings.create(panelWidth + panelSpace*2 , 0, "Annotations");
-    this._initAnnotationPanel();
-    this._initAnnotationPanelCallback();
+    //this._annotationPanel = QuickSettings.create(panelWidth + panelSpace*2 , 0, "Annotations");
+    //this._initAnnotationPanel();
+    //this._initAnnotationPanelCallback();
   }
 
 
@@ -5282,12 +5493,24 @@ class QuadScene{
 
     this._animate();
 
+    this._planeWasMoved = true;
+
     setInterval(function(){
       if(that._ready){
         that._planeManager.updateUniforms();
       }
     }, 500);
-    
+
+    /*
+    setInterval(function(){
+      if( that._planeWasMoved && that._ready){
+        that._planeManager.updateUniforms();
+        that._planeWasMoved = false;
+      }
+    }, 30);
+    */
+
+
   }
 
 
@@ -5332,6 +5555,8 @@ class QuadScene{
     // the quadviewinteraction instance deals with mouse things
     this._quadViewInteraction = new QuadViewInteraction( this._quadViews, DomContainer);
     this._quadViewInteraction.setMultiplaneContainer( this._planeManager.getMultiplaneContainer() );
+
+    console.log(this._quadViews);
 
     this._quadViewInteraction.onClickPlane(
       "perspective",
@@ -5485,11 +5710,16 @@ class QuadScene{
       this._stats.update();
     }
 
-    // call a built-in webGL method for annimation
-    requestAnimationFrame( this._animate.bind(this) );
+    if( this._planeWasMoved && this._ready){
+      this._planeManager.updateUniforms();
+      this._planeWasMoved = false;
+    }
 
     // updating the control is necessary in the case of a TrackballControls
     this._quadViews[3].updateControl();
+
+    // call a built-in webGL method for annimation
+    requestAnimationFrame( this._animate.bind(this) );
   }
 
 
@@ -5745,14 +5975,14 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
-      that._planeManager.updateUniforms();
+      //that._planeManager.updateUniforms();
+      that._planeWasMoved = true;
 
     });
 
     // callback def: transverse rotation (using T key)
     this._quadViewInteraction.onGrabViewTransverseRotate( function(distance, viewIndex){
-      //var factor = Math.pow(2, that._resolutionLevel) / 10;
-      var factor =  that._resolutionLevel / 2;
+      var factor =  that._resolutionLevel / 4;
 
       switch (viewIndex) {
         case 0:
@@ -5770,7 +6000,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
-      that._planeManager.updateUniforms();
+      //that._planeManager.updateUniforms();
+      that._planeWasMoved = true;
 
     });
 
@@ -5791,7 +6022,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
-      that._planeManager.updateUniforms();
+      //that._planeManager.updateUniforms();
+      that._planeWasMoved = true;
 
     });
 
@@ -5812,7 +6044,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
-      that._planeManager.updateUniforms();
+      //that._planeManager.updateUniforms();
+      that._planeWasMoved = true;
 
     });
 

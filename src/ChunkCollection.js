@@ -242,15 +242,22 @@ class ChunkCollection{
   * out of bound or to complete the Sampler2D array for the fragment shader.
   */
   _createFakeTexture(){
-
+    /*
     this._fakeTextureData = {
       texture: new THREE.DataTexture(
-          new Uint8Array(1),
-          1,
-          1,
+          new Uint8Array(0),
+          0,
+          0,
           THREE.LuminanceFormat,  // format, luminance is for 1-band image
           THREE.UnsignedByteType  // type for our Uint8Array
         ),
+      origin: new THREE.Vector3(0, 0, 0),
+      validity: false
+    };
+    */
+
+    this._fakeTextureData = {
+      texture: null,
       origin: new THREE.Vector3(0, 0, 0),
       validity: false
     };
@@ -369,6 +376,135 @@ class ChunkCollection{
       nbValid: validChunksCounter
     };
 
+  }
+
+
+  getInvolvedTextureIndexes(cornerPositions){
+
+    var cornerOrigins = [
+      this.getIndex3DFromWorldPosition( [cornerPositions[0].x, cornerPositions[0].y, cornerPositions[0].z] ),
+      this.getIndex3DFromWorldPosition( [cornerPositions[1].x, cornerPositions[1].y, cornerPositions[1].z] ),
+      this.getIndex3DFromWorldPosition( [cornerPositions[2].x, cornerPositions[2].y, cornerPositions[2].z] ),
+      this.getIndex3DFromWorldPosition( [cornerPositions[3].x, cornerPositions[3].y, cornerPositions[3].z] )
+    ];
+
+    var min = [
+      Math.min(cornerOrigins[0][0], cornerOrigins[1][0], cornerOrigins[2][0], cornerOrigins[3][0]),
+      Math.min(cornerOrigins[0][1], cornerOrigins[1][1], cornerOrigins[2][1], cornerOrigins[3][1]),
+      Math.min(cornerOrigins[0][2], cornerOrigins[1][2], cornerOrigins[2][2], cornerOrigins[3][2])
+    ];
+
+    var max = [
+      Math.max(cornerOrigins[0][0], cornerOrigins[1][0], cornerOrigins[2][0], cornerOrigins[3][0]),
+      Math.max(cornerOrigins[0][1], cornerOrigins[1][1], cornerOrigins[2][1], cornerOrigins[3][1]),
+      Math.max(cornerOrigins[0][2], cornerOrigins[1][2], cornerOrigins[2][2], cornerOrigins[3][2])
+    ];
+
+    /*
+    //console.log(cornerPositions);
+    if(max[0] - min[0] > 1 || max[1] - min[1] > 1 || max[2] - min[2] > 1 ){
+      console.log(cornerOrigins);
+      console.log(min);
+      console.log(max);
+      console.log("----------------------------");
+    }
+    */
+
+    // build the chunk index of the 8 closest chunks from position
+    var indexes3D = [
+      [
+        min[0],
+        min[1],
+        min[2]
+      ],
+      [
+        min[0],
+        min[1],
+        max[2]
+      ],
+      [
+        min[0],
+        max[1],
+        min[2]
+      ],
+      [
+        min[0],
+        max[1],
+        max[2]
+      ],
+      [
+        max[0],
+        min[1],
+        min[2]
+      ],
+      [
+        max[0],
+        min[1],
+        max[2]
+      ],
+      [
+        max[0],
+        max[1],
+        min[2]
+      ],
+      [
+        max[0],
+        max[1],
+        max[2]
+      ]
+    ]
+
+    return indexes3D;
+
+  }
+
+
+  getInvolvedTextureData(cornerPositions){
+    var involvedIndexes = this.getInvolvedTextureIndexes(cornerPositions);
+
+    var involvedIndexes2 = this._get8ClosestToPositions(
+      [
+        (cornerPositions[0].x + cornerPositions[1].x + cornerPositions[2].x + cornerPositions[3].x)/4,
+        (cornerPositions[0].y + cornerPositions[1].y + cornerPositions[2].y + cornerPositions[3].y)/4,
+        (cornerPositions[0].z + cornerPositions[1].z + cornerPositions[2].z + cornerPositions[3].z)/4
+      ]
+    );
+
+    console.log(involvedIndexes);
+    console.log(involvedIndexes2);
+    console.log('------------------------------------');
+
+
+    var validChunksCounter = 0;
+    var validChunksTexture = [];
+    var notValidChunksTexture = [];
+    var validChunksOrigin = [];
+    var notValidChunksOrigin = [];
+    var that = this;
+
+    involvedIndexes.forEach(function(index){
+      var aTextureData = that.getTextureAtIndex3D(index);
+
+      // this texture data is valid
+      if(aTextureData.valid){
+        validChunksTexture.push( aTextureData.texture );
+        validChunksOrigin.push( aTextureData.origin );
+      }
+      // is not valid
+      else{
+        notValidChunksTexture.push( aTextureData.texture );
+        notValidChunksOrigin.push( aTextureData.origin );
+      }
+
+    });
+
+    validChunksCounter = validChunksTexture.length;
+
+    return {
+      textures: validChunksTexture.concat( notValidChunksTexture ),
+      origins: validChunksOrigin.concat( notValidChunksOrigin ),
+      nbValid: validChunksCounter
+    };
   }
 
 

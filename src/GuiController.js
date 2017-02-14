@@ -31,9 +31,9 @@ class GuiController{
     this._mainPanel = QuickSettings.create(panelSpace, 0, document.title);
     this._initMainPanel();
 
-    this._annotationPanel = QuickSettings.create(panelWidth + panelSpace*2 , 0, "Annotations");
-    this._initAnnotationPanel();
-    this._initAnnotationPanelCallback();
+    //this._annotationPanel = QuickSettings.create(panelWidth + panelSpace*2 , 0, "Annotations");
+    //this._initAnnotationPanel();
+    //this._initAnnotationPanelCallback();
   }
 
 

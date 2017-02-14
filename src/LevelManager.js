@@ -242,6 +242,12 @@ class LevelManager{
   }
 
 
+  getInvolvedTextureDataByLvl(cornerPositions, lvl){
+    var involvedTextureData = this._chunkCollections[ lvl ].getInvolvedTextureData(cornerPositions);
+    return involvedTextureData;
+  }
+
+
   /**
   * Reads the chunk size from the config data. No matter the level, the chunk size should be the same, this is why we just take the first one.
   * @param {Object} levels - config data

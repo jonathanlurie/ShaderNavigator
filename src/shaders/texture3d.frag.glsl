@@ -1,12 +1,13 @@
+// a max number we allow
 const int maxNbChunks = 8;
+
+// refreshed by main program
 uniform int nbChunks;
 uniform sampler2D textures[maxNbChunks];
 uniform vec3 textureOrigins[maxNbChunks];
 uniform sampler2D colorMap;
 uniform bool useColorMap;
-
 uniform float chunkSize;
-
 
 varying vec4 worldCoord;
 varying vec2 vUv;
@@ -53,8 +54,6 @@ void getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4
   vec2 posWithinStrip = vec2(stripX, stripY);
   colorFromTexture = texture2D(texture, posWithinStrip);
 
-  //colorFromTexture = vec4(colorFromTexture.r, colorFromTexture.g, colorFromTexture.b, 0.5);
-
 }
 
 
@@ -66,22 +65,22 @@ void getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4
 */
 vec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){
 
-  vec3 chunkSystemCoordinate = vec3(/*1.0 - */(textureOrigin.x - world.x)*(-1.0)/chunkSize,
-                                    1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize,
-                                    1.0 - (textureOrigin.z - world.z)*(-1.0)/chunkSize);
+  vec3 chunkSystemCoordinate = vec3((world.x - textureOrigin.x)/chunkSize,
+                                    1.0 - (world.y - textureOrigin.y )/chunkSize,
+                                    1.0 - (world.z - textureOrigin.z )/chunkSize);
 
-
-  /*
-  vec3 chunkSystemCoordinate = vec3( (textureOrigin.x - world.x)*(-1.0)/chunkSize,
-                                    1.0 - (textureOrigin.z - world.z)*(1.0)/chunkSize,
-                                    1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize);
-  */
   return chunkSystemCoordinate;
 }
 
 
 
 void main( void ) {
+
+  // if out, just exit
+  if(nbChunks == 0){
+    discard;
+    return;
+  }
 
   // the position within the shader
   vec2 shaderPos = vUv;
@@ -93,62 +92,52 @@ void main( void ) {
 
   bool hasColorFromChunk = false;
 
+  /*
+  Unfortunatelly, WebGL 1.0 does not allow not-const array index, so we have to
+  nest ifs until we find the chunk the current texel is in.
+  */
+
   if(nbChunks >= 1){
     chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);
     if( isInsideChunk(chunkPosition) ){
       getColorFrom3DTexture(textures[0], chunkPosition, color);
       hasColorFromChunk = true;
-    }
-
-    if(nbChunks >= 2){
+    } else if(nbChunks >= 2){
       chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);
       if( isInsideChunk(chunkPosition) ){
         getColorFrom3DTexture(textures[1], chunkPosition, color);
         hasColorFromChunk = true;
-      }
-
-      if(nbChunks >= 3){
+      } else if(nbChunks >= 3){
         chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);
         if( isInsideChunk(chunkPosition) ){
           getColorFrom3DTexture(textures[2], chunkPosition, color);
           hasColorFromChunk = true;
-        }
-
-        if(nbChunks >= 4){
+        } else if(nbChunks >= 4){
           chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);
           if( isInsideChunk(chunkPosition) ){
             getColorFrom3DTexture(textures[3], chunkPosition, color);
             hasColorFromChunk = true;
-          }
-
-          if(nbChunks >= 5){
+          } else if(nbChunks >= 5){
             chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);
             if( isInsideChunk(chunkPosition) ){
               getColorFrom3DTexture(textures[4], chunkPosition, color);
               hasColorFromChunk = true;
-            }
-
-            if(nbChunks >= 6){
+            } else if(nbChunks >= 6){
               chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);
               if( isInsideChunk(chunkPosition) ){
                 getColorFrom3DTexture(textures[5], chunkPosition, color);
                 hasColorFromChunk = true;
-              }
-
-              if(nbChunks >= 7){
+              } else if(nbChunks >= 7){
                 chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);
                 if( isInsideChunk(chunkPosition) ){
                   getColorFrom3DTexture(textures[6], chunkPosition, color);
                   hasColorFromChunk = true;
-                }
-
-                if(nbChunks == 8){
+                } else if(nbChunks == 8){
                   chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);
                   if( isInsideChunk(chunkPosition) ){
                     getColorFrom3DTexture(textures[7], chunkPosition, color);
                     hasColorFromChunk = true;
                   }
-
                 }
               }
             }
@@ -168,7 +157,7 @@ void main( void ) {
 
       // the color from the colormap is not (fully) transparent
       if(colorFromColorMap.a > 0.0){
-        colorFromColorMap.a = 0.85;
+        //colorFromColorMap.a = 0.85;
         gl_FragColor = colorFromColorMap;
 
       // the color from the colormap is fully transparent, simply not display it
@@ -178,8 +167,9 @@ void main( void ) {
 
     // we are not using a colormap
     }else{
-      color.a = 0.85;
+      //color.a = 0.85;
       gl_FragColor = color;
+
     }
 
 

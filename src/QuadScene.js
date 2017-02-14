@@ -127,12 +127,24 @@ class QuadScene{
 
     this._animate();
 
+    this._planeWasMoved = true;
+
     setInterval(function(){
       if(that._ready){
         that._planeManager.updateUniforms();
       }
     }, 500);
-    
+
+    /*
+    setInterval(function(){
+      if( that._planeWasMoved && that._ready){
+        that._planeManager.updateUniforms();
+        that._planeWasMoved = false;
+      }
+    }, 30);
+    */
+
+
   }
 
 
@@ -177,6 +189,8 @@ class QuadScene{
     // the quadviewinteraction instance deals with mouse things
     this._quadViewInteraction = new QuadViewInteraction( this._quadViews, DomContainer);
     this._quadViewInteraction.setMultiplaneContainer( this._planeManager.getMultiplaneContainer() );
+
+    console.log(this._quadViews);
 
     this._quadViewInteraction.onClickPlane(
       "perspective",
@@ -330,11 +344,16 @@ class QuadScene{
       this._stats.update();
     }
 
-    // call a built-in webGL method for annimation
-    requestAnimationFrame( this._animate.bind(this) );
+    if( this._planeWasMoved && this._ready){
+      this._planeManager.updateUniforms();
+      this._planeWasMoved = false;
+    }
 
     // updating the control is necessary in the case of a TrackballControls
     this._quadViews[3].updateControl();
+
+    // call a built-in webGL method for annimation
+    requestAnimationFrame( this._animate.bind(this) );
   }
 
 
@@ -590,14 +609,14 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
-      that._planeManager.updateUniforms();
+      //that._planeManager.updateUniforms();
+      that._planeWasMoved = true;
 
     });
 
     // callback def: transverse rotation (using T key)
     this._quadViewInteraction.onGrabViewTransverseRotate( function(distance, viewIndex){
-      //var factor = Math.pow(2, that._resolutionLevel) / 10;
-      var factor =  that._resolutionLevel / 2;
+      var factor =  that._resolutionLevel / 4;
 
       switch (viewIndex) {
         case 0:
@@ -615,7 +634,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
-      that._planeManager.updateUniforms();
+      //that._planeManager.updateUniforms();
+      that._planeWasMoved = true;
 
     });
 
@@ -636,7 +656,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
-      that._planeManager.updateUniforms();
+      //that._planeManager.updateUniforms();
+      that._planeWasMoved = true;
 
     });
 
@@ -657,7 +678,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
-      that._planeManager.updateUniforms();
+      //that._planeManager.updateUniforms();
+      that._planeWasMoved = true;
 
     });
 
