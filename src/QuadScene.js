@@ -190,8 +190,6 @@ class QuadScene{
     this._quadViewInteraction = new QuadViewInteraction( this._quadViews, DomContainer);
     this._quadViewInteraction.setMultiplaneContainer( this._planeManager.getMultiplaneContainer() );
 
-    console.log(this._quadViews);
-
     this._quadViewInteraction.onClickPlane(
       "perspective",
 
@@ -199,7 +197,6 @@ class QuadScene{
         that.setMultiplanePosition( point.x, point.y, point.z);
       }
     )
-
 
   }
 
@@ -500,6 +497,14 @@ class QuadScene{
     // update the UI
     this._guiController.updateResolutionLevelUI( lvl );
 
+    //this.callOnUpdateViewCallback();
+    if(this._onUpdateViewCallback){
+      this._onUpdateViewCallback( this.getMultiplaneContainerInfo() );
+    }
+  }
+
+
+  callOnUpdateViewCallback(){
     if(this._onUpdateViewCallback){
       this._onUpdateViewCallback( this.getMultiplaneContainerInfo() );
     }

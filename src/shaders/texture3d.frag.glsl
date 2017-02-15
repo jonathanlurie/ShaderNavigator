@@ -1,3 +1,5 @@
+precision highp float;
+
 // a max number we allow
 const int maxNbChunks = 8;
 
@@ -9,8 +11,8 @@ uniform sampler2D colorMap;
 uniform bool useColorMap;
 uniform float chunkSize;
 
-varying vec4 worldCoord;
-varying vec2 vUv;
+varying highp vec4 worldCoord;
+varying highp vec2 vUv;
 
 bool isNan(float val)
 {
@@ -23,9 +25,17 @@ bool isNan(float val)
 */
 bool isInsideChunk(in vec3 chunkPosition){
   // maybe optimal to return
-  return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||
-            chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||
-            chunkPosition.z<0.0 || chunkPosition.z>=1.0 );
+  //return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||
+  //          chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||
+  //          chunkPosition.z<0.0 || chunkPosition.z>=1.0 );
+
+//  return  ( chunkPosition.x>=0.0 && chunkPosition.x<1.0 &&
+//            chunkPosition.y>=0.0 && chunkPosition.y<1.0 &&
+//            chunkPosition.z>=0.0 && chunkPosition.z<1.0 );
+
+  return  ( chunkPosition.x>=0.0 && chunkPosition.x<1.0 &&
+            chunkPosition.y>=0.0 && chunkPosition.y<1.0 &&
+            chunkPosition.z>=0.0 && chunkPosition.z<1.0 );
 }
 
 
@@ -46,10 +56,10 @@ void getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4
   float numberOfPixelPerSide = 64.0;
 
   // normalized starting point depending on the image index
-  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY;
+  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY ;
 
-  float stripX = chunkPosition.x;
-  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;
+  float stripX = chunkPosition.x;// + 1.0/64.0/2.0;
+  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;// + 1.0/4096.0/2.0;
 
   vec2 posWithinStrip = vec2(stripX, stripY);
   colorFromTexture = texture2D(texture, posWithinStrip);
@@ -64,6 +74,10 @@ void getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4
   Return a vec3 with xyz in [0.0, 1.0]
 */
 vec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){
+
+  //vec3 chunkSystemCoordinate = vec3((world.x - textureOrigin.x)/chunkSize,
+  //                                  1.0 - (world.y - textureOrigin.y )/chunkSize,
+  //                                  1.0 - (world.z - textureOrigin.z )/chunkSize);
 
   vec3 chunkSystemCoordinate = vec3((world.x - textureOrigin.x)/chunkSize,
                                     1.0 - (world.y - textureOrigin.y )/chunkSize,
@@ -84,6 +98,14 @@ void main( void ) {
 
   // the position within the shader
   vec2 shaderPos = vUv;
+
+  /*
+  // display the edges of subplanes
+  if(shaderPos.x < 0.02 || shaderPos.x > 0.98 || shaderPos.y < 0.02 || shaderPos.y > 0.98){
+    gl_FragColor  = vec4(0.0, 0.0 , 0.0, 1.0);
+    return;
+  }
+  */
 
   // default color when out
   vec4 color = vec4(1.0, 0.0 , 0.0, 1.0);
@@ -177,7 +199,7 @@ void main( void ) {
   }else{
     //discard;
     //gl_FragColor = vec4(1.0, 1.0 , 1.0, .5);
-    gl_FragColor = vec4(1.0, 1.0 , 1.0, 0.0);
+    gl_FragColor = vec4(1.0, 0.0 , 1.0, 1.0);
   }
 
 

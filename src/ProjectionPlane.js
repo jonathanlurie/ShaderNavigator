@@ -27,20 +27,18 @@ class ProjectionPlane{
       new THREE.Vector3(-1 * this._subPlaneSize/2, this._subPlaneSize/2, 0),  // NW
       new THREE.Vector3(this._subPlaneSize/2, this._subPlaneSize/2, 0),  // NE
       new THREE.Vector3(-1 * this._subPlaneSize/2, -1 * this._subPlaneSize/2, 0),  // SW
-      new THREE.Vector3(-1 * this._subPlaneSize/2, -1 * this._subPlaneSize/2, 0),  // SE
+      new THREE.Vector3( this._subPlaneSize/2, -1 * this._subPlaneSize/2, 0),  // SE
     ];
-
-    console.log(this._subPlaneCorners);
-
 
     // one shader material per sub-plane
     this._shaderMaterials = [];
 
     // number of rows and cols of sub-planes to compose the _plane
 
-    //this._subPlaneDim = {row: 7, col: 15}; // OPTIM
+    this._subPlaneDim = {row: 7, col: 15}; // OPTIM
     //this._subPlaneDim = {row: 10, col: 20}; // TEST
-    this._subPlaneDim = {row: 6, col: 13}; // TEST
+    //this._subPlaneDim = {row: 6, col: 13}; // TEST
+    //this._subPlaneDim = {row: 1, col: 1};
 
     // to be aggregated
     this._colormapManager = colormapManager;
@@ -137,8 +135,6 @@ class ProjectionPlane{
       }
     }
 
-    console.log(this._plane.children[10]);
-
   }
 
 
@@ -162,7 +158,7 @@ class ProjectionPlane{
   /**
   * fetch each texture info, build a uniform and
   */
-  updateUniforms_REGULAR8(){
+  updateUniforms_NEAREST8(){
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     var textureData = 0;
 

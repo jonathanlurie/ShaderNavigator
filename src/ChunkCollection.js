@@ -400,15 +400,6 @@ class ChunkCollection{
       Math.max(cornerOrigins[0][2], cornerOrigins[1][2], cornerOrigins[2][2], cornerOrigins[3][2])
     ];
 
-    /*
-    //console.log(cornerPositions);
-    if(max[0] - min[0] > 1 || max[1] - min[1] > 1 || max[2] - min[2] > 1 ){
-      console.log(cornerOrigins);
-      console.log(min);
-      console.log(max);
-      console.log("----------------------------");
-    }
-    */
 
     // build the chunk index of the 8 closest chunks from position
     var indexes3D = [
@@ -459,21 +450,17 @@ class ChunkCollection{
   }
 
 
+  _getKeyFromIndex3D( index3D ){
+    return "x" +  index3D[0] + "y" + index3D[1] + "z" + index3D[2];
+  }
+
+
   getInvolvedTextureData(cornerPositions){
+    var that = this;
     var involvedIndexes = this.getInvolvedTextureIndexes(cornerPositions);
 
-    var involvedIndexes2 = this._get8ClosestToPositions(
-      [
-        (cornerPositions[0].x + cornerPositions[1].x + cornerPositions[2].x + cornerPositions[3].x)/4,
-        (cornerPositions[0].y + cornerPositions[1].y + cornerPositions[2].y + cornerPositions[3].y)/4,
-        (cornerPositions[0].z + cornerPositions[1].z + cornerPositions[2].z + cornerPositions[3].z)/4
-      ]
-    );
 
-    console.log(involvedIndexes);
-    console.log(involvedIndexes2);
-    console.log('------------------------------------');
-
+    var loadedMaps = {};
 
     var validChunksCounter = 0;
     var validChunksTexture = [];
@@ -483,7 +470,16 @@ class ChunkCollection{
     var that = this;
 
     involvedIndexes.forEach(function(index){
-      var aTextureData = that.getTextureAtIndex3D(index);
+      var aTextureData = that._fakeTextureData;
+      var indexKey = that._getKeyFromIndex3D( index );
+
+      // never loaded before
+      if(! (indexKey in loadedMaps)){
+        loadedMaps[indexKey] = 1;
+
+        // load the texture , possibly retrieving a fake one (out)
+        aTextureData = that.getTextureAtIndex3D(index);
+      }
 
       // this texture data is valid
       if(aTextureData.valid){
@@ -500,11 +496,21 @@ class ChunkCollection{
 
     validChunksCounter = validChunksTexture.length;
 
+    /*
     return {
       textures: validChunksTexture.concat( notValidChunksTexture ),
       origins: validChunksOrigin.concat( notValidChunksOrigin ),
       nbValid: validChunksCounter
     };
+    */
+
+    var textureDatas = {
+      textures: validChunksTexture.concat( notValidChunksTexture ),
+      origins: validChunksOrigin.concat( notValidChunksOrigin ),
+      nbValid: validChunksCounter
+    };
+
+    return textureDatas;
   }
 
 
@@ -549,7 +555,6 @@ class ChunkCollection{
   * Called with no argument.
   */
   onAllChunksLoaded( cb ){
-    console.log('define');
     this._onAllChunksLoadedCallback = cb;
   }
 
