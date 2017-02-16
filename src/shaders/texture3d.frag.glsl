@@ -179,7 +179,7 @@ void main( void ) {
 
       // the color from the colormap is not (fully) transparent
       if(colorFromColorMap.a > 0.0){
-        //colorFromColorMap.a = 0.85;
+        colorFromColorMap.a = 0.85;
         gl_FragColor = colorFromColorMap;
 
       // the color from the colormap is fully transparent, simply not display it
@@ -189,7 +189,7 @@ void main( void ) {
 
     // we are not using a colormap
     }else{
-      //color.a = 0.85;
+      color.a = 0.85;
       gl_FragColor = color;
 
     }
@@ -197,9 +197,9 @@ void main( void ) {
 
   // outside the box
   }else{
-    //discard;
+    discard;
     //gl_FragColor = vec4(1.0, 1.0 , 1.0, .5);
-    gl_FragColor = vec4(1.0, 0.0 , 1.0, 1.0);
+    //gl_FragColor = vec4(1.0, 0.0 , 1.0, 1.0);
   }
 
 
