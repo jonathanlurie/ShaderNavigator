@@ -467,18 +467,49 @@ class ChunkCollection{
     console.log("cornerPositions");
     console.log(cornerPositions);
     */
+    this._sizeChunkWC
+    /*
+    var chunkEdgeCase = cornerPositions[0].x % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].x % this._sizeChunkWC < this._sizeChunkWC/10; ||
+        cornerPositions[0].y % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].y % this._sizeChunkWC < this._sizeChunkWC/10 ||
+        cornerPositions[0].z % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].z % this._sizeChunkWC < this._sizeChunkWC/10;
+*/
 
-    var chunkEdgeCase = cornerPositions[0].x % this._sizeChunkWC == 0 && cornerPositions[1].x % this._sizeChunkWC == 0 ||
-        cornerPositions[0].y % this._sizeChunkWC == 0 && cornerPositions[1].y % this._sizeChunkWC == 0 ||
-        cornerPositions[0].z % this._sizeChunkWC == 0 && cornerPositions[1].z % this._sizeChunkWC == 0;
+
+
+    /*
+    var chunkEdgeCase = cornerPositions[0].x == cornerPositions[1].x ||
+                        cornerPositions[0].y == cornerPositions[1].y ||
+                        cornerPositions[0].z == cornerPositions[1].z;
+    */
+
+    var chunkEdgeCaseX = cornerPositions[0].x == cornerPositions[1].x &&
+      (cornerPositions[0].x % this._sizeChunkWC < this._sizeChunkWC*0.1 ||   cornerPositions[0].x % this._sizeChunkWC > this._sizeChunkWC*0.9);
+
+    var chunkEdgeCaseY = cornerPositions[0].y == cornerPositions[1].y &&
+      (cornerPositions[0].y % this._sizeChunkWC < this._sizeChunkWC*0.1 ||   cornerPositions[0].y % this._sizeChunkWC > this._sizeChunkWC*0.9);
+
+    var chunkEdgeCaseZ = cornerPositions[0].z == cornerPositions[1].z &&
+      (cornerPositions[0].z % this._sizeChunkWC < this._sizeChunkWC*0.1 ||   cornerPositions[0].z % this._sizeChunkWC > this._sizeChunkWC*0.9);
+
+    var chunkEdgeCase = chunkEdgeCaseX || chunkEdgeCaseY || chunkEdgeCaseZ;
 
     if( chunkEdgeCase ){
-      //console.log(">> chunkEdgeCase!");
-      return this.get8ClosestTextureData( [
+      //console.log(">> NEAREST8");
+      //console.log(cornerPositions);
+      //console.log( Math.floor(Date.now()) );
+
+
+      var center = [
         (cornerPositions[0].x + cornerPositions[1].x + cornerPositions[2].x + cornerPositions[3].x) / 4,
         (cornerPositions[0].y + cornerPositions[1].y + cornerPositions[2].y + cornerPositions[3].y) / 4,
         (cornerPositions[0].z + cornerPositions[1].z + cornerPositions[2].z + cornerPositions[3].z) / 4
-      ] );
+      ];
+
+      return this.get8ClosestTextureData( center );
+    }else{
+      //console.log(">> INVOLVED");
+      //console.log(cornerPositions);
+      //console.log( Math.floor(Date.now()) );
     }
 
 

@@ -83,7 +83,7 @@ class GuiController{
         value = Math.floor( value );
         that._resolutionLevel = value;
         that._quadScene.setResolutionLevel( value );
-        
+
       }
     );
 
@@ -202,6 +202,7 @@ class GuiController{
     this._mainPanel.addDropDown("Colormap", this._colormapManager.getAvailableColormaps(),
       function( dropdownObj ){
         that._colormapManager.useColormap(dropdownObj.value);
+        that._quadScene.refreshUniforms();
       }
     );
 

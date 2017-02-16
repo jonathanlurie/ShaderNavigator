@@ -1,7 +1,7 @@
-precision highp float;
+//precision highp float;
 
-varying highp vec2 vUv;
-varying highp vec4 worldCoord;
+varying  vec2 vUv;
+varying  vec4 worldCoord;
 
 void main()
 {

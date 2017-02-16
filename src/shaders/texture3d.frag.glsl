@@ -1,4 +1,4 @@
-precision highp float;
+//precision highp float;
 
 // a max number we allow
 const int maxNbChunks = 8;
@@ -11,8 +11,8 @@ uniform sampler2D colorMap;
 uniform bool useColorMap;
 uniform float chunkSize;
 
-varying highp vec4 worldCoord;
-varying highp vec2 vUv;
+varying  vec4 worldCoord;
+varying  vec2 vUv;
 
 bool isNan(float val)
 {
@@ -197,9 +197,9 @@ void main( void ) {
 
   // outside the box
   }else{
-    discard;
+    //discard;
     //gl_FragColor = vec4(1.0, 1.0 , 1.0, .5);
-    //gl_FragColor = vec4(1.0, 0.0 , 1.0, 1.0);
+    gl_FragColor = vec4(1.0, 0.0 , 1.0, 1.0);
   }
 
 
