@@ -1,4 +1,7 @@
 # Shader Navigator
+
+[[DEMO](http://bigbrainviewer.acelab.ca)] using the [BigBrain](https://bigbrain.loris.ca/) data.  
+
 A work in progress to perform arbitrary slicing (aka. obliques) of large voxel dataset, using shaders on GPU, webGL, an octree data structure and few other things.
 
 ![capture](img/capture.png)
