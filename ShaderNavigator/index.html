@@ -100,6 +100,19 @@
         color: rgb(142, 225, 251);
       }
 
+
+      .logoCorner{
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 48px;
+        margin: 5px;
+      }
+
+      .logoCorner:hover{
+        filter: invert(100%);
+      }
+
 		</style>
 
 
@@ -131,6 +144,7 @@
       </p>
     </div>
 
+    <a href="https://github.com/jonathanlurie/ShaderNavigator" target="_blank"><img class="logoCorner" src="img/githubLogo.png"/></a>
 
 		<script src="js/three.js"></script>
     <script src="js/TrackballControls.js"></script>
@@ -139,8 +153,8 @@
     <script src="js/quicksettings.js"></script>
 
     <!-- importing the automatically build module -->
-    <script src="../build/shadernavigator/shadernavigator.js"></script>
-    <!--<script src="../build/shadernavigator/shadernavigator.min.js"></script>-->
+    <!--<script src="js/shadernavigator.js"></script>-->
+    <script src="js/shadernavigator.min.js"></script>
 
 		<script>
 

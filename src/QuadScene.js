@@ -127,13 +127,16 @@ class QuadScene{
 
     this._animate();
 
-    this._planeWasMoved = true;
+    this._planeWasMoved = 0;
 
+    /*
+    // refresh uniform every half sec
     setInterval(function(){
       if(that._ready){
         that._planeManager.updateUniforms();
       }
     }, 500);
+    */
 
     /*
     setInterval(function(){
@@ -195,6 +198,7 @@ class QuadScene{
 
       function( point ){
         that.setMultiplanePosition( point.x, point.y, point.z);
+        that.planeWasMoved();
       }
     )
 
@@ -208,6 +212,16 @@ class QuadScene{
   */
   getQuadViewInteraction(){
     return this._quadViewInteraction;
+  }
+
+
+  /**
+  * Refreshes a counter of frame to send uniforms.
+  * Usually, sending new uniforms only once is not enought to get them to GPU,
+  * so we have to do it n times.
+  */
+  planeWasMoved(){
+    this._planeWasMoved = 10;
   }
 
 
@@ -226,6 +240,11 @@ class QuadScene{
   setMultiplanePosition(x, y, z){
     this._planeManager.setMultiplanePosition( x, y, z);
     this._guiController.updateMultiplaneUI( this.getMultiplaneContainerInfo() );
+
+    // refresh the uniforms
+    this.planeWasMoved();
+
+    this.callOnUpdateViewCallback();
   }
 
 
@@ -236,7 +255,13 @@ class QuadScene{
   setMultiplaneRotation(x, y, z){
     this._planeManager.setMultiplaneRotation( x, y, z);
     this._guiController.updateMultiplaneUI( this.getMultiplaneContainerInfo() );
+
+    // refresh the uniforms
+    this.planeWasMoved();
+
+    this.callOnUpdateViewCallback();
   }
+
 
   /**
   * [PRIVATE]
@@ -342,8 +367,9 @@ class QuadScene{
     }
 
     if( this._planeWasMoved && this._ready){
+    //if(this._ready){
       this._planeManager.updateUniforms();
-      this._planeWasMoved = false;
+      this._planeWasMoved --;
     }
 
     // updating the control is necessary in the case of a TrackballControls
@@ -497,6 +523,9 @@ class QuadScene{
     // update the UI
     this._guiController.updateResolutionLevelUI( lvl );
 
+    // refresh the uniforms
+    this.planeWasMoved();
+
     //this.callOnUpdateViewCallback();
     if(this._onUpdateViewCallback){
       this._onUpdateViewCallback( this.getMultiplaneContainerInfo() );
@@ -615,7 +644,7 @@ class QuadScene{
           return;
       }
       //that._planeManager.updateUniforms();
-      that._planeWasMoved = true;
+      that.planeWasMoved();
 
     });
 
@@ -640,7 +669,7 @@ class QuadScene{
           return;
       }
       //that._planeManager.updateUniforms();
-      that._planeWasMoved = true;
+      that.planeWasMoved();
 
     });
 
@@ -662,7 +691,7 @@ class QuadScene{
           return;
       }
       //that._planeManager.updateUniforms();
-      that._planeWasMoved = true;
+      that.planeWasMoved();
 
     });
 
@@ -684,7 +713,7 @@ class QuadScene{
           return;
       }
       //that._planeManager.updateUniforms();
-      that._planeWasMoved = true;
+      that.planeWasMoved();
 
     });
 

@@ -10,7 +10,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "rollup -c",
     "build-min": "rollup -c && google-closure-compiler-js build/shadernavigator/shadernavigator.js > build/shadernavigator/shadernavigator.min.js",
-    "doc": "documentation build --name ShaderNavigator -o ./doc/ -f html"
+    "doc": "documentation build --name ShaderNavigator -o ./doc/ -f html",
+    "standalone": "rm -rf standalone; mkdir standalone; npm run build; npm run build-min; cp -r ShaderNavigator/* standalone/; rm standalone/js/shadernavigator.*js; cp build/shadernavigator/*.js standalone/js/"
   },
   "author": "Jonathan Lurie",
   "license": "MIT",

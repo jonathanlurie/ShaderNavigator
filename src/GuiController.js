@@ -83,6 +83,7 @@ class GuiController{
         value = Math.floor( value );
         that._resolutionLevel = value;
         that._quadScene.setResolutionLevel( value );
+        
       }
     );
 
@@ -115,7 +116,6 @@ class GuiController{
       that._quadScene.setMultiplaneRotation(newRotation[0], newRotation[1], newRotation[2]);
       that._quadScene.setMultiplanePosition(newPosition[0], newPosition[1], newPosition[2]);
 
-      //that._quadScene.callOnUpdateViewCallback();
     });
 
     this._mainPanel.overrideStyle("Apply", "width", "100%");
@@ -124,7 +124,7 @@ class GuiController{
     // Button reset rotation
     this._mainPanel.addButton("Reset rotation", function(){
       that._quadScene.setMultiplaneRotation(0, 0, 0);
-      //that._quadScene.callOnUpdateViewCallback();
+
     });
     this._mainPanel.overrideStyle("Reset rotation", "width", "100%");
     document.getElementById("Reset rotation").parentElement.style["margin-top"] = "0px";
