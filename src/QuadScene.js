@@ -129,14 +129,14 @@ class QuadScene{
 
     this._refreshUniformsCounter = 0;
 
-    /*
+
     // refresh uniform every half sec
     setInterval(function(){
       if(that._ready){
         that._planeManager.updateUniforms();
       }
-    }, 500);
-    */
+    }, 1000);
+
 
     /*
     setInterval(function(){
@@ -221,7 +221,7 @@ class QuadScene{
   * so we have to do it n times.
   */
   refreshUniforms(){
-    this._refreshUniformsCounter = 10;
+    this._refreshUniformsCounter = 100;
   }
 
 

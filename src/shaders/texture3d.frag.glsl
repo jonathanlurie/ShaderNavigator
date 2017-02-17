@@ -36,6 +36,7 @@ bool isInsideChunk(in vec3 chunkPosition){
   return  ( chunkPosition.x>=0.0 && chunkPosition.x<1.0 &&
             chunkPosition.y>=0.0 && chunkPosition.y<1.0 &&
             chunkPosition.z>=0.0 && chunkPosition.z<1.0 );
+
 }
 
 
@@ -47,7 +48,7 @@ bool isInsideChunk(in vec3 chunkPosition){
     z = depth (image number within the strip)
     texture = the texture strip (to simulate a 3D tex)
 */
-void getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){
+vec4 getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition){
 
   // number of image that compose the strip
   float numberOfImagePerStripY = 64.0;
@@ -62,7 +63,7 @@ void getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4
   float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;// + 1.0/4096.0/2.0;
 
   vec2 posWithinStrip = vec2(stripX, stripY);
-  colorFromTexture = texture2D(texture, posWithinStrip);
+  return texture2D(texture, posWithinStrip);
 
 }
 
@@ -99,19 +100,15 @@ void main( void ) {
   // the position within the shader
   vec2 shaderPos = vUv;
 
-  /*
   // display the edges of subplanes
-  if(shaderPos.x < 0.02 || shaderPos.x > 0.98 || shaderPos.y < 0.02 || shaderPos.y > 0.98){
+  if(shaderPos.x < 0.01 || shaderPos.x > 0.99 || shaderPos.y < 0.01 || shaderPos.y > 0.99){
     gl_FragColor  = vec4(0.0, 0.0 , 0.0, 1.0);
     return;
   }
-  */
 
   // default color when out
   vec4 color = vec4(1.0, 0.0 , 0.0, 1.0);
-
   vec3 chunkPosition;
-
   bool hasColorFromChunk = false;
 
   /*
@@ -119,45 +116,57 @@ void main( void ) {
   nest ifs until we find the chunk the current texel is in.
   */
 
+  vec2 posWithinStrip = vec2(0.5, 0.5);
+  const int ind = 0;
+
+  for(int i=0;i<1;i++)
+  {
+
+    color = texture2D(textures[i], posWithinStrip);
+  }
+
+  //gl_FragColor  = color;
+  //return;
+
   if(nbChunks >= 1){
     chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);
     if( isInsideChunk(chunkPosition) ){
-      getColorFrom3DTexture(textures[0], chunkPosition, color);
+      color = getColorFrom3DTexture(textures[0], chunkPosition);
       hasColorFromChunk = true;
     } else if(nbChunks >= 2){
       chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);
       if( isInsideChunk(chunkPosition) ){
-        getColorFrom3DTexture(textures[1], chunkPosition, color);
+        color = getColorFrom3DTexture(textures[1], chunkPosition);
         hasColorFromChunk = true;
       } else if(nbChunks >= 3){
         chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);
         if( isInsideChunk(chunkPosition) ){
-          getColorFrom3DTexture(textures[2], chunkPosition, color);
+          color = getColorFrom3DTexture(textures[2], chunkPosition);
           hasColorFromChunk = true;
         } else if(nbChunks >= 4){
           chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);
           if( isInsideChunk(chunkPosition) ){
-            getColorFrom3DTexture(textures[3], chunkPosition, color);
+            color = getColorFrom3DTexture(textures[3], chunkPosition);
             hasColorFromChunk = true;
           } else if(nbChunks >= 5){
             chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);
             if( isInsideChunk(chunkPosition) ){
-              getColorFrom3DTexture(textures[4], chunkPosition, color);
+              color = getColorFrom3DTexture(textures[4], chunkPosition);
               hasColorFromChunk = true;
             } else if(nbChunks >= 6){
               chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);
               if( isInsideChunk(chunkPosition) ){
-                getColorFrom3DTexture(textures[5], chunkPosition, color);
+                color = getColorFrom3DTexture(textures[5], chunkPosition);
                 hasColorFromChunk = true;
               } else if(nbChunks >= 7){
                 chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);
                 if( isInsideChunk(chunkPosition) ){
-                  getColorFrom3DTexture(textures[6], chunkPosition, color);
+                  color = getColorFrom3DTexture(textures[6], chunkPosition);
                   hasColorFromChunk = true;
                 } else if(nbChunks == 8){
                   chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);
                   if( isInsideChunk(chunkPosition) ){
-                    getColorFrom3DTexture(textures[7], chunkPosition, color);
+                    color = getColorFrom3DTexture(textures[7], chunkPosition);
                     hasColorFromChunk = true;
                   }
                 }

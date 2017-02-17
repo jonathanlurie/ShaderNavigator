@@ -254,9 +254,10 @@ class ProjectionPlane{
       //console.log("UP");
       var chunkSizeWC = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
       uniforms.nbChunks.value = textureData.nbValid;
-      uniforms.textures.value = textureData.textures;
+      uniforms.textures.value = textureData.textures.slice(0, textureData.nbValid);
       uniforms.textureOrigins.value = textureData.origins;
       uniforms.chunkSize.value = chunkSizeWC;
+
     }
 
     /*
