@@ -367,7 +367,6 @@ class QuadScene{
     }
 
     if( this._refreshUniformsCounter && this._ready){
-    //if(this._ready){
       this._planeManager.updateUniforms();
       this._refreshUniformsCounter --;
     }
@@ -375,7 +374,7 @@ class QuadScene{
     // updating the control is necessary in the case of a TrackballControls
     this._quadViews[3].updateControl();
 
-    // call a built-in webGL method for annimation
+    // call a built-in method for annimation
     requestAnimationFrame( this._animate.bind(this) );
   }
 
