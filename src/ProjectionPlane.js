@@ -35,9 +35,9 @@ class ProjectionPlane{
 
     // number of rows and cols of sub-planes to compose the _plane
 
-    //this._subPlaneDim = {row: 7, col: 15}; // OPTIM
+    this._subPlaneDim = {row: 7, col: 15}; // OPTIM
     //this._subPlaneDim = {row: 10, col: 20}; // TEST
-    this._subPlaneDim = {row: 6, col: 13}; // TEST
+    //this._subPlaneDim = {row: 6, col: 13}; // TEST
     //this._subPlaneDim = {row: 1, col: 1};
 
     // to be aggregated
