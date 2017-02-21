@@ -49,8 +49,6 @@ class ProjectionPlane{
     this._resolutionLevel = 0;
 
     this._buildSubPlanes();
-
-
   }
 
 
