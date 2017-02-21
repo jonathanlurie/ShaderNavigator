@@ -32,6 +32,7 @@
   font-weight: 400;
 }
 
+.qs_file_chooser_label,
 .qs_button,
 .qs_select {
   font-family: 'Lato', sans-serif;
@@ -41,11 +42,17 @@
   border-color: rgb(142, 225, 251);
 }
 
+.qs_textarea,
+.qs_textarea:focus,
 .qs_text_input,
 .qs_text_input:focus {
   border: 0;
 }
 
+
+.qs_file_chooser_label {
+  text-align: center;
+}
 
 
 

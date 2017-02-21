@@ -72,7 +72,7 @@ class QuadView{
       up: [ -1, 0, 0 ]
     }
     this._viewName = "top_left";
-    this._backgroundColor = new THREE.Color().setRGB( 0.8, 0.8, 0.8 );
+    this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
   }
 
 
@@ -89,7 +89,7 @@ class QuadView{
       up: [ 0, -1, 0 ]
     }
     this._viewName = "top_right";
-    this._backgroundColor = new THREE.Color().setRGB( 0.9, 0.9, 0.9 );
+    this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
   }
 
   /**
@@ -105,7 +105,7 @@ class QuadView{
       up: [ 0, 1, 0 ]
     }
     this._viewName = "bottom_left";
-    this._backgroundColor = new THREE.Color().setRGB( 0.9, 0.9, 0.9 );
+    this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
   }
 
 
@@ -118,7 +118,7 @@ class QuadView{
       bottom: 0,
       width: 0.5,
       height: 0.5,
-      position: [ -this._objectSize/2, this._objectSize/2, -this._objectSize/3 ],
+      position: [ -this._objectSize/10, this._objectSize/10, -this._objectSize/15 ],
       up: [ 0, 0, -1 ]
     }
     this._viewName = "bottom_right";
@@ -141,14 +141,14 @@ class QuadView{
       window.innerHeight / - orthographicCameraFovFactor // bottom
       //9.99,//this._objectSize * 0.9, //this._near,
       //10.01//this._objectSize * 1.1 //this._far
+      //1,
+      //10.1
     );
-
 
     this._camera.left_orig = window.innerWidth / - orthographicCameraFovFactor;
     this._camera.right_orig = window.innerWidth / orthographicCameraFovFactor;
     this._camera.top_orig = window.innerHeight / orthographicCameraFovFactor;
     this._camera.bottom_orig = window.innerHeight / - orthographicCameraFovFactor;
-
 
     /*
     this._camera.left_orig = this._camera.left;
@@ -190,7 +190,6 @@ class QuadView{
     this._camera.up.z = this._config.up[ 2 ];
     this._camera.fov = this._defaultFov;
     this._camera.lookAt( this._originToLookAt );
-
   }
 
 

@@ -13,7 +13,7 @@
         label.innerHTML = title;
         return label;
     }
-    
+
     function createInput(type, id, className, parent) {
         var input = createElement("input", id, className, parent);
         input.type = type;
@@ -104,7 +104,7 @@
 		////////////////////////////////////////////////////////////////////////////////
 		// region GENERAL INIT FUNCTIONS
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Static method. Causes QuickSettings to ignore its default styles and instead use whatever QuickSettings stylesheet is on the page. This must be called before creating any panel in order to have any effect.
 		 * @static
@@ -163,7 +163,7 @@
 		////////////////////////////////////////////////////////////////////////////////
 		// region VALUE FUNCTIONS
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Returns an object containing the titles and values of all user-interactive controls in this panel.
 		 * @param asString    {Boolean}    If true, returns a JSON formatted string of these values.
@@ -236,7 +236,7 @@
 		////////////////////////////////////////////////////////////////////////////////
 		// region CREATION FUNCTIONS
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		_createPanel: function(x, y, parent) {
 			this._panel = createElement("div", null, "qs_main", parent || document.body);
 			this._panel.style.zIndex = ++QuickSettings._topZ;
@@ -277,7 +277,7 @@
 		////////////////////////////////////////////////////////////////////////////////
 		// region SIZE AND POSITION FUNCTIONS
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Positions the panel at the given location.
 		 * @param x    {Number} The x position.
@@ -328,7 +328,7 @@
 		////////////////////////////////////////////////////////////////////////////////
 		// region DRAG AND DROP FUNCTIONS
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Sets whether or not the panel can be dragged.
 		 * @param draggable {Boolean} Whether or not the panel can be dragged.
@@ -347,7 +347,7 @@
 
 		_startDrag: function(event) {
 			if(this._draggable) {
-			  
+
 				this._panel.style.zIndex = ++QuickSettings._topZ;
 				document.addEventListener("mousemove", this._drag);
 				document.addEventListener("mouseup", this._endDrag);
@@ -358,7 +358,7 @@
 		},
 
 		_drag: function(event) {
-		  
+
 			var x = parseInt(this._panel.style.left),
 				y = parseInt(this._panel.style.top),
 				mouseX = event.clientX,
@@ -380,7 +380,7 @@
 		////////////////////////////////////////////////////////////////////////////////
 		// region CHANGE HANDLER FUNCTIONS
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Sets a function that will be called whenever any value in the panel is changed.
 		 * @param handler {Function}
@@ -404,7 +404,7 @@
 		////////////////////////////////////////////////////////////////////////////////
 		// region VISIBILITY FUNCTIONS
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Hides the panel.
 		 * @returns {module:QuickSettings}
@@ -517,7 +517,7 @@
 		////////////////////////////////////////////////////////////////////////////////
 		// region CONTROL FUNCTIONS
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Removes a given control from the panel.
 		 * @param title {String} The title of the control to remove.
@@ -664,6 +664,10 @@
 			this._callGCH();
 			return this;
 		},
+
+    getControl: function(title) {
+      return this._controls[title];
+    },
         // endregion
 
         //==========================================================================================
@@ -675,7 +679,7 @@
 		////////////////////////////////////////////////////////////////////////////////
 		// region BOOLEAN
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Adds a checkbox to the panel.
 		 * @param title {String} The title of this control.
@@ -739,7 +743,7 @@
         ////////////////////////////////////////////////////////////////////////////////
 		// region BUTTON
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Adds a button to the panel.
 		 * @param title {String} The title of the control.
@@ -771,7 +775,7 @@
         ////////////////////////////////////////////////////////////////////////////////
 		// region COLOR
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Adds a color picker control. In some browsers this will just render as a text input field, but should still retain all other functionality.
 		 * @param title {String} The title of this control.
@@ -841,7 +845,7 @@
         ////////////////////////////////////////////////////////////////////////////////
 		// region DATE INPUT
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Adds a date input control. In some browsers this will just render as a text input field, but should still retain all other functionality.
 		 * @param title {String} The title of the control.
@@ -926,7 +930,7 @@
         ////////////////////////////////////////////////////////////////////////////////
 		// region DROPDOWN
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Adds a dropdown (select) control. Dropdown items can be strings ("one", "two", "three"), any other values that can be converted to strings (1, 2, 3), or an object that contains label and value properties ({label: "one", value: 77}).
 		 * @param title {String} The title of the control.
@@ -935,6 +939,7 @@
 		 * @returns {module:QuickSettings}
 		 */
 		addDropDown: function(title, items, callback) {
+      this._items = items;
 			var container = this._createContainer();
 
 			var label = createLabel("<b>" + title + "</b>", container);
@@ -946,10 +951,10 @@
                 	option.label = item.label;
                 	option.innerText = item.label;
 				}
-                else {
-                    option.label = item;
-                    option.innerText = item;
-                }
+        else {
+            option.label = item;
+            option.innerText = item;
+        }
 				select.add(option);
 			};
 
@@ -998,6 +1003,26 @@
 						});
 					}
 				},
+
+        addItem: function( item ){
+          self._items.push(item);
+          var option = createElement("option");
+  				if(item.label) {
+          	option.label = item.label;
+          	option.innerText = item.label;
+  				}
+          else {
+            option.label = item;
+            option.innerText = item;
+          }
+  				select.add(option);
+        },
+
+        removeItem: function( item ){
+          var indexItem = self._items.indexOf( item );
+          self._items.splice( indexItem, 1 );
+          select.remove( indexItem );
+        }
 			};
 			return this;
 		},
@@ -1019,7 +1044,7 @@
         ////////////////////////////////////////////////////////////////////////////////
 		// region ELEMENT
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 
 		/**
 		 * Adds an existing HTML Element to the panel.
@@ -1044,7 +1069,7 @@
         ////////////////////////////////////////////////////////////////////////////////
 		// region FILE CHOOSER
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 
 		/**
 		 * Adds a file input control to the panel.
@@ -1095,7 +1120,7 @@
         ////////////////////////////////////////////////////////////////////////////////
 		// region HTML
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 
 		/**
 		 * Adds arbitrary HTML to the panel.
@@ -1105,13 +1130,15 @@
 		 */
 		addHTML: function(title, html) {
 			var container = this._createContainer();
-			var label = createLabel("<b>" + title + ":</b> ", container);
+			var label = '';//createLabel("<b>" + title + ":</b> ", container);
 
 			var div = createElement("div", null, null, container);
 			div.innerHTML = html;
+      div.id = title,
 			this._controls[title] = {
 				label: label,
 				control: div,
+        container: div.parentElement,
 				getValue: function() {
 					return this.control.innerHTML;
 				},
@@ -1126,7 +1153,7 @@
         ////////////////////////////////////////////////////////////////////////////////
 		// region IMAGE
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Adds an image control.
 		 * @param title {String} The title of the control.
@@ -1157,7 +1184,7 @@
 		////////////////////////////////////////////////////////////////////////////////
 		// region NUMBER and RANGE (SLIDER)
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Adds a range slider control.
 		 * @param title {String} Title of the control.
@@ -1208,7 +1235,7 @@
 				title: title,
 				callback: callback,
 				callback2: callback2,
-				
+
 				getValue: function() {
 					return parseFloat(this.control.value);
 				},
@@ -1233,15 +1260,15 @@
 				}
 				self._callGCH();
 			});
-			
+
 			input.addEventListener("mouseup", function() {
-				
+
 				if(callback2) {
 					callback2(parseFloat(input.value));
 				}
 				self._callGCH();
 			});
-			
+
 			return this;
 		},
 
@@ -1314,7 +1341,7 @@
         ////////////////////////////////////////////////////////////////////////////////
 		// region PASSWORD
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Adds a password input field.
 		 * @param title {String} The title of the control.
@@ -1343,7 +1370,7 @@
         ////////////////////////////////////////////////////////////////////////////////
 		// region PROGRESS BAR
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Adds a progress bar control.
 		 * @param title {String} The title of the control.
@@ -1424,7 +1451,7 @@
 		////////////////////////////////////////////////////////////////////////////////
 		// region TEXT
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Adds a text input field.
 		 * @param title {String} The title of the control.
@@ -1493,7 +1520,7 @@
 		////////////////////////////////////////////////////////////////////////////////
 		// region TEXT AREA
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 		/**
 		 * Adds a text area control.
 		 * @param title {String} The title of the control.
@@ -1534,7 +1561,7 @@
         ////////////////////////////////////////////////////////////////////////////////
 		// region TIME INPUT
 		////////////////////////////////////////////////////////////////////////////////
-        
+
 
 		/**
 		 * Adds a time input control. In some browsers this will just render as a text input field, but should still retain all other functionality.

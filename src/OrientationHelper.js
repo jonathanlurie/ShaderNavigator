@@ -18,6 +18,8 @@ class OrientationHelper{
     var yColor = 0x00EB4E;
     var zColor = 0x0088ff;
 
+    this._initRadius = initRadius;
+
     var geometryX = new THREE.CircleGeometry( initRadius, 64 );
     var geometryY = new THREE.CircleGeometry( initRadius, 64 );
     var geometryZ = new THREE.CircleGeometry( initRadius, 64 );
@@ -180,6 +182,15 @@ class OrientationHelper{
   */
   setVisibility( b ){
     this._sphere.visible = b;
+  }
+
+
+  /**
+  * @return {Number} the actual radius of orientation helper, considering the ajustment to
+  * resolution level.
+  */
+  getRadius(){
+    return (this._initRadius * this._sphere.scale.x);
   }
 
 

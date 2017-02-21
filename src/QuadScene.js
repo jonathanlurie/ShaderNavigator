@@ -25,6 +25,7 @@ import { AnnotationCollection } from './AnnotationCollection.js';
 class QuadScene{
 
   constructor(DomContainer, rez=0){
+    var that = this;
     window.addEventListener( 'resize', this._updateSize.bind(this), false );
 
     this._ready = false;
@@ -61,10 +62,9 @@ class QuadScene{
 
     this._boundingBoxHelper = new BoundingBoxHelper( this._scene );
 
-    var axisHelper = new THREE.AxisHelper( 1 );
-    axisHelper.layers.enable(1);
-
-    this._scene.add( axisHelper );
+    //var axisHelper = new THREE.AxisHelper( 1 );
+    //axisHelper.layers.enable(1);
+    //this._scene.add( axisHelper );
 
     this._scene.add( new THREE.AmbientLight( 0x444444 ) );
 
@@ -93,11 +93,17 @@ class QuadScene{
     this._renderer = new THREE.WebGLRenderer( { antialias: true } );
     this._renderer.setPixelRatio( window.devicePixelRatio );
     this._renderer.setSize( window.innerWidth, window.innerHeight );
+
+
     this._domContainer.appendChild( this._renderer.domElement );
 
     // TODO: use object real size (maybe)
     // a default camera distance we use instead of cube real size.
-    this._cameraDistance = 10;
+    this._cameraDistance = 50;
+
+    // fog - the distance will be auto adjusted
+    this._scene.fog = new THREE.Fog(0xeeeeee, this._cameraDistance, this._cameraDistance * 2);
+    this._renderer.setClearColor( this._scene.fog.color );
 
     // to feed the renderer. will be init
     this._windowSize = {
@@ -121,6 +127,25 @@ class QuadScene{
 
     this._animate();
 
+    this._refreshUniformsCounter = 0;
+
+
+    // refresh uniform every half sec
+    setInterval(function(){
+      if(that._ready){
+        that._planeManager.updateUniforms();
+      }
+    }, 1000);
+
+
+    /*
+    setInterval(function(){
+      if( that._refreshUniformsCounter && that._ready){
+        that._planeManager.updateUniforms();
+        that._refreshUniformsCounter = false;
+      }
+    }, 30);
+    */
 
 
   }
@@ -173,10 +198,30 @@ class QuadScene{
 
       function( point ){
         that.setMultiplanePosition( point.x, point.y, point.z);
+        that.refreshUniforms();
       }
     )
 
+  }
 
+
+  /**
+  * return the quadview interaction.
+  * Useful to specify interaction callback from the outside.
+  * @return {QuadViewInteraction}
+  */
+  getQuadViewInteraction(){
+    return this._quadViewInteraction;
+  }
+
+
+  /**
+  * Refreshes a counter of frame to send uniforms.
+  * Usually, sending new uniforms only once is not enought to get them to GPU,
+  * so we have to do it n times.
+  */
+  refreshUniforms(){
+    this._refreshUniformsCounter = 100;
   }
 
 
@@ -195,6 +240,11 @@ class QuadScene{
   setMultiplanePosition(x, y, z){
     this._planeManager.setMultiplanePosition( x, y, z);
     this._guiController.updateMultiplaneUI( this.getMultiplaneContainerInfo() );
+
+    // refresh the uniforms
+    this.refreshUniforms();
+
+    this.callOnUpdateViewCallback();
   }
 
 
@@ -205,7 +255,13 @@ class QuadScene{
   setMultiplaneRotation(x, y, z){
     this._planeManager.setMultiplaneRotation( x, y, z);
     this._guiController.updateMultiplaneUI( this.getMultiplaneContainerInfo() );
+
+    // refresh the uniforms
+    this.refreshUniforms();
+
+    this.callOnUpdateViewCallback();
   }
+
 
   /**
   * [PRIVATE]
@@ -238,11 +294,25 @@ class QuadScene{
 
 
   /**
+  * @return {PlaneManager} the instance of PlaneManager, mainly for UI things.
+  */
+  getPlaneManager(){
+    return this._planeManager;
+  }
+
+
+  /**
   * Add a statistics widget
   */
   initStat(){
     this._stats = new Stats();
     this._domContainer.appendChild( this._stats.dom );
+
+    // place it on top right
+    this._stats.dom.style.right = '0';
+    this._stats.dom.style.left = 'initial';
+    this._stats.dom.style.top = '0';
+    this._stats.dom.style.position = 'absolute';
   }
 
 
@@ -289,17 +359,23 @@ class QuadScene{
   * To feed the animation feature built in WebGL.
   */
   _animate(){
+
     this._render();
 
     if(this._stats){
       this._stats.update();
     }
 
-    // call a built-in webGL method for annimation
-    requestAnimationFrame( this._animate.bind(this) );
+    if( this._refreshUniformsCounter && this._ready){
+      this._planeManager.updateUniforms();
+      this._refreshUniformsCounter --;
+    }
 
     // updating the control is necessary in the case of a TrackballControls
     this._quadViews[3].updateControl();
+
+    // call a built-in method for annimation
+    requestAnimationFrame( this._animate.bind(this) );
   }
 
 
@@ -312,19 +388,15 @@ class QuadScene{
 
     // TODO: make somethink better for refresh once per sec!
     if(this._ready){
-      if(this._counterRefresh % 30 == 0){
-        this._updateAllPlanesShaderUniforms();
-      }
-      this._counterRefresh ++;
+      //this._planeManager.updateUniforms();
+
+      // refresh each view
+      this._quadViews.forEach(function(view){
+        view.renderView();
+      });
+
+
     }
-
-    // in case the window was resized
-    //this._updateSize();
-
-    // refresh each view
-    this._quadViews.forEach(function(view){
-      view.renderView();
-    });
 
   }
 
@@ -355,6 +427,8 @@ class QuadScene{
       this._initMeshCollection(config);
     }else if(config.datatype == "colormap_collection"){
       this._colormapManager.loadCollection( config );
+    }else if(config.datatype == "annotation_collection"){
+      this._annotationCollection.loadAnnotationFileURL( config );
     }else{
       console.warn("The data to load has an unknown format.");
     }
@@ -378,6 +452,12 @@ class QuadScene{
 
     // the config file was succesfully loaded
     this._levelManager.loadConfig(config);
+
+    // when tiles are all loaded, we refresh the textures
+    this._levelManager.onAllChunksLoaded( function(){
+      console.log(">> All required chunks are loaded");
+      that._planeManager.updateUniforms();
+    });
 
     this._levelManager.onReady(function(){
       var boxSize = that._levelManager.getBoundingBox();
@@ -403,6 +483,7 @@ class QuadScene{
       // the callback above may have changed the rotation/position from URL
       that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
 
+      that._render();
     });
 
     // the config file failed to load
@@ -411,6 +492,9 @@ class QuadScene{
         that._onConfigFileErrorCallback(url, code);
       }
     });
+
+
+
 
   }
 
@@ -425,23 +509,33 @@ class QuadScene{
     this._levelManager.setResolutionLevel( this._resolutionLevel );
     this._planeManager.updateScaleFromRezLvl( this._resolutionLevel );
 
+    // update size of the orientation helper
     this._syncOrientationHelperScale();
+
+    // update the fog distance to progressively hide annotation
+    var fogDistance = this._orientationHelper.getRadius() * 4;
+    this._scene.fog.far = this._cameraDistance + fogDistance;
+
+    // update the ortho cam frustrum
     this._updateOthoCamFrustrum();
 
+    // update the UI
     this._guiController.updateResolutionLevelUI( lvl );
 
+    // refresh the uniforms
+    this.refreshUniforms();
+
+    //this.callOnUpdateViewCallback();
     if(this._onUpdateViewCallback){
       this._onUpdateViewCallback( this.getMultiplaneContainerInfo() );
     }
   }
 
 
-
-  /**
-  * Updates the uniforms to send to the shader of the plane. Will trigger chunk loading for those which are not already in memory.
-  */
-  _updateAllPlanesShaderUniforms(){
-    this._planeManager.updateUniforms();
+  callOnUpdateViewCallback(){
+    if(this._onUpdateViewCallback){
+      this._onUpdateViewCallback( this.getMultiplaneContainerInfo() );
+    }
   }
 
 
@@ -528,6 +622,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      that._planeManager.updateUniforms();
+      //that._render();
 
     });
 
@@ -546,12 +642,14 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      //that._planeManager.updateUniforms();
+      that.refreshUniforms();
+
     });
 
     // callback def: transverse rotation (using T key)
     this._quadViewInteraction.onGrabViewTransverseRotate( function(distance, viewIndex){
-      //var factor = Math.pow(2, that._resolutionLevel) / 10;
-      var factor =  that._resolutionLevel / 2;
+      var factor =  that._resolutionLevel / 4;
 
       switch (viewIndex) {
         case 0:
@@ -569,6 +667,9 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      //that._planeManager.updateUniforms();
+      that.refreshUniforms();
+
     });
 
     // callback def: arrow down
@@ -588,6 +689,9 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      //that._planeManager.updateUniforms();
+      that.refreshUniforms();
+
     });
 
     // callback def: arrow up
@@ -607,6 +711,9 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      //that._planeManager.updateUniforms();
+      that.refreshUniforms();
+
     });
 
     this._quadViewInteraction.onDonePlaying(function(){
@@ -660,15 +767,10 @@ class QuadScene{
 
 
   /**
-  * [TEST / DEBUG]
+  * @return {AnnotationCollection} instance of the annotation collection
   */
-  _testAnnotation(){
-    this._annotationCollection.addAnnotation(
-      [[1, 1, 0], [1, 1, 1]],
-      "my annot"
-    );
-
-    console.log(this._adjustedContainer);
+  getAnnotationCollection(){
+    return this._annotationCollection;
   }
 
 

@@ -57,6 +57,7 @@ class ChunkCollection{
     }
 
     this._onChunksLoadedCallback = null;
+    this._onAllChunksLoadedCallback = null;
 
   }
 
@@ -241,15 +242,22 @@ class ChunkCollection{
   * out of bound or to complete the Sampler2D array for the fragment shader.
   */
   _createFakeTexture(){
-
+    /*
     this._fakeTextureData = {
       texture: new THREE.DataTexture(
-          new Uint8Array(1),
-          1,
-          1,
+          new Uint8Array(0),
+          0,
+          0,
           THREE.LuminanceFormat,  // format, luminance is for 1-band image
           THREE.UnsignedByteType  // type for our Uint8Array
         ),
+      origin: new THREE.Vector3(0, 0, 0),
+      validity: false
+    };
+    */
+
+    this._fakeTextureData = {
+      texture: null,
       origin: new THREE.Vector3(0, 0, 0),
       validity: false
     };
@@ -371,6 +379,197 @@ class ChunkCollection{
   }
 
 
+  getInvolvedTextureIndexes(cornerPositions){
+
+    var cornerOrigins = [
+      this.getIndex3DFromWorldPosition( [cornerPositions[0].x, cornerPositions[0].y, cornerPositions[0].z] ),
+      this.getIndex3DFromWorldPosition( [cornerPositions[1].x, cornerPositions[1].y, cornerPositions[1].z] ),
+      this.getIndex3DFromWorldPosition( [cornerPositions[2].x, cornerPositions[2].y, cornerPositions[2].z] ),
+      this.getIndex3DFromWorldPosition( [cornerPositions[3].x, cornerPositions[3].y, cornerPositions[3].z] )
+    ];
+
+    var min = [
+      Math.min(cornerOrigins[0][0], cornerOrigins[1][0], cornerOrigins[2][0], cornerOrigins[3][0]),
+      Math.min(cornerOrigins[0][1], cornerOrigins[1][1], cornerOrigins[2][1], cornerOrigins[3][1]),
+      Math.min(cornerOrigins[0][2], cornerOrigins[1][2], cornerOrigins[2][2], cornerOrigins[3][2])
+    ];
+
+    var max = [
+      Math.max(cornerOrigins[0][0], cornerOrigins[1][0], cornerOrigins[2][0], cornerOrigins[3][0]),
+      Math.max(cornerOrigins[0][1], cornerOrigins[1][1], cornerOrigins[2][1], cornerOrigins[3][1]),
+      Math.max(cornerOrigins[0][2], cornerOrigins[1][2], cornerOrigins[2][2], cornerOrigins[3][2])
+    ];
+
+
+    // build the chunk index of the 8 closest chunks from position
+    var indexes3D = [
+      [
+        min[0],
+        min[1],
+        min[2]
+      ],
+      [
+        min[0],
+        min[1],
+        max[2]
+      ],
+      [
+        min[0],
+        max[1],
+        min[2]
+      ],
+      [
+        min[0],
+        max[1],
+        max[2]
+      ],
+      [
+        max[0],
+        min[1],
+        min[2]
+      ],
+      [
+        max[0],
+        min[1],
+        max[2]
+      ],
+      [
+        max[0],
+        max[1],
+        min[2]
+      ],
+      [
+        max[0],
+        max[1],
+        max[2]
+      ]
+    ]
+
+    return indexes3D;
+
+  }
+
+
+  _getKeyFromIndex3D( index3D ){
+    return "x" +  index3D[0] + "y" + index3D[1] + "z" + index3D[2];
+  }
+
+
+  /**
+  *
+  */
+  getInvolvedTextureData(cornerPositions){
+    var that = this;
+
+    /*
+    console.log("this._sizeChunkWC");
+    console.log(this._sizeChunkWC);
+    console.log("cornerPositions");
+    console.log(cornerPositions);
+    */
+    this._sizeChunkWC
+    /*
+    var chunkEdgeCase = cornerPositions[0].x % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].x % this._sizeChunkWC < this._sizeChunkWC/10; ||
+        cornerPositions[0].y % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].y % this._sizeChunkWC < this._sizeChunkWC/10 ||
+        cornerPositions[0].z % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].z % this._sizeChunkWC < this._sizeChunkWC/10;
+*/
+
+
+
+    /*
+    var chunkEdgeCase = cornerPositions[0].x == cornerPositions[1].x ||
+                        cornerPositions[0].y == cornerPositions[1].y ||
+                        cornerPositions[0].z == cornerPositions[1].z;
+    */
+
+    var chunkEdgeCaseX = cornerPositions[0].x == cornerPositions[1].x &&
+      (cornerPositions[0].x % this._sizeChunkWC < this._sizeChunkWC*0.1 ||   cornerPositions[0].x % this._sizeChunkWC > this._sizeChunkWC*0.9);
+
+    var chunkEdgeCaseY = cornerPositions[0].y == cornerPositions[1].y &&
+      (cornerPositions[0].y % this._sizeChunkWC < this._sizeChunkWC*0.1 ||   cornerPositions[0].y % this._sizeChunkWC > this._sizeChunkWC*0.9);
+
+    var chunkEdgeCaseZ = cornerPositions[0].z == cornerPositions[1].z &&
+      (cornerPositions[0].z % this._sizeChunkWC < this._sizeChunkWC*0.1 ||   cornerPositions[0].z % this._sizeChunkWC > this._sizeChunkWC*0.9);
+
+    var chunkEdgeCase = chunkEdgeCaseX || chunkEdgeCaseY || chunkEdgeCaseZ;
+
+    if( chunkEdgeCase ){
+      //console.log(">> NEAREST8");
+      //console.log(cornerPositions);
+      //console.log( Math.floor(Date.now()) );
+
+
+      var center = [
+        (cornerPositions[0].x + cornerPositions[1].x + cornerPositions[2].x + cornerPositions[3].x) / 4,
+        (cornerPositions[0].y + cornerPositions[1].y + cornerPositions[2].y + cornerPositions[3].y) / 4,
+        (cornerPositions[0].z + cornerPositions[1].z + cornerPositions[2].z + cornerPositions[3].z) / 4
+      ];
+
+      return this.get8ClosestTextureData( center );
+    }else{
+      //console.log(">> INVOLVED");
+      //console.log(cornerPositions);
+      //console.log( Math.floor(Date.now()) );
+    }
+
+
+    var involvedIndexes = this.getInvolvedTextureIndexes(cornerPositions);
+
+
+    var loadedMaps = {};
+
+    var validChunksCounter = 0;
+    var validChunksTexture = [];
+    var notValidChunksTexture = [];
+    var validChunksOrigin = [];
+    var notValidChunksOrigin = [];
+    var that = this;
+
+    involvedIndexes.forEach(function(index){
+      var aTextureData = that._fakeTextureData;
+      var indexKey = that._getKeyFromIndex3D( index );
+
+      // never loaded before
+      if(! (indexKey in loadedMaps)){
+        loadedMaps[indexKey] = 1;
+
+        // load the texture , possibly retrieving a fake one (out)
+        aTextureData = that.getTextureAtIndex3D(index);
+      }
+
+      // this texture data is valid
+      if(aTextureData.valid){
+        validChunksTexture.push( aTextureData.texture );
+        validChunksOrigin.push( aTextureData.origin );
+      }
+      // is not valid
+      else{
+        notValidChunksTexture.push( aTextureData.texture );
+        notValidChunksOrigin.push( aTextureData.origin );
+      }
+
+    });
+
+    validChunksCounter = validChunksTexture.length;
+
+    /*
+    return {
+      textures: validChunksTexture.concat( notValidChunksTexture ),
+      origins: validChunksOrigin.concat( notValidChunksOrigin ),
+      nbValid: validChunksCounter
+    };
+    */
+
+    var textureDatas = {
+      textures: validChunksTexture.concat( notValidChunksTexture ),
+      origins: validChunksOrigin.concat( notValidChunksOrigin ),
+      nbValid: validChunksCounter
+    };
+
+    return textureDatas;
+  }
+
+
   /**
   * [PRIVATE]
   * Called when a chunk is loaded or failed to load. When to total number number of toLoad Vs. Loaded+failed is equivalent, a callback may be called (with no argument) if defined by onChunkLoaded().
@@ -381,15 +580,18 @@ class ChunkCollection{
     this._chunkCounter.loaded += (+ success);
     this._chunkCounter.failled += (+ (!success));
 
+    var remaining = this._chunkCounter.toBeLoaded - this._chunkCounter.loaded - this._chunkCounter.failled;
+
     // all the required chunks are OR loaded OR failled = they all tried to load.
-    if( (this._chunkCounter.loaded + this._chunkCounter.failled) == this._chunkCounter.toBeLoaded ){
-      //console.log(">> All required chunks are loaded (lvl: " + this._resolutionLevel + ")");
-      console.log(">> All required chunks are loaded");
+    if( !remaining ){
+      if(this._onAllChunksLoadedCallback){
+        this._onAllChunksLoadedCallback();
+      }
     }
 
     // call a callback if defined
     if( this._onChunksLoadedCallback ){
-      this._onChunksLoadedCallback(this._resolutionLevel, (this._chunkCounter.toBeLoaded - this._chunkCounter.loaded - this._chunkCounter.failled));
+      this._onChunksLoadedCallback(this._resolutionLevel, remaining);
     }
   }
 
@@ -403,6 +605,14 @@ class ChunkCollection{
     this._onChunksLoadedCallback = cb;
   }
 
+
+  /**
+  * Defines a callback for when all the required tile of the current level are loaded.
+  * Called with no argument.
+  */
+  onAllChunksLoaded( cb ){
+    this._onAllChunksLoadedCallback = cb;
+  }
 
 } /* END CLASS ChunkCollection */
 

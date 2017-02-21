@@ -6,8 +6,9 @@
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 
     <link href="https://fonts.googleapis.com/css?family=Lato:300,400" rel="stylesheet">
+    <link rel="stylesheet" href="css/font-awesome/css/font-awesome.min.css">
 
-		<style>
+    <style>
 			body {
 				color: #000;
         /*
@@ -33,6 +34,10 @@
         font-weight: 400;
         color: rgba(0,0, 0, 0.7);
 			}
+
+      #info {
+        pointer-events: none;
+      }
 
       #info p {
         margin: 5px;
@@ -83,6 +88,31 @@
                                   not supported by any browser */
       }
 
+      .small-icon{
+        margin: 5px;
+        color: rgb(0, 149, 204);
+        font-size: 1.3em;
+        transition: all 0.2s;
+        cursor: pointer;
+      }
+
+      .small-icon:hover{
+        color: rgb(142, 225, 251);
+      }
+
+
+      .logoCorner{
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 48px;
+        margin: 5px;
+      }
+
+      .logoCorner:hover{
+        filter: invert(100%);
+      }
+
 		</style>
 
 
@@ -114,6 +144,8 @@
       </p>
     </div>
 
+    <a href="https://github.com/jonathanlurie/ShaderNavigator" target="_blank"><img class="logoCorner" src="img/githubLogo.png"/></a>
+
 		<script src="js/three.js"></script>
     <script src="js/TrackballControls.js"></script>
 		<script src="js/Detector.js"></script>
@@ -121,8 +153,8 @@
     <script src="js/quicksettings.js"></script>
 
     <!-- importing the automatically build module -->
-    <script src="../build/shadernavigator/shadernavigator.js"></script>
-    <!--<script src="../build/shadernavigator/shadernavigator.min.js"></script>-->
+    <script src="js/shadernavigator.js"></script>
+    <!-- <script src="js/shadernavigator.min.js"></script>-->
 
 		<script>
 
@@ -133,7 +165,9 @@
     quadScene.loadData({
         datatype: "precomputed_octree_tiles",
         url: "../data_raster/info2.json"
-        //url: "http://132.216.122.238/jpeg/info2.json"
+        //url: "../data_rasterSSD/info2.json"
+
+        //url: "http://ace-toroviewer-2.acelab.ca/data/bigbrainchunks/config.json"
     });
 
 
@@ -149,7 +183,11 @@
         }catch(e){
           //console.warn(e);
         }
+
+        quadScene._planeManager.updateUniforms();
       }
+
+
 
     })
 
@@ -170,6 +208,19 @@
         url: "colormaps/colormaps.json"
     });
 
+    /*
+    // loads an some annotation file
+    quadScene.loadData({
+        datatype: "annotation_collection",
+        url: "annotations/example.json",
+    });
+
+    // loads an some other annotation file
+    quadScene.loadData({
+        datatype: "annotation_collection",
+        url: "annotations/example2.json"
+    });
+    */
 
     // optional: display some performances
     quadScene.initStat();

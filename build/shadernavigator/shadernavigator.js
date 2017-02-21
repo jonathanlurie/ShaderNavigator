@@ -1,3 +1,5 @@
+// Build date: Tue Feb 21 13:58:17 EST 2017
+
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 	typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -162,7 +164,7 @@ class QuadView{
       up: [ -1, 0, 0 ]
     };
     this._viewName = "top_left";
-    this._backgroundColor = new THREE.Color().setRGB( 0.8, 0.8, 0.8 );
+    this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
   }
 
 
@@ -179,7 +181,7 @@ class QuadView{
       up: [ 0, -1, 0 ]
     };
     this._viewName = "top_right";
-    this._backgroundColor = new THREE.Color().setRGB( 0.9, 0.9, 0.9 );
+    this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
   }
 
   /**
@@ -195,7 +197,7 @@ class QuadView{
       up: [ 0, 1, 0 ]
     };
     this._viewName = "bottom_left";
-    this._backgroundColor = new THREE.Color().setRGB( 0.9, 0.9, 0.9 );
+    this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
   }
 
 
@@ -208,7 +210,7 @@ class QuadView{
       bottom: 0,
       width: 0.5,
       height: 0.5,
-      position: [ -this._objectSize/2, this._objectSize/2, -this._objectSize/3 ],
+      position: [ -this._objectSize/10, this._objectSize/10, -this._objectSize/15 ],
       up: [ 0, 0, -1 ]
     };
     this._viewName = "bottom_right";
@@ -231,14 +233,14 @@ class QuadView{
       window.innerHeight / - orthographicCameraFovFactor // bottom
       //9.99,//this._objectSize * 0.9, //this._near,
       //10.01//this._objectSize * 1.1 //this._far
+      //1,
+      //10.1
     );
-
 
     this._camera.left_orig = window.innerWidth / - orthographicCameraFovFactor;
     this._camera.right_orig = window.innerWidth / orthographicCameraFovFactor;
     this._camera.top_orig = window.innerHeight / orthographicCameraFovFactor;
     this._camera.bottom_orig = window.innerHeight / - orthographicCameraFovFactor;
-
 
     /*
     this._camera.left_orig = this._camera.left;
@@ -280,7 +282,6 @@ class QuadView{
     this._camera.up.z = this._config.up[ 2 ];
     this._camera.fov = this._defaultFov;
     this._camera.lookAt( this._originToLookAt );
-
   }
 
 
@@ -1059,6 +1060,7 @@ class ChunkCollection{
     };
 
     this._onChunksLoadedCallback = null;
+    this._onAllChunksLoadedCallback = null;
 
   }
 
@@ -1243,15 +1245,22 @@ class ChunkCollection{
   * out of bound or to complete the Sampler2D array for the fragment shader.
   */
   _createFakeTexture(){
-
+    /*
     this._fakeTextureData = {
       texture: new THREE.DataTexture(
-          new Uint8Array(1),
-          1,
-          1,
+          new Uint8Array(0),
+          0,
+          0,
           THREE.LuminanceFormat,  // format, luminance is for 1-band image
           THREE.UnsignedByteType  // type for our Uint8Array
         ),
+      origin: new THREE.Vector3(0, 0, 0),
+      validity: false
+    };
+    */
+
+    this._fakeTextureData = {
+      texture: null,
       origin: new THREE.Vector3(0, 0, 0),
       validity: false
     };
@@ -1373,6 +1382,197 @@ class ChunkCollection{
   }
 
 
+  getInvolvedTextureIndexes(cornerPositions){
+
+    var cornerOrigins = [
+      this.getIndex3DFromWorldPosition( [cornerPositions[0].x, cornerPositions[0].y, cornerPositions[0].z] ),
+      this.getIndex3DFromWorldPosition( [cornerPositions[1].x, cornerPositions[1].y, cornerPositions[1].z] ),
+      this.getIndex3DFromWorldPosition( [cornerPositions[2].x, cornerPositions[2].y, cornerPositions[2].z] ),
+      this.getIndex3DFromWorldPosition( [cornerPositions[3].x, cornerPositions[3].y, cornerPositions[3].z] )
+    ];
+
+    var min = [
+      Math.min(cornerOrigins[0][0], cornerOrigins[1][0], cornerOrigins[2][0], cornerOrigins[3][0]),
+      Math.min(cornerOrigins[0][1], cornerOrigins[1][1], cornerOrigins[2][1], cornerOrigins[3][1]),
+      Math.min(cornerOrigins[0][2], cornerOrigins[1][2], cornerOrigins[2][2], cornerOrigins[3][2])
+    ];
+
+    var max = [
+      Math.max(cornerOrigins[0][0], cornerOrigins[1][0], cornerOrigins[2][0], cornerOrigins[3][0]),
+      Math.max(cornerOrigins[0][1], cornerOrigins[1][1], cornerOrigins[2][1], cornerOrigins[3][1]),
+      Math.max(cornerOrigins[0][2], cornerOrigins[1][2], cornerOrigins[2][2], cornerOrigins[3][2])
+    ];
+
+
+    // build the chunk index of the 8 closest chunks from position
+    var indexes3D = [
+      [
+        min[0],
+        min[1],
+        min[2]
+      ],
+      [
+        min[0],
+        min[1],
+        max[2]
+      ],
+      [
+        min[0],
+        max[1],
+        min[2]
+      ],
+      [
+        min[0],
+        max[1],
+        max[2]
+      ],
+      [
+        max[0],
+        min[1],
+        min[2]
+      ],
+      [
+        max[0],
+        min[1],
+        max[2]
+      ],
+      [
+        max[0],
+        max[1],
+        min[2]
+      ],
+      [
+        max[0],
+        max[1],
+        max[2]
+      ]
+    ];
+
+    return indexes3D;
+
+  }
+
+
+  _getKeyFromIndex3D( index3D ){
+    return "x" +  index3D[0] + "y" + index3D[1] + "z" + index3D[2];
+  }
+
+
+  /**
+  *
+  */
+  getInvolvedTextureData(cornerPositions){
+    var that = this;
+
+    /*
+    console.log("this._sizeChunkWC");
+    console.log(this._sizeChunkWC);
+    console.log("cornerPositions");
+    console.log(cornerPositions);
+    */
+    this._sizeChunkWC;
+    /*
+    var chunkEdgeCase = cornerPositions[0].x % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].x % this._sizeChunkWC < this._sizeChunkWC/10; ||
+        cornerPositions[0].y % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].y % this._sizeChunkWC < this._sizeChunkWC/10 ||
+        cornerPositions[0].z % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].z % this._sizeChunkWC < this._sizeChunkWC/10;
+*/
+
+
+
+    /*
+    var chunkEdgeCase = cornerPositions[0].x == cornerPositions[1].x ||
+                        cornerPositions[0].y == cornerPositions[1].y ||
+                        cornerPositions[0].z == cornerPositions[1].z;
+    */
+
+    var chunkEdgeCaseX = cornerPositions[0].x == cornerPositions[1].x &&
+      (cornerPositions[0].x % this._sizeChunkWC < this._sizeChunkWC*0.1 ||   cornerPositions[0].x % this._sizeChunkWC > this._sizeChunkWC*0.9);
+
+    var chunkEdgeCaseY = cornerPositions[0].y == cornerPositions[1].y &&
+      (cornerPositions[0].y % this._sizeChunkWC < this._sizeChunkWC*0.1 ||   cornerPositions[0].y % this._sizeChunkWC > this._sizeChunkWC*0.9);
+
+    var chunkEdgeCaseZ = cornerPositions[0].z == cornerPositions[1].z &&
+      (cornerPositions[0].z % this._sizeChunkWC < this._sizeChunkWC*0.1 ||   cornerPositions[0].z % this._sizeChunkWC > this._sizeChunkWC*0.9);
+
+    var chunkEdgeCase = chunkEdgeCaseX || chunkEdgeCaseY || chunkEdgeCaseZ;
+
+    if( chunkEdgeCase ){
+      //console.log(">> NEAREST8");
+      //console.log(cornerPositions);
+      //console.log( Math.floor(Date.now()) );
+
+
+      var center = [
+        (cornerPositions[0].x + cornerPositions[1].x + cornerPositions[2].x + cornerPositions[3].x) / 4,
+        (cornerPositions[0].y + cornerPositions[1].y + cornerPositions[2].y + cornerPositions[3].y) / 4,
+        (cornerPositions[0].z + cornerPositions[1].z + cornerPositions[2].z + cornerPositions[3].z) / 4
+      ];
+
+      return this.get8ClosestTextureData( center );
+    }else{
+      //console.log(">> INVOLVED");
+      //console.log(cornerPositions);
+      //console.log( Math.floor(Date.now()) );
+    }
+
+
+    var involvedIndexes = this.getInvolvedTextureIndexes(cornerPositions);
+
+
+    var loadedMaps = {};
+
+    var validChunksCounter = 0;
+    var validChunksTexture = [];
+    var notValidChunksTexture = [];
+    var validChunksOrigin = [];
+    var notValidChunksOrigin = [];
+    var that = this;
+
+    involvedIndexes.forEach(function(index){
+      var aTextureData = that._fakeTextureData;
+      var indexKey = that._getKeyFromIndex3D( index );
+
+      // never loaded before
+      if(! (indexKey in loadedMaps)){
+        loadedMaps[indexKey] = 1;
+
+        // load the texture , possibly retrieving a fake one (out)
+        aTextureData = that.getTextureAtIndex3D(index);
+      }
+
+      // this texture data is valid
+      if(aTextureData.valid){
+        validChunksTexture.push( aTextureData.texture );
+        validChunksOrigin.push( aTextureData.origin );
+      }
+      // is not valid
+      else{
+        notValidChunksTexture.push( aTextureData.texture );
+        notValidChunksOrigin.push( aTextureData.origin );
+      }
+
+    });
+
+    validChunksCounter = validChunksTexture.length;
+
+    /*
+    return {
+      textures: validChunksTexture.concat( notValidChunksTexture ),
+      origins: validChunksOrigin.concat( notValidChunksOrigin ),
+      nbValid: validChunksCounter
+    };
+    */
+
+    var textureDatas = {
+      textures: validChunksTexture.concat( notValidChunksTexture ),
+      origins: validChunksOrigin.concat( notValidChunksOrigin ),
+      nbValid: validChunksCounter
+    };
+
+    return textureDatas;
+  }
+
+
   /**
   * [PRIVATE]
   * Called when a chunk is loaded or failed to load. When to total number number of toLoad Vs. Loaded+failed is equivalent, a callback may be called (with no argument) if defined by onChunkLoaded().
@@ -1383,15 +1583,18 @@ class ChunkCollection{
     this._chunkCounter.loaded += (+ success);
     this._chunkCounter.failled += (+ (!success));
 
+    var remaining = this._chunkCounter.toBeLoaded - this._chunkCounter.loaded - this._chunkCounter.failled;
+
     // all the required chunks are OR loaded OR failled = they all tried to load.
-    if( (this._chunkCounter.loaded + this._chunkCounter.failled) == this._chunkCounter.toBeLoaded ){
-      //console.log(">> All required chunks are loaded (lvl: " + this._resolutionLevel + ")");
-      console.log(">> All required chunks are loaded");
+    if( !remaining ){
+      if(this._onAllChunksLoadedCallback){
+        this._onAllChunksLoadedCallback();
+      }
     }
 
     // call a callback if defined
     if( this._onChunksLoadedCallback ){
-      this._onChunksLoadedCallback(this._resolutionLevel, (this._chunkCounter.toBeLoaded - this._chunkCounter.loaded - this._chunkCounter.failled));
+      this._onChunksLoadedCallback(this._resolutionLevel, remaining);
     }
   }
 
@@ -1405,6 +1608,14 @@ class ChunkCollection{
     this._onChunksLoadedCallback = cb;
   }
 
+
+  /**
+  * Defines a callback for when all the required tile of the current level are loaded.
+  * Called with no argument.
+  */
+  onAllChunksLoaded( cb ){
+    this._onAllChunksLoadedCallback = cb;
+  }
 
 } /* END CLASS ChunkCollection */
 
@@ -1443,6 +1654,7 @@ class LevelManager{
     this._levelsInfo = null;
 
     this._onChunksLoadedCallback = null;
+    this._onAllChunksLoadedCallback = null;
   }
 
 
@@ -1558,9 +1770,14 @@ class LevelManager{
       datatype
     );
 
-    // dealing with some nested callback
+    // dealing with some nested callback (new chunk is loaded)
     if( this._onChunksLoadedCallback ){
       chunkCollection.onChunkLoaded(this._onChunksLoadedCallback);
+    }
+
+    // dealing with some nested callback (all chunks are loaded)
+    if( this._onAllChunksLoadedCallback ){
+      chunkCollection.onAllChunksLoaded(this._onAllChunksLoadedCallback);
     }
 
     this._chunkCollections.push( chunkCollection );
@@ -1571,6 +1788,10 @@ class LevelManager{
     this._onChunksLoadedCallback = cb;
   }
 
+
+  onAllChunksLoaded( cb ){
+    this._onAllChunksLoadedCallback = cb;
+  }
 
   /**
   * Change the level of resolution. Boundaries and "integrity" are checked.
@@ -1633,6 +1854,12 @@ class LevelManager{
     //console.log(this._resolutionLevel + " " + position[0] + " " + position[1] + " " +position[2]);
 
     return the8ClosestTextureData;
+  }
+
+
+  getInvolvedTextureDataByLvl(cornerPositions, lvl){
+    var involvedTextureData = this._chunkCollections[ lvl ].getInvolvedTextureData(cornerPositions);
+    return involvedTextureData;
   }
 
 
@@ -1720,6 +1947,8 @@ class OrientationHelper{
     var xColor = 0xff3333;
     var yColor = 0x00EB4E;
     var zColor = 0x0088ff;
+
+    this._initRadius = initRadius;
 
     var geometryX = new THREE.CircleGeometry( initRadius, 64 );
     var geometryY = new THREE.CircleGeometry( initRadius, 64 );
@@ -1883,6 +2112,15 @@ class OrientationHelper{
   */
   setVisibility( b ){
     this._sphere.visible = b;
+  }
+
+
+  /**
+  * @return {Number} the actual radius of orientation helper, considering the ajustment to
+  * resolution level.
+  */
+  getRadius(){
+    return (this._initRadius * this._sphere.scale.x);
   }
 
 
@@ -2523,9 +2761,9 @@ class ColorMapManager{
 
 } /* END class ColorMapManager */
 
-var texture3d_frag = "const int maxNbChunks = 8;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying vec4 worldCoord;\nvarying vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return !( chunkPosition.x<0.0 || chunkPosition.x>=1.0 ||\n            chunkPosition.y<0.0 || chunkPosition.y>=1.0 ||\n            chunkPosition.z<0.0 || chunkPosition.z>=1.0 );\n}\nvoid getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition, out vec4 colorFromTexture){\n  float numberOfImagePerStripY = 64.0;\n  float numberOfPixelPerSide = 64.0;\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY;\n  float stripX = chunkPosition.x;\n  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  colorFromTexture = texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin, float chunkSize){\n  vec3 chunkSystemCoordinate = vec3((textureOrigin.x - world.x)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.y - world.y)*(-1.0)/chunkSize,\n                                    1.0 - (textureOrigin.z - world.z)*(-1.0)/chunkSize);\n  return chunkSystemCoordinate;\n}\nvoid main( void ) {\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(1.0, 0.0 , 0.0, 1.0);\n  vec3 chunkPosition;\n  bool hasColorFromChunk = false;\n  if(nbChunks >= 1){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0], chunkSize);\n    if( isInsideChunk(chunkPosition) ){\n      getColorFrom3DTexture(textures[0], chunkPosition, color);\n      hasColorFromChunk = true;\n    }\n    if(nbChunks >= 2){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1], chunkSize);\n      if( isInsideChunk(chunkPosition) ){\n        getColorFrom3DTexture(textures[1], chunkPosition, color);\n        hasColorFromChunk = true;\n      }\n      if(nbChunks >= 3){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2], chunkSize);\n        if( isInsideChunk(chunkPosition) ){\n          getColorFrom3DTexture(textures[2], chunkPosition, color);\n          hasColorFromChunk = true;\n        }\n        if(nbChunks >= 4){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3], chunkSize);\n          if( isInsideChunk(chunkPosition) ){\n            getColorFrom3DTexture(textures[3], chunkPosition, color);\n            hasColorFromChunk = true;\n          }\n          if(nbChunks >= 5){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4], chunkSize);\n            if( isInsideChunk(chunkPosition) ){\n              getColorFrom3DTexture(textures[4], chunkPosition, color);\n              hasColorFromChunk = true;\n            }\n            if(nbChunks >= 6){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5], chunkSize);\n              if( isInsideChunk(chunkPosition) ){\n                getColorFrom3DTexture(textures[5], chunkPosition, color);\n                hasColorFromChunk = true;\n              }\n              if(nbChunks >= 7){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6], chunkSize);\n                if( isInsideChunk(chunkPosition) ){\n                  getColorFrom3DTexture(textures[6], chunkPosition, color);\n                  hasColorFromChunk = true;\n                }\n                if(nbChunks == 8){\n                  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7], chunkSize);\n                  if( isInsideChunk(chunkPosition) ){\n                    getColorFrom3DTexture(textures[7], chunkPosition, color);\n                    hasColorFromChunk = true;\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(hasColorFromChunk){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a > 0.0){\n        gl_FragColor = colorFromColorMap;\n      }else{\n        discard;\n      }\n    }else{\n      gl_FragColor = color;\n    }\n  }else{\n    discard;\n  }\n}\n";
+var texture3d_frag = "\nconst int maxNbChunks = 8;\nconst float numberOfImagePerStripY = 64.0;\nconst float numberOfPixelPerSide = 64.0;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying  vec4 worldCoord;\nvarying  vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return  ( chunkPosition.x>=0.0 && chunkPosition.x<1.0 &&\n            chunkPosition.y>=0.0 && chunkPosition.y<1.0 &&\n            chunkPosition.z>=0.0 && chunkPosition.z<1.0 );\n}\nvec4 getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition){\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY ;\n  float stripX = chunkPosition.x;  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  return texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin){\n  return vec3(  (world.x - textureOrigin.x)/chunkSize,\n                 1.0 - (world.y - textureOrigin.y )/chunkSize,\n                 1.0 - (world.z - textureOrigin.z )/chunkSize);\n}\nvoid main( void ) {\n  if(nbChunks == 0){\n    discard;\n    return;\n  }\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(1.0, 0.0 , 0.0, 1.0);\n  vec3 chunkPosition;\n  bool hasColorFromChunk = false;\n  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0]);\n  if( isInsideChunk(chunkPosition) ){\n    color = getColorFrom3DTexture(textures[0], chunkPosition);\n    hasColorFromChunk = true;\n  } else if(nbChunks >= 2){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1]);\n    if( isInsideChunk(chunkPosition) ){\n      color = getColorFrom3DTexture(textures[1], chunkPosition);\n      hasColorFromChunk = true;\n    } else if(nbChunks >= 3){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2]);\n      if( isInsideChunk(chunkPosition) ){\n        color = getColorFrom3DTexture(textures[2], chunkPosition);\n        hasColorFromChunk = true;\n      } else if(nbChunks >= 4){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3]);\n        if( isInsideChunk(chunkPosition) ){\n          color = getColorFrom3DTexture(textures[3], chunkPosition);\n          hasColorFromChunk = true;\n        } else if(nbChunks >= 5){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4]);\n          if( isInsideChunk(chunkPosition) ){\n            color = getColorFrom3DTexture(textures[4], chunkPosition);\n            hasColorFromChunk = true;\n          } else if(nbChunks >= 6){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5]);\n            if( isInsideChunk(chunkPosition) ){\n              color = getColorFrom3DTexture(textures[5], chunkPosition);\n              hasColorFromChunk = true;\n            } else if(nbChunks >= 7){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6]);\n              if( isInsideChunk(chunkPosition) ){\n                color = getColorFrom3DTexture(textures[6], chunkPosition);\n                hasColorFromChunk = true;\n              } else if(nbChunks == 8){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7]);\n                if( isInsideChunk(chunkPosition) ){\n                  color = getColorFrom3DTexture(textures[7], chunkPosition);\n                  hasColorFromChunk = true;\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(hasColorFromChunk){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a > 0.0){\n        colorFromColorMap.a = 0.85;\n        gl_FragColor = colorFromColorMap;\n      }else{\n        discard;\n      }\n    }else{\n      color.a = 0.85;\n      gl_FragColor = color;\n    }\n  }else{\n    discard;\n  }\n}\n";
 
-var texture3d_vert = "uniform float chunkSize;\nuniform sampler2D colorMap;\nvarying vec2 vUv;\nvarying vec4 worldCoord;\nvoid main()\n{\n  vUv = uv;\n  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );\n  gl_Position = projectionMatrix * mvPosition;\n  worldCoord = modelMatrix * vec4( position, 1.0 );\n}\n";
+var texture3d_vert = "\nvarying  vec2 vUv;\nvarying  vec4 worldCoord;\nvoid main()\n{\n  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );\n  gl_Position = projectionMatrix * mvPosition;\n  worldCoord = modelMatrix * vec4( position, 1.0 );\n}\n";
 
 var ShaderImporter = {
 	texture3d_frag: texture3d_frag,
@@ -2550,12 +2788,15 @@ class ProjectionPlane{
     this._plane = new THREE.Object3D();
     this._plane.name = "projection plane";
 
-    //this._subPlaneSize = chunkSize / 2; // ORIG
-    //this._subPlaneSize = chunkSize * 0.7; // OPTIM
     this._subPlaneSize = chunkSize / Math.sqrt(2);
 
-    // list of subplanes
-    this._subPlanes = [];
+    // relative position of each corner each subplane
+    this._subPlaneCorners = [
+      new THREE.Vector3(-1 * this._subPlaneSize/2, this._subPlaneSize/2, 0),  // NW
+      new THREE.Vector3(this._subPlaneSize/2, this._subPlaneSize/2, 0),  // NE
+      new THREE.Vector3(-1 * this._subPlaneSize/2, -1 * this._subPlaneSize/2, 0),  // SW
+      new THREE.Vector3( this._subPlaneSize/2, -1 * this._subPlaneSize/2, 0),  // SE
+    ];
 
     // one shader material per sub-plane
     this._shaderMaterials = [];
@@ -2563,7 +2804,9 @@ class ProjectionPlane{
     // number of rows and cols of sub-planes to compose the _plane
 
     this._subPlaneDim = {row: 7, col: 15}; // OPTIM
-    //this._subPlaneDim = {row: 8, col: 17}; // TEST
+    //this._subPlaneDim = {row: 10, col: 20}; // TEST
+    //this._subPlaneDim = {row: 6, col: 13}; // TEST
+    //this._subPlaneDim = {row: 1, col: 1};
 
     // to be aggregated
     this._colormapManager = colormapManager;
@@ -2574,8 +2817,17 @@ class ProjectionPlane{
     this._resolutionLevel = 0;
 
     this._buildSubPlanes();
+
+
   }
 
+
+  /**
+  * @return {Number} resolution level for this plane
+  */
+  getResolutionLevel(){
+    return this._resolutionLevel;
+  }
 
   /**
   * Build all the subplanes with fake textures and fake origins. The purpose is just to create a compatible data structure able to receive relevant texture data when time comes.
@@ -2640,10 +2892,13 @@ class ProjectionPlane{
         var subPlaneMaterial = subPlaneMaterial_original.clone();
         var mesh = new THREE.Mesh( subPlaneGeometry, subPlaneMaterial );
 
-        mesh.position.set(-this._subPlaneDim.col*this._subPlaneSize/2 + i*this._subPlaneSize + this._subPlaneSize/2, -this._subPlaneDim.row*this._subPlaneSize/2 + j*this._subPlaneSize + this._subPlaneSize/2, 0.0);
+        mesh.position.set(
+          this._subPlaneSize * (-0.5*this._subPlaneDim.col + i + 0.5),
+          this._subPlaneSize * (-0.5*this._subPlaneDim.row + j + 0.5),
+          0.0
+        );
 
         this._plane.add( mesh );
-        this._subPlanes.push( mesh );
         this._shaderMaterials.push( subPlaneMaterial );
       }
     }
@@ -2664,23 +2919,23 @@ class ProjectionPlane{
   * Debugging. Chanfe the color of the mesh of the plane, bit first, the plane material has to be set as a mesh.
   */
   setMeshColor(c){
-    this._subPlanes[0].material.color = c;
+    this._plane.children[0].material.color = c;
   }
 
 
   /**
   * fetch each texture info, build a uniform and
   */
-  updateUniforms(){
+  updateUniforms_NEAREST8(){
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     var textureData = 0;
 
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
-      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
-      //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
+      var center = this._plane.children[i].localToWorld(new THREE.Vector3(0, 0, 0));
 
-      //textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
+
+
       textureData = this._levelManager.get8ClosestTextureDataByLvl(
         [center.x, center.y, center.z],
         this._resolutionLevel
@@ -2692,11 +2947,45 @@ class ProjectionPlane{
   }
 
 
+  /**
+  * Like updateUniforms but instead of using the 8 closest, it uses only the ones
+  * that are involved.
+  */
+  updateUniforms(){
+    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+    var textureData = 0;
+
+    //console.log(this._subPlaneCorners);
+
+    for(var i=0; i<nbSubPlanes; i++){
+      // corners of the sub-plane in world coordinates
+      var corners = [
+        this._plane.children[i].localToWorld( this._subPlaneCorners[0].clone() ), // NW
+        this._plane.children[i].localToWorld( this._subPlaneCorners[1].clone() ), // NE
+        this._plane.children[i].localToWorld( this._subPlaneCorners[2].clone() ), // SW
+        this._plane.children[i].localToWorld( this._subPlaneCorners[3].clone() )  // SE
+      ];
+
+      //console.log(corners);
+
+      textureData = this._levelManager.getInvolvedTextureDataByLvl(
+        corners,
+        this._resolutionLevel
+      );
+
+
+
+      this._updateSubPlaneUniform(i, textureData);
+    }
+
+  }
+
+
   printSubPlaneCenterWorld(){
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
-      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
+      var center = this._plane.children[i].localToWorld(new THREE.Vector3(0, 0, 0));
     }
   }
 
@@ -2708,22 +2997,50 @@ class ProjectionPlane{
   * @param {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
   */
   _updateSubPlaneUniform(i, textureData){
-    //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
-    var chunkSizeWC = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
-
     var uniforms = this._shaderMaterials[i].uniforms;
-    uniforms.nbChunks.value = textureData.nbValid;
-    uniforms.textures.value = textureData.textures;
-    uniforms.textureOrigins.value = textureData.origins;
-    uniforms.chunkSize.value = chunkSizeWC;
 
-    uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
-    uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
+    //cube.material.map.needsUpdate = true;
+    this._shaderMaterials[i].needsUpdate = true;
+    this._shaderMaterials[i]._needsUpdate = true;
 
+    // update colormap no  matter what
+    //uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
+    //uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
 
-    //uniforms.colorMap.value = THREE.ImageUtils.loadTexture( "colormaps/rainbow.png" );
-    //this._shaderMaterials[i].needsUpdate = true;  // apparently useless
+    var mustUpdate = true;
 
+    /*
+    console.log( uniforms.textures.value );
+    console.log( textureData.nbValid );
+    console.log("---------------------------------");
+    */
+
+    for(i=0; i<textureData.nbValid; i++){
+      if(!textureData.textures[i]){
+        mustUpdate = false;
+        break;
+      }
+    }
+
+    if( mustUpdate ){
+      //console.log("UP");
+      var chunkSizeWC = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
+      uniforms.nbChunks.value = textureData.nbValid;
+      uniforms.textures.value = textureData.textures.slice(0, textureData.nbValid);
+      uniforms.textureOrigins.value = textureData.origins;
+      uniforms.chunkSize.value = chunkSizeWC;
+
+    }
+
+    /*
+    // this does not change a damn thing
+    uniforms.nbChunks.needsUpdate = true;
+    uniforms.textures.needsUpdate = true;
+    uniforms.textureOrigins.needsUpdate = true;
+    uniforms.chunkSize.needsUpdate = true;
+    uniforms.useColorMap.needsUpdate = true;
+    uniforms.colorMap.needsUpdate = true;
+    */
   }
 
 
@@ -2812,7 +3129,7 @@ class ProjectionPlane{
   * Enable a given layer in the visibility mask, so that it's visible by a camera with the same layer activated.
   */
   enableLayer( l ){
-    this._subPlanes.forEach(function(sp){
+    this._plane.children.forEach(function(sp){
       sp.layers.enable(l);
     });
   }
@@ -2822,12 +3139,26 @@ class ProjectionPlane{
   * Disable a given layer in the visibility mask, so that it's not visible by a camera with a different layer activated.
   */
   disableLayer( l ){
-    this._subPlanes.forEach(function(sp){
+    this._plane.children.forEach(function(sp){
       sp.layers.disable(l);
     });
   }
 
 
+  /**
+  * Hide this plane (the THEE.Object3D)
+  */
+  hide(){
+    this._plane.visible = false;
+  }
+
+
+  /**
+  * Show this plane (the THEE.Object3D)
+  */
+  show(){
+    this._plane.visible = true;
+  }
 
 
 } /* END class ProjectionPlane */
@@ -2859,6 +3190,10 @@ class PlaneManager{
 
     this._onMultiplaneMoveCallback = null;
     this._onMultiplaneRotateCallback = null;
+
+    this._resolutionLevelLoRezDelta = 2;
+
+    this._isLowRezPlaneVisible = true;
   }
 
 
@@ -3036,7 +3371,10 @@ class PlaneManager{
   */
   updateScaleFromRezLvl(lvl){
     this._updateScaleFromRezLvlPlaneArray(lvl, this._projectionPlanesHiRez);
-    this._updateScaleFromRezLvlPlaneArray(lvl - 2, this._projectionPlanesLoRez);
+
+    if(this._isLowRezPlaneVisible){
+      this._updateScaleFromRezLvlPlaneArray(lvl - this._resolutionLevelLoRezDelta, this._projectionPlanesLoRez);
+    }
   }
 
 
@@ -3058,7 +3396,10 @@ class PlaneManager{
   */
   updateUniforms(){
     this._updateUniformsPlaneArray(this._projectionPlanesHiRez);
-    this._updateUniformsPlaneArray(this._projectionPlanesLoRez);
+
+    if(this._isLowRezPlaneVisible){
+      this._updateUniformsPlaneArray(this._projectionPlanesLoRez);
+    }
   }
 
 
@@ -3122,7 +3463,7 @@ class PlaneManager{
     var normalPlane = this.getWorldVectorN(planeIndex);
     this._multiplaneContainer.rotateOnAxis ( normalPlane, rad );
 
-    this.updateUniforms();
+    //this.updateUniforms();
 
     this._onMultiplaneRotateCallback && this._onMultiplaneRotateCallback();
   }
@@ -3201,11 +3542,36 @@ class PlaneManager{
     this._multiplaneContainer.translateOnAxis( uVector, uDistance );
     this._multiplaneContainer.translateOnAxis( vVector, vDistance );
 
-    this.updateUniforms();
+    //this.updateUniforms();
 
     this._onMultiplaneMoveCallback && this._onMultiplaneMoveCallback( this._multiplaneContainer.position );
 
   }
+
+
+  hideLowRezPlane(){
+    this._projectionPlanesLoRez.forEach( function(projPlane){
+      projPlane.hide();
+    });
+  }
+
+
+  showLowRezPlane(){
+    this._isLowRezPlaneVisible = true;
+
+    this._projectionPlanesLoRez.forEach( function(projPlane){
+      projPlane.show();
+    });
+
+    this._updateScaleFromRezLvlPlaneArray(
+      this._projectionPlanesHiRez[0].getResolutionLevel() - this._resolutionLevelLoRezDelta,
+      this._projectionPlanesLoRez
+    );
+
+    this._updateUniformsPlaneArray(this._projectionPlanesLoRez);
+
+  }
+
 
 } /* END CLASS PlaneManager */
 
@@ -3854,26 +4220,34 @@ class GuiController{
 
     this._quadScene = quadScene;
 
-
-    //this._datGui = new dat.GUI();
-
     // fake value for dat gui - just to display the init value
     this._resolutionLevel = this._quadScene.getResolutionLevel();
     this._resolutionLvlRange = [0, 6];
     this._resolutionLvlSliderBuilt = false;
     this._resolutionDescription = '';
 
-
     // special controller for colormaps
     this._colormapManager = this._quadScene.getColormapManager();
     this._colormapManager.onColormapUpdate( this._updateColormapList.bind(this) );
 
+    // Annotations
+    this._annotationCollection = this._quadScene.getAnnotationCollection();
 
-    this._mainPanel = QuickSettings.create(window.innerWidth - 250, 0, document.title);
+    // to specify shift+click on the ortho cam plane projections
+    this._quadViewInteraction = this._quadScene.getQuadViewInteraction();
 
+    // the plane manager
+    this._planeManager = this._quadScene.getPlaneManager();
 
+    var panelWidth = 200;
+    var panelSpace = 5;
 
+    this._mainPanel = QuickSettings.create(panelSpace, 0, document.title);
     this._initMainPanel();
+
+    //this._annotationPanel = QuickSettings.create(panelWidth + panelSpace*2 , 0, "Annotations");
+    //this._initAnnotationPanel();
+    //this._initAnnotationPanelCallback();
   }
 
 
@@ -3895,6 +4269,19 @@ class GuiController{
     });
     document.getElementById("Bounding box").parentElement.parentElement.style["margin-top"] = "0px";
 
+    // Lo-rez plane view toggle
+    this._mainPanel.addBoolean("Lo-res projection", 1, function(mustShow){
+      if(mustShow){
+        that._planeManager.disableLayerHiRez(1);
+        that._planeManager.showLowRezPlane();
+      }else{
+        that._planeManager.enableLayerHiRez(1);
+        that._planeManager.hideLowRezPlane();
+      }
+
+    });
+    document.getElementById("Lo-res projection").parentElement.parentElement.style["margin-top"] = "0px";
+
     // rez lvl slider
     this._mainPanel.addRange("Zoom level", 0, 6, 0, 1,
       // on change
@@ -3910,6 +4297,7 @@ class GuiController{
         value = Math.floor( value );
         that._resolutionLevel = value;
         that._quadScene.setResolutionLevel( value );
+
       }
     );
 
@@ -3942,7 +4330,6 @@ class GuiController{
       that._quadScene.setMultiplaneRotation(newRotation[0], newRotation[1], newRotation[2]);
       that._quadScene.setMultiplanePosition(newPosition[0], newPosition[1], newPosition[2]);
 
-
     });
 
     this._mainPanel.overrideStyle("Apply", "width", "100%");
@@ -3951,6 +4338,7 @@ class GuiController{
     // Button reset rotation
     this._mainPanel.addButton("Reset rotation", function(){
       that._quadScene.setMultiplaneRotation(0, 0, 0);
+
     });
     this._mainPanel.overrideStyle("Reset rotation", "width", "100%");
     document.getElementById("Reset rotation").parentElement.style["margin-top"] = "0px";
@@ -4028,13 +4416,237 @@ class GuiController{
     this._mainPanel.addDropDown("Colormap", this._colormapManager.getAvailableColormaps(),
       function( dropdownObj ){
         that._colormapManager.useColormap(dropdownObj.value);
+        that._quadScene.refreshUniforms();
       }
     );
 
   }
 
 
+  /**
+  * [PRIVATE]
+  * Create the pannel dedicated to annotaion management
+  */
+  _initAnnotationPanel(){
+    var that = this;
 
+
+
+    // open file button
+    this._annotationPanel.addFileChooser(
+      "Annotation file",
+      "Open",
+      "",
+      function( file ){
+        that._annotationCollection.loadAnnotationFileDialog( file );
+      }
+    );
+
+    // save annot button
+    this._annotationPanel.addButton("Export annotations", null);
+    this._annotationPanel.overrideStyle("Export annotations", "width", "100%");
+    document.getElementById("Export annotations").parentElement.style["margin-top"] = "0px";
+
+    // dropdown menu
+    this._annotationPanel.addDropDown("Annotations", [],
+      function( dropdownObj ){
+        console.log( dropdownObj.value );
+      }
+    );
+
+
+
+    // callback when a new annot is added in the core, a new item shows on the menu
+    that._annotationCollection.onAddingAnnotation( function(name){
+      that._annotationPanel.getControl("Annotations").addItem(name);
+      console.log( name );
+    });
+
+    /*
+    this._annotationPanel.getControl("Annotations").removeItem("pouet2");
+    */
+
+    // editable field for annotation name
+    this._annotationPanel.addText("Annotation name", "", function(){} );
+    this._annotationPanel.overrideStyle("Annotation name", "text-align", "center");
+
+    // editable description of the annot
+    this._annotationPanel.addTextArea("Annotation description", "", function(){} );
+    document.getElementById("Annotation description").parentElement.style["margin-top"] = "0px";
+
+    // Pannel of buttons for dealing with existing annot
+    this._annotationPanel.addHTML("panelEditExistingAnnot", this._buildPanelEditExistingAnnot());
+    document.getElementById("panelEditExistingAnnot").parentElement.style["margin-top"] = "0px";
+
+
+    // Button to create a new annotation
+    this._annotationPanel.addButton("Start new annotation", function(){
+      // show and hide the relevant componants
+      that._annotationPanel.hideControl("panelEditExistingAnnot");
+      that._annotationPanel.showControl("panelCreateAnnot");
+      that._annotationPanel.showControl("Validate annotation");
+      that._annotationPanel.hideControl("Start new annotation");
+
+      // prevent the user from doing stupid interactions
+      that._annotationPanel.disableControl("Annotations");
+      that._annotationPanel.disableControl("Export annotations");
+      that._annotationPanel.disableControl("Annotation file");
+
+      // enable creation
+      // (the temp annot will 'really' be created at the first click)
+      that._annotationCollection.enableAnnotCreation();
+    });
+    this._annotationPanel.overrideStyle("Start new annotation", "width", "100%");
+
+    // Button to validate a homemade annotation
+    this._annotationPanel.addButton("Validate annotation", function(){
+      // show and hide the relevant componants
+      that._annotationPanel.showControl("panelEditExistingAnnot");
+      that._annotationPanel.hideControl("panelCreateAnnot");
+      that._annotationPanel.hideControl("Validate annotation");
+      that._annotationPanel.showControl("Start new annotation");
+
+      // allow the user to interact
+      that._annotationPanel.enableControl("Annotations");
+      that._annotationPanel.enableControl("Export annotations");
+      that._annotationPanel.enableControl("Annotation file");
+
+      // done with the creation
+      that._annotationCollection.addTemporaryAnnotation();
+
+    });
+    this._annotationPanel.overrideStyle("Validate annotation", "width", "100%");
+    this._annotationPanel.hideControl("Validate annotation");
+
+    // homemade annot options
+    this._annotationPanel.addHTML("panelCreateAnnot", this._buildPanelCreateAnnot());
+    document.getElementById("panelCreateAnnot").parentElement.style["margin-top"] = "0px";
+    this._annotationPanel.hideControl("panelCreateAnnot");
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Builds the HTML edit panel for annotations
+  */
+  _buildPanelEditExistingAnnot(){
+    var htmlStr = `
+    <div>
+      <i id="existingAnnotValidate" class="fa fa-check small-icon" aria-hidden="true"></i>
+      <i id="existingAnnotToggleView" class="fa fa-eye small-icon" aria-hidden="true"></i>
+      <i id="existingAnnotTarget" class="fa fa-crosshairs small-icon" aria-hidden="true"></i>
+      <i id="existingAnnotColorPicker" class="fa fa-paint-brush small-icon" aria-hidden="true"></i>
+      <i  id="existingAnnotDelete" class="fa fa-trash small-icon" aria-hidden="true"></i>
+    </div>
+    `;
+
+    return htmlStr;
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Builds the pannel with buttons to create a new annotation
+  */
+  _buildPanelCreateAnnot(){
+    var htmlStr = `
+    <div>
+      <i id="newAnnotUndo" class="fa fa-undo small-icon" aria-hidden="true"></i>
+      <i id="newAnnotPaintColorPicker" class="fa fa-paint-brush small-icon" aria-hidden="true"></i>
+      <i id="newAnnotDelete" class="fa fa-trash small-icon" aria-hidden="true"></i>
+    </div>
+    `;
+
+    return htmlStr;
+  }
+
+
+  _initAnnotationPanelCallback(){
+    var that = this;
+
+    // existing annotations -------------------------
+
+    // check - validate the change of name/description if any
+    document.getElementById("existingAnnotValidate").onclick = function(e){
+      console.log(e);
+    };
+
+    // eye - show/hide the annot
+    document.getElementById("existingAnnotToggleView").onclick = function(e){
+      console.log(e);
+    };
+
+    // target - center the annot
+    document.getElementById("existingAnnotTarget").onclick = function(e){
+      console.log(e);
+    };
+
+    // paint brush - change annot color
+    document.getElementById("existingAnnotColorPicker").onclick = function(e){
+      console.log(e);
+    };
+
+    // trashbin - delete the annot
+    document.getElementById("existingAnnotDelete").onclick = function(e){
+      console.log(e);
+    };
+
+    // new annotations -------------------------
+
+    // Undo - remove the last point added
+    document.getElementById("newAnnotUndo").onclick = function(e){
+      console.log(e);
+    };
+
+    // Paint brush - change color of the annot
+    document.getElementById("newAnnotPaintColorPicker").onclick = function(e){
+      console.log(e);
+    };
+
+    // trashbin - delete the annot
+    document.getElementById("newAnnotDelete").onclick = function(e){
+      console.log(e);
+    };
+
+
+    //
+    this._quadViewInteraction.onClickPlane(
+      "ortho",
+
+      function( point ){
+        console.log("From GUI:");
+        console.log(point);
+
+        // the annotation creation processes is enabled
+        if( that._annotationCollection.isAnnotCreationEnabled() ){
+          var temporaryAnnot = that._annotationCollection.getTemporaryAnnotation();
+
+          // appending a new point
+          if( temporaryAnnot ){
+            temporaryAnnot.addPoint( [point.x, point.y, point.z] );
+          }
+          // init the temporary annot
+          else{
+            that._annotationCollection.createTemporaryAnnotation( point );
+            that._displayAnnotInfo( that._annotationCollection.getTemporaryAnnotation() );
+          }
+
+        }
+      }
+    );
+
+  }
+
+
+  /**
+  * Display annotation info in the text box.
+  * @param {Annotation} annot - an instance of annotation,
+  * most likely the temporary one from the collection.
+  */
+  _displayAnnotInfo( annot ){
+    this._annotationPanel.setValue("Annotation name", annot.getName());
+    this._annotationPanel.setValue("Annotation description", annot.getDescription());
+  }
 
 
 }/* END class GuiController */
@@ -4168,7 +4780,7 @@ class Annotation{
   * Constructor of an annotation.
   * @param {Array of Array} points - Array of [x, y, z], if only one, its a point otherwise it can be a linestring (default) or polygon (options.closed must be true)
   * @param {String} name - name, suposedly unique
-  * @param {Object} options - all kind of options: name {String}, isClosed {Boolean}, description {String}, color {String} hexa like "#FF0000", eulerAngle {Array} rotation correction [x, y, z], scale {Array} scale correction [x, y, z], position {Array} offset [x, y, z]
+  * @param {Object} options - all kind of options: isClosed {Boolean}, description {String}, color {String} hexa like "#FF0000", eulerAngle {Array} rotation correction [x, y, z], scale {Array} scale correction [x, y, z], position {Array} offset [x, y, z]
   */
   constructor(points, name, options={}){
 
@@ -4177,6 +4789,7 @@ class Annotation{
     this._isClosed = (typeof options.isClosed === 'undefined')? false : options.isClosed;
     this._description = (typeof options.description === 'undefined')? "" : options.description;
     this._color = (typeof options.color === 'undefined')? "#FF00FF" : options.color;
+    if( this._color[0] != "#"){ this._color = "#" + this._color; }
     this._eulerAngle = (typeof options.eulerAngle === 'undefined')? [0, 0, 0] : options.eulerAngle;
     this._scale = (typeof options.scale === 'undefined')? [1, 1, 1] : options.scale;
     this._position = (typeof options.position === 'undefined')? [0, 0, 0] : options.position;
@@ -4198,15 +4811,6 @@ class Annotation{
     this._meshMustRebuild = true;
 
     this._buildAnnotationObject3D();
-  }
-
-
-  /**
-  * Defines the size of the sphere for a point annotation.
-  * @param {Number} r - radius
-  */
-  setPointRadius( r ){
-    this._pointRadius = r;
   }
 
 
@@ -4235,13 +4839,30 @@ class Annotation{
   * @param {Array} point - coord [x, y, z]
   */
   addPoint( point ){
+    if(this._isClosed){
+      console.warn( "The annotation is a closed polygon. You must to first remove the last point to open the loop." );
+      return;
+    }
+
     // maintain integrity (and prevent from running validateAnnotation() )
     if( point.length == 3){
       this._points.push( point );
 
-      // TODO if a point tunrs into a line
+      // this point annotation just turned into a line annotation (let's celebrate!)
+      if( this._points.length >= 2 ){
+        this.flushObject3D();
+        this._buildLinestringAnnotation();
+      }
 
-      this._meshMustRebuild = true;
+      /*
+      NOTE: it would have been better to just add a point to an existing buffer
+      in order to make the lin longer, unfortunatelly THREEjs makes it very
+      cumbersome (impossible) to extend an existing buffergeometry a simple way.
+      In the end, the most convenient is to delete/recreate the whole thing.
+      Sorry for that.
+      */
+
+      this.validateAnnotation();
     }
   }
 
@@ -4250,6 +4871,7 @@ class Annotation{
   * Remove a point from the annotation point set.
   * @param {Number} index - optionnal, if set remove the point at this index. If not set, remove the last
   */
+  /*
   removePoint( index=-1 ){
     if( this._isValid ){
       this._points.splice(index, 1);
@@ -4258,10 +4880,45 @@ class Annotation{
       // TODO if a line turns into a point !
       // TODO if closed, do we still leave it close?
 
-      this._meshMustRebuild = true;
+    }
+  }
+  */
+
+
+  /**
+  * Remove the last point of the annot and adapt the shape if it becomes a
+  * point or even of length 0.
+  */
+  removeLastPoint(){
+    // open the loop
+    if(this._isClosed){
+      console.warn("The polygon just got open.");
+      this._isClosed = false;
     }
 
+    if( this._isValid ){
+      this._points.pop();
 
+      // no more point into this annot
+      if(this._points.length == 0){
+        this.flushObject3D();
+      }else
+      // the line turns into a point
+      if(this._points.length == 1){
+        this.flushObject3D();
+        this._buildPointAnnotation();
+      }
+      // the lines is getting shorter
+      else{
+        var lineMesh = this._object3D.children[0];
+        lineMesh.geometry.vertices.pop();
+        lineMesh.geometry.computeBoundingSphere();
+        lineMesh.geometry.dynamic = true;
+        lineMesh.geometry.verticesNeedUpdate = true;
+      }
+
+      this.validateAnnotation();
+    }
   }
 
 
@@ -4292,25 +4949,26 @@ class Annotation{
   */
   _buildPointAnnotation(){
     if( this._isValid ){
+      var geometry = new THREE.BufferGeometry();
+			var position = new Float32Array( this._points[0] );
 
-      var geometry = new THREE.SphereGeometry( this._pointRadius, 32, 32 );
-      var material = new THREE.MeshBasicMaterial();
+      var material = new THREE.PointsMaterial({
+        size: 10,
+        color: new THREE.Color(this._color),
+        sizeAttenuation: false
+      });
 
-      var mesh = new THREE.Mesh( geometry, material );
-      // move the sphere
-      mesh.position.set( this._points[0][0], this._points[0][1], this._points[0][2] );
-      mesh.layers.enable( 0 );
-      mesh.layers.enable( 1 );
+      geometry.addAttribute( 'position', new THREE.BufferAttribute( position, 3 ) );
+      geometry.computeBoundingSphere();
+      geometry.dynamic = true;
+      geometry.verticesNeedUpdate = true;
 
-      mesh.geometry.dynamic = true;
-      mesh.geometry.verticesNeedUpdate = true;
+      var point = new THREE.Points( geometry, material );
 
+      point.layers.enable( 0 );
+      point.layers.enable( 1 );
 
-
-
-
-      this._object3D.add( mesh );
-
+      this._object3D.add( point );
       this._meshMustRebuild = false;
     }
   }
@@ -4322,30 +4980,36 @@ class Annotation{
   */
   _buildLinestringAnnotation(){
     if( this._isValid ){
-      var geometry = new THREE.Geometry();
+      //var geometry = new THREE.Geometry();
+      var geometry = new THREE.BufferGeometry();
+
+
       var material = new THREE.LineBasicMaterial( {
-        linewidth: 2, // thickness remains the same on screen no matter the proximity
-        color: new THREE.Color(this._color),
-        blending: THREE.MultiplyBlending,
-        depthFunc: THREE.NeverDepth
+        linewidth: 1, // thickness remains the same on screen no matter the proximity
+        color: new THREE.Color(this._color)
       });
 
+      var bufferSize = this._points.length * 3 + (+this._isClosed)*3;
+      var vertices = new Float32Array(bufferSize);
+
       // adding every point
-      this._points.forEach(function(point){
-        geometry.vertices.push( new THREE.Vector3(point[0], point[1], point[2]));
+      this._points.forEach(function(point, index){
+        vertices[index*3 ] = point[0];
+        vertices[index*3 + 1] = point[1];
+        vertices[index*3 + 2] = point[2];
       });
 
       // add a the first point again, in the end, to close the loop
       if(this._isClosed && this._points.length > 2){
-        geometry.vertices.push( new THREE.Vector3(
-            this._points[0][0],
-            this._points[0][1],
-            this._points[0][2]
-          )
-        );
+        vertices[bufferSize - 3] = this._points[0][0];
+        vertices[bufferSize - 2] = this._points[0][1];
+        vertices[bufferSize - 1] = this._points[0][2];
       }
 
-      geometry.computeLineDistances();
+      geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+      geometry.getAttribute("position").dynamic = true;
+
+      //geometry.computeLineDistances();
       var mesh = new THREE.Line( geometry, material );
       mesh.layers.enable( 0 );
       mesh.layers.enable( 1 );
@@ -4360,6 +5024,10 @@ class Annotation{
   }
 
 
+  /**
+  * [PRIVATE]
+  * Builds the annotation, no matter if point or line.
+  */
   _buildAnnotationObject3D(){
     // this annotation is corrupted
     if( ! this._isValid ){
@@ -4386,11 +5054,104 @@ class Annotation{
 
 
   /**
+  * [PRIVATE]
+  * remove all the childrens from the graphic representation of this annot.
+  * This is useful when a single-point annot turns into a line annot and vice-versa.
+  */
+  flushObject3D(){
+    var that = this;
+
+    this._object3D.children.forEach(function(child){
+      that._object3D.remove( child );
+    });
+  }
+
+
+  /**
   * When we want to close a linstring. Basically adds a point at the end and switch the isClosed boolean.
   */
   closeLinestring(){
-    // TODO
+    // cannot close it if already closed
+    if(this._isClosed){
+      console.warn("The annotation linestring is already closed.");
+      return;
+    }
+
+    // an annot needs at least 3 points to be closed
+    if( this._points.length > 2 ){
+      this._isClosed = true;
+
+      this.addPoint( this._points[ this._points.length - 1 ] );
+    }
   }
+
+
+  /**
+  * @return {String} the name of this annotation
+  */
+  getName(){
+    return this._name;
+  }
+
+  /**
+  * update the name of this annotation.
+  * @param {String} name - the new name
+  */
+  updateName( name ){
+    this._name = name;
+    var mesh = this._object3D.name = name;
+  }
+
+
+  /**
+  * @return {String} the description of this annotation
+  */
+  getDescription(){
+    return this._description;
+  }
+
+  /**
+  * Update the description.
+  * @param {String} d - the new description
+  */
+  updateDescription( d ){
+    this._description = d;
+    this._object3D.userData.description = d;
+  }
+
+
+  /**
+  * @return {String} the color of the annotation in hexadecimal
+  */
+  getColor(){
+    return this._color;
+  }
+
+
+  /**
+  * Update the color.
+  * @param {String} c - should be like "FF0000" or "#FF0000"
+  */
+  updateColor( c ){
+    this._color = c;
+
+    if( this._color[0] != "#"){
+      this._color = "#" + this._color;
+    }
+
+    if(this._object3D.children.length){
+      this._object3D.children[0].material.color.set( this._color );
+    }
+  }
+
+
+  /**
+  * @return {Number} the number of points in this annotation
+  */
+  getNummberOfPoints(){
+    return this._points.length;
+  }
+
 
 /*
 TODO
@@ -4419,6 +5180,10 @@ class AnnotationCollection {
     this._container3D.name = "annotation collection";
 
     this._noNameIncrement = 0;
+    this._onAddingAnnotationCallback = null;
+
+    this._annotCreationEnabled = false;
+    this._tempAnnotation = null;
   }
 
 
@@ -4435,7 +5200,6 @@ class AnnotationCollection {
   * @param {Array of Array} points - Array of [x, y, z], if only one, its a point otherwise it can be a linestring (default) or polygon (options.closed must be true)
   * @param {String} name - name, suposedly unique
   * @param {Object} options - all kind of options:
-  * name {String} must be unique or can be null (auto picked based on date),
   * isClosed {Boolean} makes the diff between a linestring and a polygon - default: false,
   * description {String} optionnal - default: '',
   * color {String} - default: "FF0000",
@@ -4449,17 +5213,47 @@ class AnnotationCollection {
       return;
     }
 
-    // if no name,
-    if(!name){
-      name = "annotation_" + this._noNameIncrement + "_" +  new Date().getMilliseconds();
-      this._noNameIncrement ++;
-    }
+    // if no name, we make one
+    name = name || this._getNewAnnotationName();
 
     // add the new annotation to the collection
     this._collection[ name ] = new Annotation( points, name, options);
 
     // add the visual object to Object3D container
     this._container3D.add( this._collection[ name ].getObject3D() );
+
+    // a nice callback to do something (mainly from the UI view point)
+    if(this._onAddingAnnotationCallback){
+      this._onAddingAnnotationCallback( name );
+    }
+  }
+
+
+  /**
+  * Add to collection the temporary annotation that is currently being created.
+  */
+  addTemporaryAnnotation(){
+    if( this._annotCreationEnabled && this._tempAnnotation ){
+      // only adds if the annot contains points
+      if( this._tempAnnotation.getNummberOfPoints() ){
+        this._collection[ this._tempAnnotation.getName() ] = this._tempAnnotation;
+      }else{
+        console.warn("The temporary annotation cannot be added to the collection because it is empty.");
+      }
+
+      this._tempAnnotation = null;
+      this.disableAnnotCreation();
+    }
+  }
+
+
+  /**
+  * [PRIVATE]
+  * returns an incremental fake name so that our annotation does not remain unnamed.
+  */
+  _getNewAnnotationName(){
+    this._noNameIncrement ++;
+    return new Date().toISOString() + "_" + this._noNameIncrement;
   }
 
 
@@ -4475,6 +5269,179 @@ class AnnotationCollection {
 
     // remove the 3D representation
     this._container3D.remove( this._collection[ name ].getObject3D() );
+
+    // remove the logic object
+    delete this._collection[ name ];
+  }
+
+
+  /**
+  * Load an annotation file to add its content to the collection.
+  * @param {Object} config - contains config.url and may contain more attributes in the future.
+  */
+  loadAnnotationFileURL( config, isCompressed = false ){
+    var that = this;
+
+    var loadingFunction = isCompressed ? AjaxFileLoader.loadCompressedTextFile : AjaxFileLoader.loadTextFile;
+
+    loadingFunction(
+      config.url,
+
+      // success load
+      function( data ){
+        that._loadAnnotationFileContent( data );
+      },
+
+      // fail to load
+      function( errorInfo ){
+        console.warn("Couldnt load the annotation file: " + config.url);
+
+      }
+    );
+  }
+
+
+  /**
+  * Read and parse the content if a File object containg json annotations.
+  * @param {File} file - HTML5 File object, most likely opened using a file dialog
+  */
+  loadAnnotationFileDialog( annotFile ){
+    var that = this;
+
+    var fr = new FileReader();
+    fr.onload = function(e){
+      //var jsonObj = JSON.parse(e.target.result);
+      that._loadAnnotationFileContent( e.target.result );
+      //console.log(jsonObj);
+    };
+
+    fr.readAsText(annotFile);
+  }
+
+
+  /**
+  * [PRIVATE]
+  * Generic method to load the string content of an annotation file.
+  * This way we can use it no matter if loading from url/ajax or from html5File/dialog.
+  */
+  _loadAnnotationFileContent( jsonStr ){
+    var that = this;
+    // attributes to dig in the annotation file
+    var annotKeys = ["color", "description", "isClosed", "eulerAngle", "scale", "position"];
+
+    var annotObj = JSON.parse( jsonStr );
+    annotObj.annotations.forEach( function( annot ){
+
+      // if an annot has no points, we dont go further
+      if( !("points" in annot) || (annot.points.length == 0)){
+        return;
+      }
+
+      // to be filled on what we find in the annot file
+      var optionObj = {};
+      var name = ("name" in annot) ? annot.name : null;
+
+      // collecting the option data
+      annotKeys.forEach(function(key){
+        if( key in annot ){
+          optionObj[ key ] = annot[ key ];
+        }
+      });
+
+      // add to collection
+      that.addAnnotation(annot.points, name, optionObj);
+    });
+  }
+
+
+  /**
+  * Defines a callback to when a new annotation is added.
+  * This callback is called with the name of the annotation (unique).
+  * @param {function} cb - callback
+  */
+  onAddingAnnotation( cb ){
+    this._onAddingAnnotationCallback = cb;
+  }
+
+
+  /**
+  * Init a temporary annotation with a single point.
+  * @param {THREE.Vector3} firstPoint - a threejs vector
+  */
+  createTemporaryAnnotation( firstPoint ){
+    if( this._tempAnnotation ){
+      console.warn("A temporaray annotation is already created. Validate it or discard it before creating a new one.");
+      return;
+    }
+
+    if( ! this._annotCreationEnabled ){
+      console.warn("annotation creation must be enabled first. Call enableAnnotCreation()");
+      return;
+    }
+
+    this._tempAnnotation = new Annotation(
+      [ [firstPoint.x, firstPoint.y, firstPoint.z] ],
+      this._getNewAnnotationName(),
+      {
+        description: "No description yet",
+        isClosed: false
+      }
+    );
+
+    // add the visual object to Object3D container
+    this._container3D.add( this._tempAnnotation.getObject3D() );
+
+  }
+
+
+  /**
+  * Delete the temporaray annotation, meaning reseting the logic object but also
+  * clearing up its graphical representation.
+  */
+  deleteTemporaryAnnotation(){
+    if(! this._tempAnnotation ){
+      console.warn("No temporary annotation to delete.");
+      return;
+    }
+
+    // remove the 3D representation
+    this._container3D.remove( this._tempAnnotation.getObject3D() );
+
+    // remove the logic object
+    this._tempAnnotation = null;
+  }
+
+
+  /**
+  * Get the temporary annotation.
+  * @return {Annotation}
+  */
+  getTemporaryAnnotation(){
+    return this._tempAnnotation;
+  }
+
+
+  /**
+  * Enable the begning of creating a new annotation
+  */
+  enableAnnotCreation(){
+    this._annotCreationEnabled = true;
+  }
+
+
+  /**
+  * Disable the annotation creation
+  */
+  disableAnnotCreation(){
+    this._annotCreationEnabled = false;
+  }
+
+
+  /**
+  * @return true if the annottaion creation process has started
+  */
+  isAnnotCreationEnabled(){
+    return this._annotCreationEnabled;
   }
 
 } /* END of class AnnotationCollection */
@@ -4490,6 +5457,7 @@ class AnnotationCollection {
 class QuadScene{
 
   constructor(DomContainer, rez=0){
+    var that = this;
     window.addEventListener( 'resize', this._updateSize.bind(this), false );
 
     this._ready = false;
@@ -4526,10 +5494,9 @@ class QuadScene{
 
     this._boundingBoxHelper = new BoundingBoxHelper( this._scene );
 
-    var axisHelper = new THREE.AxisHelper( 1 );
-    axisHelper.layers.enable(1);
-
-    this._scene.add( axisHelper );
+    //var axisHelper = new THREE.AxisHelper( 1 );
+    //axisHelper.layers.enable(1);
+    //this._scene.add( axisHelper );
 
     this._scene.add( new THREE.AmbientLight( 0x444444 ) );
 
@@ -4558,11 +5525,17 @@ class QuadScene{
     this._renderer = new THREE.WebGLRenderer( { antialias: true } );
     this._renderer.setPixelRatio( window.devicePixelRatio );
     this._renderer.setSize( window.innerWidth, window.innerHeight );
+
+
     this._domContainer.appendChild( this._renderer.domElement );
 
     // TODO: use object real size (maybe)
     // a default camera distance we use instead of cube real size.
-    this._cameraDistance = 10;
+    this._cameraDistance = 50;
+
+    // fog - the distance will be auto adjusted
+    this._scene.fog = new THREE.Fog(0xeeeeee, this._cameraDistance, this._cameraDistance * 2);
+    this._renderer.setClearColor( this._scene.fog.color );
 
     // to feed the renderer. will be init
     this._windowSize = {
@@ -4586,6 +5559,25 @@ class QuadScene{
 
     this._animate();
 
+    this._refreshUniformsCounter = 0;
+
+
+    // refresh uniform every half sec
+    setInterval(function(){
+      if(that._ready){
+        that._planeManager.updateUniforms();
+      }
+    }, 1000);
+
+
+    /*
+    setInterval(function(){
+      if( that._refreshUniformsCounter && that._ready){
+        that._planeManager.updateUniforms();
+        that._refreshUniformsCounter = false;
+      }
+    }, 30);
+    */
 
 
   }
@@ -4638,10 +5630,30 @@ class QuadScene{
 
       function( point ){
         that.setMultiplanePosition( point.x, point.y, point.z);
+        that.refreshUniforms();
       }
     );
 
+  }
 
+
+  /**
+  * return the quadview interaction.
+  * Useful to specify interaction callback from the outside.
+  * @return {QuadViewInteraction}
+  */
+  getQuadViewInteraction(){
+    return this._quadViewInteraction;
+  }
+
+
+  /**
+  * Refreshes a counter of frame to send uniforms.
+  * Usually, sending new uniforms only once is not enought to get them to GPU,
+  * so we have to do it n times.
+  */
+  refreshUniforms(){
+    this._refreshUniformsCounter = 100;
   }
 
 
@@ -4660,6 +5672,11 @@ class QuadScene{
   setMultiplanePosition(x, y, z){
     this._planeManager.setMultiplanePosition( x, y, z);
     this._guiController.updateMultiplaneUI( this.getMultiplaneContainerInfo() );
+
+    // refresh the uniforms
+    this.refreshUniforms();
+
+    this.callOnUpdateViewCallback();
   }
 
 
@@ -4670,7 +5687,13 @@ class QuadScene{
   setMultiplaneRotation(x, y, z){
     this._planeManager.setMultiplaneRotation( x, y, z);
     this._guiController.updateMultiplaneUI( this.getMultiplaneContainerInfo() );
+
+    // refresh the uniforms
+    this.refreshUniforms();
+
+    this.callOnUpdateViewCallback();
   }
+
 
   /**
   * [PRIVATE]
@@ -4703,11 +5726,25 @@ class QuadScene{
 
 
   /**
+  * @return {PlaneManager} the instance of PlaneManager, mainly for UI things.
+  */
+  getPlaneManager(){
+    return this._planeManager;
+  }
+
+
+  /**
   * Add a statistics widget
   */
   initStat(){
     this._stats = new Stats();
     this._domContainer.appendChild( this._stats.dom );
+
+    // place it on top right
+    this._stats.dom.style.right = '0';
+    this._stats.dom.style.left = 'initial';
+    this._stats.dom.style.top = '0';
+    this._stats.dom.style.position = 'absolute';
   }
 
 
@@ -4754,17 +5791,23 @@ class QuadScene{
   * To feed the animation feature built in WebGL.
   */
   _animate(){
+
     this._render();
 
     if(this._stats){
       this._stats.update();
     }
 
-    // call a built-in webGL method for annimation
-    requestAnimationFrame( this._animate.bind(this) );
+    if( this._refreshUniformsCounter && this._ready){
+      this._planeManager.updateUniforms();
+      this._refreshUniformsCounter --;
+    }
 
     // updating the control is necessary in the case of a TrackballControls
     this._quadViews[3].updateControl();
+
+    // call a built-in method for annimation
+    requestAnimationFrame( this._animate.bind(this) );
   }
 
 
@@ -4777,19 +5820,15 @@ class QuadScene{
 
     // TODO: make somethink better for refresh once per sec!
     if(this._ready){
-      if(this._counterRefresh % 30 == 0){
-        this._updateAllPlanesShaderUniforms();
-      }
-      this._counterRefresh ++;
+      //this._planeManager.updateUniforms();
+
+      // refresh each view
+      this._quadViews.forEach(function(view){
+        view.renderView();
+      });
+
+
     }
-
-    // in case the window was resized
-    //this._updateSize();
-
-    // refresh each view
-    this._quadViews.forEach(function(view){
-      view.renderView();
-    });
 
   }
 
@@ -4820,6 +5859,8 @@ class QuadScene{
       this._initMeshCollection(config);
     }else if(config.datatype == "colormap_collection"){
       this._colormapManager.loadCollection( config );
+    }else if(config.datatype == "annotation_collection"){
+      this._annotationCollection.loadAnnotationFileURL( config );
     }else{
       console.warn("The data to load has an unknown format.");
     }
@@ -4843,6 +5884,12 @@ class QuadScene{
 
     // the config file was succesfully loaded
     this._levelManager.loadConfig(config);
+
+    // when tiles are all loaded, we refresh the textures
+    this._levelManager.onAllChunksLoaded( function(){
+      console.log(">> All required chunks are loaded");
+      that._planeManager.updateUniforms();
+    });
 
     this._levelManager.onReady(function(){
       var boxSize = that._levelManager.getBoundingBox();
@@ -4868,6 +5915,7 @@ class QuadScene{
       // the callback above may have changed the rotation/position from URL
       that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
 
+      that._render();
     });
 
     // the config file failed to load
@@ -4876,6 +5924,9 @@ class QuadScene{
         that._onConfigFileErrorCallback(url, code);
       }
     });
+
+
+
 
   }
 
@@ -4890,23 +5941,33 @@ class QuadScene{
     this._levelManager.setResolutionLevel( this._resolutionLevel );
     this._planeManager.updateScaleFromRezLvl( this._resolutionLevel );
 
+    // update size of the orientation helper
     this._syncOrientationHelperScale();
+
+    // update the fog distance to progressively hide annotation
+    var fogDistance = this._orientationHelper.getRadius() * 4;
+    this._scene.fog.far = this._cameraDistance + fogDistance;
+
+    // update the ortho cam frustrum
     this._updateOthoCamFrustrum();
 
+    // update the UI
     this._guiController.updateResolutionLevelUI( lvl );
 
+    // refresh the uniforms
+    this.refreshUniforms();
+
+    //this.callOnUpdateViewCallback();
     if(this._onUpdateViewCallback){
       this._onUpdateViewCallback( this.getMultiplaneContainerInfo() );
     }
   }
 
 
-
-  /**
-  * Updates the uniforms to send to the shader of the plane. Will trigger chunk loading for those which are not already in memory.
-  */
-  _updateAllPlanesShaderUniforms(){
-    this._planeManager.updateUniforms();
+  callOnUpdateViewCallback(){
+    if(this._onUpdateViewCallback){
+      this._onUpdateViewCallback( this.getMultiplaneContainerInfo() );
+    }
   }
 
 
@@ -4993,6 +6054,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      that._planeManager.updateUniforms();
+      //that._render();
 
     });
 
@@ -5011,12 +6074,14 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      //that._planeManager.updateUniforms();
+      that.refreshUniforms();
+
     });
 
     // callback def: transverse rotation (using T key)
     this._quadViewInteraction.onGrabViewTransverseRotate( function(distance, viewIndex){
-      //var factor = Math.pow(2, that._resolutionLevel) / 10;
-      var factor =  that._resolutionLevel / 2;
+      var factor =  that._resolutionLevel / 4;
 
       switch (viewIndex) {
         case 0:
@@ -5034,6 +6099,9 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      //that._planeManager.updateUniforms();
+      that.refreshUniforms();
+
     });
 
     // callback def: arrow down
@@ -5053,6 +6121,9 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      //that._planeManager.updateUniforms();
+      that.refreshUniforms();
+
     });
 
     // callback def: arrow up
@@ -5072,6 +6143,9 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
+      //that._planeManager.updateUniforms();
+      that.refreshUniforms();
+
     });
 
     this._quadViewInteraction.onDonePlaying(function(){
@@ -5125,15 +6199,10 @@ class QuadScene{
 
 
   /**
-  * [TEST / DEBUG]
+  * @return {AnnotationCollection} instance of the annotation collection
   */
-  _testAnnotation(){
-    this._annotationCollection.addAnnotation(
-      [[1, 1, 0], [1, 1, 1]],
-      "my annot"
-    );
-
-    console.log(this._adjustedContainer);
+  getAnnotationCollection(){
+    return this._annotationCollection;
   }
 
 
@@ -5145,3 +6214,4 @@ exports.QuadScene = QuadScene;
 Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
+//# sourceMappingURL=shadernavigator.js.map

@@ -20,12 +20,15 @@ class ProjectionPlane{
     this._plane = new THREE.Object3D();
     this._plane.name = "projection plane";
 
-    //this._subPlaneSize = chunkSize / 2; // ORIG
-    //this._subPlaneSize = chunkSize * 0.7; // OPTIM
     this._subPlaneSize = chunkSize / Math.sqrt(2);
 
-    // list of subplanes
-    this._subPlanes = [];
+    // relative position of each corner each subplane
+    this._subPlaneCorners = [
+      new THREE.Vector3(-1 * this._subPlaneSize/2, this._subPlaneSize/2, 0),  // NW
+      new THREE.Vector3(this._subPlaneSize/2, this._subPlaneSize/2, 0),  // NE
+      new THREE.Vector3(-1 * this._subPlaneSize/2, -1 * this._subPlaneSize/2, 0),  // SW
+      new THREE.Vector3( this._subPlaneSize/2, -1 * this._subPlaneSize/2, 0),  // SE
+    ];
 
     // one shader material per sub-plane
     this._shaderMaterials = [];
@@ -33,7 +36,9 @@ class ProjectionPlane{
     // number of rows and cols of sub-planes to compose the _plane
 
     this._subPlaneDim = {row: 7, col: 15}; // OPTIM
-    //this._subPlaneDim = {row: 8, col: 17}; // TEST
+    //this._subPlaneDim = {row: 10, col: 20}; // TEST
+    //this._subPlaneDim = {row: 6, col: 13}; // TEST
+    //this._subPlaneDim = {row: 1, col: 1};
 
     // to be aggregated
     this._colormapManager = colormapManager;
@@ -44,8 +49,17 @@ class ProjectionPlane{
     this._resolutionLevel = 0;
 
     this._buildSubPlanes();
+
+
   }
 
+
+  /**
+  * @return {Number} resolution level for this plane
+  */
+  getResolutionLevel(){
+    return this._resolutionLevel;
+  }
 
   /**
   * Build all the subplanes with fake textures and fake origins. The purpose is just to create a compatible data structure able to receive relevant texture data when time comes.
@@ -110,10 +124,13 @@ class ProjectionPlane{
         var subPlaneMaterial = subPlaneMaterial_original.clone();
         var mesh = new THREE.Mesh( subPlaneGeometry, subPlaneMaterial );
 
-        mesh.position.set(-this._subPlaneDim.col*this._subPlaneSize/2 + i*this._subPlaneSize + this._subPlaneSize/2, -this._subPlaneDim.row*this._subPlaneSize/2 + j*this._subPlaneSize + this._subPlaneSize/2, 0.0);
+        mesh.position.set(
+          this._subPlaneSize * (-0.5*this._subPlaneDim.col + i + 0.5),
+          this._subPlaneSize * (-0.5*this._subPlaneDim.row + j + 0.5),
+          0.0
+        );
 
         this._plane.add( mesh );
-        this._subPlanes.push( mesh );
         this._shaderMaterials.push( subPlaneMaterial );
       }
     }
@@ -134,23 +151,23 @@ class ProjectionPlane{
   * Debugging. Chanfe the color of the mesh of the plane, bit first, the plane material has to be set as a mesh.
   */
   setMeshColor(c){
-    this._subPlanes[0].material.color = c;
+    this._plane.children[0].material.color = c;
   }
 
 
   /**
   * fetch each texture info, build a uniform and
   */
-  updateUniforms(){
+  updateUniforms_NEAREST8(){
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     var textureData = 0;
 
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
-      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
-      //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
+      var center = this._plane.children[i].localToWorld(new THREE.Vector3(0, 0, 0));
 
-      //textureData = this._levelManager.get8ClosestTextureData([center.x, center.y, center.z]);
+
+
       textureData = this._levelManager.get8ClosestTextureDataByLvl(
         [center.x, center.y, center.z],
         this._resolutionLevel
@@ -162,11 +179,45 @@ class ProjectionPlane{
   }
 
 
+  /**
+  * Like updateUniforms but instead of using the 8 closest, it uses only the ones
+  * that are involved.
+  */
+  updateUniforms(){
+    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+    var textureData = 0;
+
+    //console.log(this._subPlaneCorners);
+
+    for(var i=0; i<nbSubPlanes; i++){
+      // corners of the sub-plane in world coordinates
+      var corners = [
+        this._plane.children[i].localToWorld( this._subPlaneCorners[0].clone() ), // NW
+        this._plane.children[i].localToWorld( this._subPlaneCorners[1].clone() ), // NE
+        this._plane.children[i].localToWorld( this._subPlaneCorners[2].clone() ), // SW
+        this._plane.children[i].localToWorld( this._subPlaneCorners[3].clone() )  // SE
+      ];
+
+      //console.log(corners);
+
+      textureData = this._levelManager.getInvolvedTextureDataByLvl(
+        corners,
+        this._resolutionLevel
+      );
+
+
+
+      this._updateSubPlaneUniform(i, textureData);
+    }
+
+  }
+
+
   printSubPlaneCenterWorld(){
     var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     for(var i=0; i<nbSubPlanes; i++){
       // center of the sub-plane in world coordinates
-      var center = this._subPlanes[i].localToWorld(new THREE.Vector3(0, 0, 0));
+      var center = this._plane.children[i].localToWorld(new THREE.Vector3(0, 0, 0));
     }
   }
 
@@ -178,22 +229,50 @@ class ProjectionPlane{
   * @param {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
   */
   _updateSubPlaneUniform(i, textureData){
-    //var chunkSizeWC = this._levelManager.getCurrentChunkSizeWc();
-    var chunkSizeWC = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
-
     var uniforms = this._shaderMaterials[i].uniforms;
-    uniforms.nbChunks.value = textureData.nbValid;
-    uniforms.textures.value = textureData.textures;
-    uniforms.textureOrigins.value = textureData.origins;
-    uniforms.chunkSize.value = chunkSizeWC;
 
-    uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
-    uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
+    //cube.material.map.needsUpdate = true;
+    this._shaderMaterials[i].needsUpdate = true;
+    this._shaderMaterials[i]._needsUpdate = true;
 
+    // update colormap no  matter what
+    //uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
+    //uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
 
-    //uniforms.colorMap.value = THREE.ImageUtils.loadTexture( "colormaps/rainbow.png" );
-    //this._shaderMaterials[i].needsUpdate = true;  // apparently useless
+    var mustUpdate = true;
 
+    /*
+    console.log( uniforms.textures.value );
+    console.log( textureData.nbValid );
+    console.log("---------------------------------");
+    */
+
+    for(i=0; i<textureData.nbValid; i++){
+      if(!textureData.textures[i]){
+        mustUpdate = false;
+        break;
+      }
+    }
+
+    if( mustUpdate ){
+      //console.log("UP");
+      var chunkSizeWC = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
+      uniforms.nbChunks.value = textureData.nbValid;
+      uniforms.textures.value = textureData.textures.slice(0, textureData.nbValid);
+      uniforms.textureOrigins.value = textureData.origins;
+      uniforms.chunkSize.value = chunkSizeWC;
+
+    }
+
+    /*
+    // this does not change a damn thing
+    uniforms.nbChunks.needsUpdate = true;
+    uniforms.textures.needsUpdate = true;
+    uniforms.textureOrigins.needsUpdate = true;
+    uniforms.chunkSize.needsUpdate = true;
+    uniforms.useColorMap.needsUpdate = true;
+    uniforms.colorMap.needsUpdate = true;
+    */
   }
 
 
@@ -282,7 +361,7 @@ class ProjectionPlane{
   * Enable a given layer in the visibility mask, so that it's visible by a camera with the same layer activated.
   */
   enableLayer( l ){
-    this._subPlanes.forEach(function(sp){
+    this._plane.children.forEach(function(sp){
       sp.layers.enable(l);
     });
   }
@@ -292,12 +371,26 @@ class ProjectionPlane{
   * Disable a given layer in the visibility mask, so that it's not visible by a camera with a different layer activated.
   */
   disableLayer( l ){
-    this._subPlanes.forEach(function(sp){
+    this._plane.children.forEach(function(sp){
       sp.layers.disable(l);
     });
   }
 
 
+  /**
+  * Hide this plane (the THEE.Object3D)
+  */
+  hide(){
+    this._plane.visible = false;
+  }
+
+
+  /**
+  * Show this plane (the THEE.Object3D)
+  */
+  show(){
+    this._plane.visible = true;
+  }
 
 
 } /* END class ProjectionPlane */

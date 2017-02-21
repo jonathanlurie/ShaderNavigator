@@ -2,12 +2,12 @@
 	"date": "2016-10-05T15:15:35.689Z",
 	"annotations": [
 		{
-			"name": "A Point",
+			"name": "A Point 1",
 			"points": [
 				[
-					25.956370255536697,
-					-3.6340089457610976,
-					5.397848551139876
+					0.956370255536697,
+					0.6340089457610976,
+					0.397848551139876
 				]
 			],
 			"isClosed": false,
@@ -15,7 +15,7 @@
 			"color": "EE0000"
 		},
 		{
-			"name": "A closed polygon",
+			"name": "A closed polygon 1",
 			"points": [
 				[
 					0,
@@ -60,10 +60,13 @@
 			],
 			"isClosed": true,
 			"description": "A closed polygon contains more than one coordinates and has its attribute isClosed set to true",
-			"color": "B74AFF"
+			"color": "FF4AFF",
+      "scale": [0.1, 0.1, 0.1],
+      "position": [1, 1, 1],
+      "eulerAngle": [0, 1.5, 0]
 		},
 		{
-			"name": "An polyline",
+			"name": "An polyline 1",
 			"points": [
 				[
 					0,
