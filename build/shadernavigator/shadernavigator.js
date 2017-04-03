@@ -1,4 +1,4 @@
-// Build date: Tue Feb 21 15:53:35 EST 2017
+// Build date: Mon Apr  3 11:32:39 EDT 2017
 
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -3002,8 +3002,8 @@ class ProjectionPlane{
     this._shaderMaterials[i]._needsUpdate = true;
 
     // update colormap no  matter what
-    //uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
-    //uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
+    uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
+    uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
 
     var mustUpdate = true;
 

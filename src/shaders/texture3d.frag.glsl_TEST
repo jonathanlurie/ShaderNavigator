@@ -108,13 +108,11 @@ void main( void ) {
       break;
     }
 
-
     chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[i]);
 
     if( isInsideChunk(chunkPosition) ){
       color = getColorFrom3DTexture(textures[i], chunkPosition);
       hasColorFromChunk = true;
-
       selectedChunk = i;
       break;
     }
