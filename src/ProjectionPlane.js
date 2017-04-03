@@ -234,8 +234,8 @@ class ProjectionPlane{
     this._shaderMaterials[i]._needsUpdate = true;
 
     // update colormap no  matter what
-    //uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
-    //uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
+    uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
+    uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
 
     var mustUpdate = true;
 
