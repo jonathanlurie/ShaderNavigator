@@ -1,4 +1,4 @@
-// Build date: Mon Apr  3 11:32:39 EDT 2017
+// Build date: Wed Apr 26 17:17:45 EDT 2017
 
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -224,7 +224,7 @@ class QuadView{
   initOrthoCamera(){
     this._isPerspective = false;
 
-    let orthographicCameraFovFactor = 360; // default: 360
+    let orthographicCameraFovFactor = 720; // default: 360
 
     this._camera = new THREE.OrthographicCamera(
       window.innerWidth / - orthographicCameraFovFactor,  // left
@@ -1019,11 +1019,12 @@ class ChunkCollection{
   /**
   * Constructor
   * @param {number} resolutionLevel - The level of resolution, the lower the level, the lower the resolution. Level n has a metric resolution per voxel twice lower/poorer than level n+1, as a result, level n has 8 time less chunks than level n+1, remember we are in 3D!.
+  * @param {Number} lowestDefSize - Size of the lowest rez level (most likely 128)
   * @param {Array} matrix3DSize - Number of chunks in each dimension [x, y, z] that are supposedly available.
   * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder
   * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok.
   */
-  constructor(resolutionLevel, matrix3DSize, workingDir, datatype){
+  constructor(resolutionLevel, lowestDefSize, matrix3DSize, workingDir, datatype){
     /**
     * The chunks of the same level. A map is used instead of an array because the chunks are loaded as they need to display, so we prefer to use an key (string built from the index3D) rather than a 1D array index.
     */
@@ -1040,11 +1041,11 @@ class ChunkCollection{
     /** Level from 0 to 6, possibly more in the future. */
     this._resolutionLevel = resolutionLevel;
 
-    /** Word size of a chunk at level 0. Used as a constant. */
-    this._chunkSizeLvlZero = 1;
-
     /** Number of voxel per side of the chunk (suposedly cube shaped). Used as a constant.*/
     this._voxelPerSide = 64;
+    
+    /** World size of a chunk at level 0. Used as a constant. */
+    this._chunkSizeLvlZero = this._voxelPerSide / lowestDefSize;
 
     /** Size of a chunk in 3D space (aka. in world coordinates) */
     this._sizeChunkWC = this._chunkSizeLvlZero / Math.pow(2, this._resolutionLevel);
@@ -1733,9 +1734,13 @@ class LevelManager{
     // Compute the cube _boundingBox, that will give some sense of boundaries to the dataset
     this._computeBoundingBox();
 
+    // the lowest def size (most likely 128) is used in combination with a chunk size (64)
+    // to define the proportion of thing in a unit space 
+    var lowestDefSize = this._levelsInfo[0].size[0];
+
     // add a chunk collection for each level
     this._levelsInfo.forEach(function(elem, index){
-      that._addChunkCollectionLevel(index, elem.size, datatype);
+      that._addChunkCollectionLevel(index, elem.size, datatype, lowestDefSize);
     });
 
     if(this.onReadyCallback){
@@ -1752,8 +1757,9 @@ class LevelManager{
   * @param {Number} resolutionLevel - positive integer (or zero)
   * @param {Array} voxelSize - Entire number of voxel to form the whole 3D dataset at this level of resolution. This will be translated into the size of the 3D matrix of chunk (basically divided by 64 and rounded to ceil).
   * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok.
+  * @param {Number} lowestDefSize - the size of the lowest resolution level
   */
-  _addChunkCollectionLevel(resolutionLevel, voxelSize, datatype){
+  _addChunkCollectionLevel(resolutionLevel, voxelSize, datatype, lowestDefSize){
     // translating voxelSize into matrix3DSize
     // aka number of chunks (64x64x64) in each dimension
     var matrix3DSize = [
@@ -1765,6 +1771,7 @@ class LevelManager{
     // creating a new chunk collection for this specific level
     var chunkCollection = new ChunkCollection(
       resolutionLevel,
+      lowestDefSize,
       matrix3DSize,
       this._workingDir,
       datatype
@@ -1878,10 +1885,18 @@ class LevelManager{
   * @param {Object} levels - config data
   */
   _computeBoundingBox(){
+    /*
     this._boundingBox = [
       this._levelsInfo[0].size[0] / 64.0,
       this._levelsInfo[0].size[1] / 64.0,
       this._levelsInfo[0].size[2] / 64.0
+    ];
+    */
+    
+    this._boundingBox = [
+      1,
+      1,
+      1
     ];
   }
 
@@ -1948,11 +1963,11 @@ class OrientationHelper{
     var yColor = 0x00EB4E;
     var zColor = 0x0088ff;
 
-    this._initRadius = initRadius;
+    this._initRadius = initRadius / 25;
 
-    var geometryX = new THREE.CircleGeometry( initRadius, 64 );
-    var geometryY = new THREE.CircleGeometry( initRadius, 64 );
-    var geometryZ = new THREE.CircleGeometry( initRadius, 64 );
+    var geometryX = new THREE.CircleGeometry( this._initRadius, 64 );
+    var geometryY = new THREE.CircleGeometry( this._initRadius, 64 );
+    var geometryZ = new THREE.CircleGeometry( this._initRadius, 64 );
     var materialX = new THREE.LineBasicMaterial( { color: xColor, linewidth:1.5 } );
     var materialY = new THREE.LineBasicMaterial( { color: yColor, linewidth:1.5 } );
     var materialZ = new THREE.LineBasicMaterial( { color: zColor, linewidth:1.5 } );
@@ -1982,8 +1997,8 @@ class OrientationHelper{
     // adding central lines
     var xLineGeometry = new THREE.Geometry();
     xLineGeometry.vertices.push(
-    	new THREE.Vector3( -initRadius, 0, 0 ),
-    	new THREE.Vector3( initRadius, 0, 0 )
+    	new THREE.Vector3( -this._initRadius, 0, 0 ),
+    	new THREE.Vector3( this._initRadius, 0, 0 )
     );
 
     var xLine = new THREE.Line(
@@ -1993,8 +2008,8 @@ class OrientationHelper{
 
     var yLineGeometry = new THREE.Geometry();
     yLineGeometry.vertices.push(
-    	new THREE.Vector3(0, -initRadius, 0 ),
-    	new THREE.Vector3(0,  initRadius, 0 )
+    	new THREE.Vector3(0, -this._initRadius, 0 ),
+    	new THREE.Vector3(0,  this._initRadius, 0 )
     );
 
     var yLine = new THREE.Line(
@@ -2004,8 +2019,8 @@ class OrientationHelper{
 
     var zLineGeometry = new THREE.Geometry();
     zLineGeometry.vertices.push(
-    	new THREE.Vector3(0, 0, -initRadius ),
-    	new THREE.Vector3(0, 0,  initRadius )
+    	new THREE.Vector3(0, 0, -this._initRadius ),
+    	new THREE.Vector3(0, 0,  this._initRadius )
     );
 
     var zLine = new THREE.Line(
@@ -2034,8 +2049,16 @@ class OrientationHelper{
     var supSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: supTex} ) );
     var infSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: infTex} ) );
 
-    var distanceFromCenter = initRadius * 1.4;
-
+    var distanceFromCenter = this._initRadius * 1.4;
+    
+    var spriteScale = 0.5;
+    leftSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    rightSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    antSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    postSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    supSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    infSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    
     leftSprite.position.set( distanceFromCenter, 0, 0 );
     rightSprite.position.set( -distanceFromCenter, 0, 0 );
     antSprite.position.set(0, distanceFromCenter, 0 );
@@ -2761,7 +2784,7 @@ class ColorMapManager{
 
 } /* END class ColorMapManager */
 
-var texture3d_frag = "\nconst int maxNbChunks = 8;\nconst float numberOfImagePerStripY = 64.0;\nconst float numberOfPixelPerSide = 64.0;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying  vec4 worldCoord;\nvarying  vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return  ( chunkPosition.x>=0.0 && chunkPosition.x<1.0 &&\n            chunkPosition.y>=0.0 && chunkPosition.y<1.0 &&\n            chunkPosition.z>=0.0 && chunkPosition.z<1.0 );\n}\nvec4 getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition){\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY ;\n  float stripX = chunkPosition.x;  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  return texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin){\n  return vec3(  (world.x - textureOrigin.x)/chunkSize,\n                 1.0 - (world.y - textureOrigin.y )/chunkSize,\n                 1.0 - (world.z - textureOrigin.z )/chunkSize);\n}\nvoid main( void ) {\n  if(nbChunks == 0){\n    discard;\n    return;\n  }\n  vec2 shaderPos = vUv;\n  vec4 color = vec4(1.0, 0.0 , 0.0, 1.0);\n  vec3 chunkPosition;\n  bool hasColorFromChunk = false;\n  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0]);\n  if( isInsideChunk(chunkPosition) ){\n    color = getColorFrom3DTexture(textures[0], chunkPosition);\n    hasColorFromChunk = true;\n  } else if(nbChunks >= 2){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1]);\n    if( isInsideChunk(chunkPosition) ){\n      color = getColorFrom3DTexture(textures[1], chunkPosition);\n      hasColorFromChunk = true;\n    } else if(nbChunks >= 3){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2]);\n      if( isInsideChunk(chunkPosition) ){\n        color = getColorFrom3DTexture(textures[2], chunkPosition);\n        hasColorFromChunk = true;\n      } else if(nbChunks >= 4){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3]);\n        if( isInsideChunk(chunkPosition) ){\n          color = getColorFrom3DTexture(textures[3], chunkPosition);\n          hasColorFromChunk = true;\n        } else if(nbChunks >= 5){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4]);\n          if( isInsideChunk(chunkPosition) ){\n            color = getColorFrom3DTexture(textures[4], chunkPosition);\n            hasColorFromChunk = true;\n          } else if(nbChunks >= 6){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5]);\n            if( isInsideChunk(chunkPosition) ){\n              color = getColorFrom3DTexture(textures[5], chunkPosition);\n              hasColorFromChunk = true;\n            } else if(nbChunks >= 7){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6]);\n              if( isInsideChunk(chunkPosition) ){\n                color = getColorFrom3DTexture(textures[6], chunkPosition);\n                hasColorFromChunk = true;\n              } else if(nbChunks == 8){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7]);\n                if( isInsideChunk(chunkPosition) ){\n                  color = getColorFrom3DTexture(textures[7], chunkPosition);\n                  hasColorFromChunk = true;\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(hasColorFromChunk){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a > 0.0){\n        colorFromColorMap.a = 0.85;\n        gl_FragColor = colorFromColorMap;\n      }else{\n        discard;\n      }\n    }else{\n      color.a = 0.85;\n      gl_FragColor = color;\n    }\n  }else{\n    discard;\n  }\n}\n";
+var texture3d_frag = "\nconst int maxNbChunks = 8;\nconst float numberOfImagePerStripY = 64.0;\nconst float numberOfPixelPerSide = 64.0;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying  vec4 worldCoord;\nvarying  vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return  ( chunkPosition.x>=0.0 && chunkPosition.x<1.0 &&\n            chunkPosition.y>=0.0 && chunkPosition.y<1.0 &&\n            chunkPosition.z>=0.0 && chunkPosition.z<1.0 );\n}\nvec4 getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition){\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY ;\n  float stripX = chunkPosition.x;  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  return texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin){\n  return vec3(  (world.x - textureOrigin.x)/chunkSize,\n                 1.0 - (world.y - textureOrigin.y )/chunkSize,\n                 1.0 - (world.z - textureOrigin.z )/chunkSize);\n}\nvoid main( void ) {\n  if(nbChunks == 0){\n    discard;\n    return;\n  }\n  vec2 shaderPos = vUv;\n  if(shaderPos.x < 0.01 || shaderPos.x > 0.99 || shaderPos.y < 0.01 || shaderPos.y > 0.99){\n    gl_FragColor  = vec4(0.0, 0.0 , 0.0, 1.0);\n    return;\n  }\n  vec4 color = vec4(1.0, 0.0 , 0.0, 1.0);\n  vec4 color2 = vec4(1.0, 0.0 , 0.0, 1.0);\n  vec3 chunkPosition;\n  bool hasColorFromChunk = false;\n  int selectedChunk = -1;\n  for(int i=0; i<maxNbChunks; i++)\n  {\n    if( i == nbChunks ){\n      break;\n    }\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[i]);\n    if( isInsideChunk(chunkPosition) ){\n      color = getColorFrom3DTexture(textures[i], chunkPosition);\n      hasColorFromChunk = true;\n      selectedChunk = i;\n      break;\n    }\n  }\n  if( hasColorFromChunk ){\n    gl_FragColor = color;\n  }else{\n    gl_FragColor = vec4(1.0, 0.0 , 1.0, 1.0);\n  }\n  return ;\n  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0]);\n  if( isInsideChunk(chunkPosition) ){\n    color2 = getColorFrom3DTexture(textures[0], chunkPosition);\n    hasColorFromChunk = true;\n  } else if(nbChunks >= 2){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1]);\n    if( isInsideChunk(chunkPosition) ){\n      color2 = getColorFrom3DTexture(textures[1], chunkPosition);\n      hasColorFromChunk = true;\n    } else if(nbChunks >= 3){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2]);\n      if( isInsideChunk(chunkPosition) ){\n        color2 = getColorFrom3DTexture(textures[2], chunkPosition);\n        hasColorFromChunk = true;\n      } else if(nbChunks >= 4){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3]);\n        if( isInsideChunk(chunkPosition) ){\n          color2 = getColorFrom3DTexture(textures[3], chunkPosition);\n          hasColorFromChunk = true;\n        } else if(nbChunks >= 5){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4]);\n          if( isInsideChunk(chunkPosition) ){\n            color2 = getColorFrom3DTexture(textures[4], chunkPosition);\n            hasColorFromChunk = true;\n          } else if(nbChunks >= 6){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5]);\n            if( isInsideChunk(chunkPosition) ){\n              color2 = getColorFrom3DTexture(textures[5], chunkPosition);\n              hasColorFromChunk = true;\n            } else if(nbChunks >= 7){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6]);\n              if( isInsideChunk(chunkPosition) ){\n                color2 = getColorFrom3DTexture(textures[6], chunkPosition);\n                hasColorFromChunk = true;\n              } else if(nbChunks == 8){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7]);\n                if( isInsideChunk(chunkPosition) ){\n                  color2 = getColorFrom3DTexture(textures[7], chunkPosition);\n                  hasColorFromChunk = true;\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(hasColorFromChunk){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a > 0.0){\n        colorFromColorMap.a = 0.85;\n        gl_FragColor = colorFromColorMap;\n      }else{\n        discard;\n      }\n    }else{\n      gl_FragColor = color2;\n    }\n  }else{\n    gl_FragColor = vec4(1.0, 0.0 , 1.0, 1.0);\n  }\n}\n";
 
 var texture3d_vert = "\nvarying  vec2 vUv;\nvarying  vec4 worldCoord;\nvoid main()\n{\n  vUv = uv;\n  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );\n  gl_Position = projectionMatrix * mvPosition;\n  worldCoord = modelMatrix * vec4( position, 1.0 );\n}\n";
 
@@ -3189,6 +3212,7 @@ class PlaneManager{
     this._onMultiplaneMoveCallback = null;
     this._onMultiplaneRotateCallback = null;
 
+    // the low-rez planes (bottom right) uses the regular zoom level minus this one (-2)
     this._resolutionLevelLoRezDelta = 2;
 
     this._isLowRezPlaneVisible = true;
@@ -3258,17 +3282,17 @@ class PlaneManager{
   * @param {Array} arrayToAdd - array to push the 3 ProjectionPlane instances that are about to be created.
   */
   _addOrthoPlanes( arrayToAdd ){
-    var pn = new ProjectionPlane(1, this._colormapManager);
+    var pn = new ProjectionPlane(0.5, this._colormapManager);
     pn.setMeshColor(new THREE.Color(0x000099) );
     arrayToAdd.push( pn );
     this._multiplaneContainer.add( pn.getPlane() );
 
-    var pu = new ProjectionPlane(1, this._colormapManager);
+    var pu = new ProjectionPlane(0.5, this._colormapManager);
     arrayToAdd.push( pu );
     pu.getPlane().rotateX( Math.PI / 2);
     this._multiplaneContainer.add( pu.getPlane() );
 
-    var pv = new ProjectionPlane(1, this._colormapManager);
+    var pv = new ProjectionPlane(0.5, this._colormapManager);
     pv.setMeshColor(new THREE.Color(0x990000) );
     arrayToAdd.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
@@ -4448,7 +4472,11 @@ class GuiController{
     // dropdown menu
     this._annotationPanel.addDropDown("Annotations", [],
       function( dropdownObj ){
-        console.log( dropdownObj.value );
+        var annotation = that._annotationCollection.getAnnotation( dropdownObj.value );
+        
+        if(annotation){
+          that._displayAnnotInfo( annotation );
+        }
       }
     );
 
@@ -4456,8 +4484,17 @@ class GuiController{
 
     // callback when a new annot is added in the core, a new item shows on the menu
     that._annotationCollection.onAddingAnnotation( function(name){
-      that._annotationPanel.getControl("Annotations").addItem(name);
-      console.log( name );
+      var dropdownObj = that._annotationPanel.getControl("Annotations");
+      dropdownObj.addItem(name);
+      console.log( dropdownObj );
+      
+      //dropdownObj.setValue(name);
+      
+      var annotation = that._annotationCollection.getAnnotation( name );
+      
+      if(annotation){
+        that._displayAnnotInfo( annotation );
+      }
     });
 
     /*
@@ -5228,6 +5265,21 @@ class AnnotationCollection {
 
 
   /**
+  * Get an annotation from the collection
+  * @param {String} name - name/ID of the annotation within the collection
+  * @return {Annotation} the requested annotation object
+  */
+  getAnnotation( name ){
+    if(! (name in this._collection)){
+      console.warn("No annotation named " + name + " in the collection.");
+      return null;
+    }
+    
+    return this._collection[ name ];
+    
+  }
+
+  /**
   * Add to collection the temporary annotation that is currently being created.
   */
   addTemporaryAnnotation(){
@@ -5492,9 +5544,9 @@ class QuadScene{
 
     this._boundingBoxHelper = new BoundingBoxHelper( this._scene );
 
-    //var axisHelper = new THREE.AxisHelper( 1 );
-    //axisHelper.layers.enable(1);
-    //this._scene.add( axisHelper );
+    var axisHelper = new THREE.AxisHelper( 1 );
+    axisHelper.layers.enable(1);
+    this._scene.add( axisHelper );
 
     this._scene.add( new THREE.AmbientLight( 0x444444 ) );
 
@@ -5993,7 +6045,7 @@ class QuadScene{
   */
   _initOrientationHelper( position ){
     this._orientationHelper = new OrientationHelper(
-      this._planeManager.getWorldDiagonalHiRez() / 13
+      this._planeManager.getWorldDiagonalHiRez()
     );
 
     this._orientationHelper.addTo( this._scene );
@@ -6018,6 +6070,8 @@ class QuadScene{
     this._orientationHelper.rescaleFromResolutionLvl( this._resolutionLevel );
   }
 
+
+  
 
   /**
   * Specify a callback for when the Quadscene is ready.

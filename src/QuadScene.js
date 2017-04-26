@@ -62,9 +62,9 @@ class QuadScene{
 
     this._boundingBoxHelper = new BoundingBoxHelper( this._scene );
 
-    //var axisHelper = new THREE.AxisHelper( 1 );
-    //axisHelper.layers.enable(1);
-    //this._scene.add( axisHelper );
+    var axisHelper = new THREE.AxisHelper( 1 );
+    axisHelper.layers.enable(1);
+    this._scene.add( axisHelper );
 
     this._scene.add( new THREE.AmbientLight( 0x444444 ) );
 
@@ -563,7 +563,7 @@ class QuadScene{
   */
   _initOrientationHelper( position ){
     this._orientationHelper = new OrientationHelper(
-      this._planeManager.getWorldDiagonalHiRez() / 13
+      this._planeManager.getWorldDiagonalHiRez()
     );
 
     this._orientationHelper.addTo( this._scene );
@@ -588,6 +588,8 @@ class QuadScene{
     this._orientationHelper.rescaleFromResolutionLvl( this._resolutionLevel );
   }
 
+
+  
 
   /**
   * Specify a callback for when the Quadscene is ready.

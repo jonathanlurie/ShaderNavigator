@@ -16,11 +16,12 @@ class ChunkCollection{
   /**
   * Constructor
   * @param {number} resolutionLevel - The level of resolution, the lower the level, the lower the resolution. Level n has a metric resolution per voxel twice lower/poorer than level n+1, as a result, level n has 8 time less chunks than level n+1, remember we are in 3D!.
+  * @param {Number} lowestDefSize - Size of the lowest rez level (most likely 128)
   * @param {Array} matrix3DSize - Number of chunks in each dimension [x, y, z] that are supposedly available.
   * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder
   * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok.
   */
-  constructor(resolutionLevel, matrix3DSize, workingDir, datatype){
+  constructor(resolutionLevel, lowestDefSize, matrix3DSize, workingDir, datatype){
     /**
     * The chunks of the same level. A map is used instead of an array because the chunks are loaded as they need to display, so we prefer to use an key (string built from the index3D) rather than a 1D array index.
     */
@@ -37,11 +38,11 @@ class ChunkCollection{
     /** Level from 0 to 6, possibly more in the future. */
     this._resolutionLevel = resolutionLevel;
 
-    /** Word size of a chunk at level 0. Used as a constant. */
-    this._chunkSizeLvlZero = 1;
-
     /** Number of voxel per side of the chunk (suposedly cube shaped). Used as a constant.*/
     this._voxelPerSide = 64;
+    
+    /** World size of a chunk at level 0. Used as a constant. */
+    this._chunkSizeLvlZero = this._voxelPerSide / lowestDefSize;
 
     /** Size of a chunk in 3D space (aka. in world coordinates) */
     this._sizeChunkWC = this._chunkSizeLvlZero / Math.pow(2, this._resolutionLevel);

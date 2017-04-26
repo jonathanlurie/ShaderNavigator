@@ -118,9 +118,13 @@ class LevelManager{
     // Compute the cube _boundingBox, that will give some sense of boundaries to the dataset
     this._computeBoundingBox();
 
+    // the lowest def size (most likely 128) is used in combination with a chunk size (64)
+    // to define the proportion of thing in a unit space 
+    var lowestDefSize = this._levelsInfo[0].size[0];
+
     // add a chunk collection for each level
     this._levelsInfo.forEach(function(elem, index){
-      that._addChunkCollectionLevel(index, elem.size, datatype);
+      that._addChunkCollectionLevel(index, elem.size, datatype, lowestDefSize);
     });
 
     if(this.onReadyCallback){
@@ -137,8 +141,9 @@ class LevelManager{
   * @param {Number} resolutionLevel - positive integer (or zero)
   * @param {Array} voxelSize - Entire number of voxel to form the whole 3D dataset at this level of resolution. This will be translated into the size of the 3D matrix of chunk (basically divided by 64 and rounded to ceil).
   * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok.
+  * @param {Number} lowestDefSize - the size of the lowest resolution level
   */
-  _addChunkCollectionLevel(resolutionLevel, voxelSize, datatype){
+  _addChunkCollectionLevel(resolutionLevel, voxelSize, datatype, lowestDefSize){
     // translating voxelSize into matrix3DSize
     // aka number of chunks (64x64x64) in each dimension
     var matrix3DSize = [
@@ -150,6 +155,7 @@ class LevelManager{
     // creating a new chunk collection for this specific level
     var chunkCollection = new ChunkCollection(
       resolutionLevel,
+      lowestDefSize,
       matrix3DSize,
       this._workingDir,
       datatype
@@ -263,10 +269,18 @@ class LevelManager{
   * @param {Object} levels - config data
   */
   _computeBoundingBox(){
+    /*
     this._boundingBox = [
       this._levelsInfo[0].size[0] / 64.0,
       this._levelsInfo[0].size[1] / 64.0,
       this._levelsInfo[0].size[2] / 64.0
+    ];
+    */
+    
+    this._boundingBox = [
+      1,
+      1,
+      1
     ];
   }
 

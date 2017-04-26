@@ -132,7 +132,7 @@ class QuadView{
   initOrthoCamera(){
     this._isPerspective = false;
 
-    let orthographicCameraFovFactor = 360; // default: 360
+    let orthographicCameraFovFactor = 720; // default: 360
 
     this._camera = new THREE.OrthographicCamera(
       window.innerWidth / - orthographicCameraFovFactor,  // left

@@ -236,7 +236,11 @@ class GuiController{
     // dropdown menu
     this._annotationPanel.addDropDown("Annotations", [],
       function( dropdownObj ){
-        console.log( dropdownObj.value );
+        var annotation = that._annotationCollection.getAnnotation( dropdownObj.value );
+        
+        if(annotation){
+          that._displayAnnotInfo( annotation );
+        }
       }
     );
 
@@ -244,8 +248,17 @@ class GuiController{
 
     // callback when a new annot is added in the core, a new item shows on the menu
     that._annotationCollection.onAddingAnnotation( function(name){
-      that._annotationPanel.getControl("Annotations").addItem(name);
-      console.log( name );
+      var dropdownObj = that._annotationPanel.getControl("Annotations");
+      dropdownObj.addItem(name);
+      console.log( dropdownObj );
+      
+      //dropdownObj.setValue(name);
+      
+      var annotation = that._annotationCollection.getAnnotation( name );
+      
+      if(annotation){
+        that._displayAnnotInfo( annotation );
+      }
     })
 
     /*

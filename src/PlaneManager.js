@@ -30,6 +30,7 @@ class PlaneManager{
     this._onMultiplaneMoveCallback = null;
     this._onMultiplaneRotateCallback = null;
 
+    // the low-rez planes (bottom right) uses the regular zoom level minus this one (-2)
     this._resolutionLevelLoRezDelta = 2;
 
     this._isLowRezPlaneVisible = true;
@@ -99,17 +100,17 @@ class PlaneManager{
   * @param {Array} arrayToAdd - array to push the 3 ProjectionPlane instances that are about to be created.
   */
   _addOrthoPlanes( arrayToAdd ){
-    var pn = new ProjectionPlane(1, this._colormapManager);
+    var pn = new ProjectionPlane(0.5, this._colormapManager);
     pn.setMeshColor(new THREE.Color(0x000099) );
     arrayToAdd.push( pn );
     this._multiplaneContainer.add( pn.getPlane() );
 
-    var pu = new ProjectionPlane(1, this._colormapManager);
+    var pu = new ProjectionPlane(0.5, this._colormapManager);
     arrayToAdd.push( pu );
     pu.getPlane().rotateX( Math.PI / 2);
     this._multiplaneContainer.add( pu.getPlane() );
 
-    var pv = new ProjectionPlane(1, this._colormapManager);
+    var pv = new ProjectionPlane(0.5, this._colormapManager);
     pv.setMeshColor(new THREE.Color(0x990000) );
     arrayToAdd.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
