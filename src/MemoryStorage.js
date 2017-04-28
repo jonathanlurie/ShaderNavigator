@@ -13,14 +13,19 @@ var MemoryStorageRecord = {};
 class MemoryStorage {
   
   /**
-  *
+  * Adds or modify a record.
+  * @param {String} name - name or the record, will be unique
+  * @param {Object} value - the value to put in the record 
   */
   static setRecord( name, value ){
     MemoryStorageRecord[ name ] = value;
   }
   
+  
   /**
-  *
+  * Get a record
+  * @param {String} name - name of the record
+  * @return {Object} existing value or null if there is no record with such name
   */
   static getRecord( name ){
     if( name in MemoryStorageRecord){
