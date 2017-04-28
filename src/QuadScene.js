@@ -55,6 +55,7 @@ class QuadScene{
     this._colormapManager = new ColorMapManager();
 
     // Container on the DOM tree, most likely a div
+    this._domContainerName = DomContainer;
     this._domContainer = document.getElementById( DomContainer );
 
     // scene, where everything goes
@@ -115,8 +116,8 @@ class QuadScene{
     this._meshCollection = null;
 
     this._stats = null;
-    this._initPlaneManager();
-    this._initViews( DomContainer );
+    //this._initPlaneManager();
+    //this._initViews( DomContainer );
     this._levelManager = new LevelManager();
 
 
@@ -369,10 +370,12 @@ class QuadScene{
     if( this._refreshUniformsCounter && this._ready){
       this._planeManager.updateUniforms();
       this._refreshUniformsCounter --;
+      
+      // updating the control is necessary in the case of a TrackballControls
+      this._quadViews[3].updateControl();
     }
 
-    // updating the control is necessary in the case of a TrackballControls
-    this._quadViews[3].updateControl();
+    
 
     // call a built-in method for annimation
     requestAnimationFrame( this._animate.bind(this) );
@@ -459,8 +462,19 @@ class QuadScene{
       that._planeManager.updateUniforms();
     });
 
+
+    // the description file is successfully loaded
     this._levelManager.onReady(function(){
+      that._initPlaneManager();
+      that._initViews( that._domContainerName );
       var boxSize = that._levelManager.getBoundingBox();
+
+      // safe value, may be changed by what comes next
+      var sizeChunkLvl0 = 0.5;
+      var firstChunkColl = that._levelManager.getChunkCollection(0);
+      if(firstChunkColl){
+        sizeChunkLvl0 = firstChunkColl.getSizeChunkLvl0kWC();
+      }
 
       that._planeManager.setLevelManager( that._levelManager );
       that._levelManager.setResolutionLevel( that._resolutionLevel );

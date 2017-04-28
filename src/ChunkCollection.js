@@ -1,10 +1,8 @@
 'use strict';
 
-/*
-  TODO: replace all var by let
-*/
-
 import { TextureChunk } from './TextureChunk.js';
+import { MemoryStorage } from './MemoryStorage.js';
+
 
 /**
 * The Chunk Collection is the container for all the chunks at a given resolution level.
@@ -42,10 +40,12 @@ class ChunkCollection{
     this._voxelPerSide = 64;
     
     /** World size of a chunk at level 0. Used as a constant. */
-    this._chunkSizeLvlZero = this._voxelPerSide / lowestDefSize;
+    this._sizeChunkLvl0kWC = this._voxelPerSide / lowestDefSize;
+
+    MemoryStorage.setRecord("sizeChunkLvl0kWC", this._sizeChunkLvl0kWC);
 
     /** Size of a chunk in 3D space (aka. in world coordinates) */
-    this._sizeChunkWC = this._chunkSizeLvlZero / Math.pow(2, this._resolutionLevel);
+    this._sizeChunkWC = this._sizeChunkLvl0kWC / Math.pow(2, this._resolutionLevel);
 
     // Creates a fake texture and fake texture data to be sent to the shader in case it's not possible to fetch a real data (out of bound, unable to load texture file)
     this._createFakeTexture();
@@ -109,6 +109,15 @@ class ChunkCollection{
   */
   getSizeChunkWc(){
     return this._sizeChunkWC;
+  }
+
+
+  /**
+  * Get the size of a chunk of lvl0 in world coordinate unit space
+  * @return {Number} the size (most likely 0.5)
+  */
+  getSizeChunkLvl0kWC(){
+    return this._sizeChunkLvl0kWC;
   }
 
   /**

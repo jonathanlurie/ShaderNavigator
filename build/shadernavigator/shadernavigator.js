@@ -1,4 +1,4 @@
-// Build date: Wed Apr 26 17:17:45 EDT 2017
+// Build date: Fri Apr 28 16:22:18 EDT 2017
 
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -1005,9 +1005,37 @@ class TextureChunk{
 
 } /* END CLASS TextureChunk */
 
-/*
-  TODO: replace all var by let
+var MemoryStorageRecord = {};
+
+
+/**
+* MemoryStorage is a semi-global shared memory space to set values in a reccord.
+* (not accessible from global scope, just accessible from shaderNavigator's scope)
+* This is helpful to share some data between objects that are unrealated enough
+* to make it irrelevant sending arguments
+*
 */
+class MemoryStorage {
+  
+  /**
+  *
+  */
+  static setRecord( name, value ){
+    MemoryStorageRecord[ name ] = value;
+  }
+  
+  /**
+  *
+  */
+  static getRecord( name ){
+    if( name in MemoryStorageRecord){
+      return MemoryStorageRecord[name];
+    }else{
+      return null;
+    }
+  }
+  
+}
 
 /**
 * The Chunk Collection is the container for all the chunks at a given resolution level.
@@ -1045,10 +1073,12 @@ class ChunkCollection{
     this._voxelPerSide = 64;
     
     /** World size of a chunk at level 0. Used as a constant. */
-    this._chunkSizeLvlZero = this._voxelPerSide / lowestDefSize;
+    this._sizeChunkLvl0kWC = this._voxelPerSide / lowestDefSize;
+
+    MemoryStorage.setRecord("sizeChunkLvl0kWC", this._sizeChunkLvl0kWC);
 
     /** Size of a chunk in 3D space (aka. in world coordinates) */
-    this._sizeChunkWC = this._chunkSizeLvlZero / Math.pow(2, this._resolutionLevel);
+    this._sizeChunkWC = this._sizeChunkLvl0kWC / Math.pow(2, this._resolutionLevel);
 
     // Creates a fake texture and fake texture data to be sent to the shader in case it's not possible to fetch a real data (out of bound, unable to load texture file)
     this._createFakeTexture();
@@ -1112,6 +1142,15 @@ class ChunkCollection{
   */
   getSizeChunkWc(){
     return this._sizeChunkWC;
+  }
+
+
+  /**
+  * Get the size of a chunk of lvl0 in world coordinate unit space
+  * @return {Number} the size (most likely 0.5)
+  */
+  getSizeChunkLvl0kWC(){
+    return this._sizeChunkLvl0kWC;
   }
 
   /**
@@ -1747,6 +1786,21 @@ class LevelManager{
       this.onReadyCallback();
     }
 
+  }
+
+  
+  /**
+  * Get the nth chunk collection
+  * @param {Number} n - The index of the requested chunk collection
+  * @return {ChunkCollection} the collection, or null if asked a bad index
+  */
+  getChunkCollection( n ){
+    if( n>=0 && n<this._chunkCollections.length){
+      return this._chunkCollections[n];
+    }else{
+      console.warn("ChunkCollection at index " + n + " does not exist.");
+      return null;
+    }
   }
 
 
@@ -3282,17 +3336,19 @@ class PlaneManager{
   * @param {Array} arrayToAdd - array to push the 3 ProjectionPlane instances that are about to be created.
   */
   _addOrthoPlanes( arrayToAdd ){
-    var pn = new ProjectionPlane(0.5, this._colormapManager);
+    var sizeChunkLvl0kWC = MemoryStorage.getRecord("sizeChunkLvl0kWC");
+    
+    var pn = new ProjectionPlane(sizeChunkLvl0kWC, this._colormapManager);
     pn.setMeshColor(new THREE.Color(0x000099) );
     arrayToAdd.push( pn );
     this._multiplaneContainer.add( pn.getPlane() );
 
-    var pu = new ProjectionPlane(0.5, this._colormapManager);
+    var pu = new ProjectionPlane(sizeChunkLvl0kWC, this._colormapManager);
     arrayToAdd.push( pu );
     pu.getPlane().rotateX( Math.PI / 2);
     this._multiplaneContainer.add( pu.getPlane() );
 
-    var pv = new ProjectionPlane(0.5, this._colormapManager);
+    var pv = new ProjectionPlane(sizeChunkLvl0kWC, this._colormapManager);
     pv.setMeshColor(new THREE.Color(0x990000) );
     arrayToAdd.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
@@ -5537,6 +5593,7 @@ class QuadScene{
     this._colormapManager = new ColorMapManager();
 
     // Container on the DOM tree, most likely a div
+    this._domContainerName = DomContainer;
     this._domContainer = document.getElementById( DomContainer );
 
     // scene, where everything goes
@@ -5597,8 +5654,8 @@ class QuadScene{
     this._meshCollection = null;
 
     this._stats = null;
-    this._initPlaneManager();
-    this._initViews( DomContainer );
+    //this._initPlaneManager();
+    //this._initViews( DomContainer );
     this._levelManager = new LevelManager();
 
 
@@ -5851,10 +5908,12 @@ class QuadScene{
     if( this._refreshUniformsCounter && this._ready){
       this._planeManager.updateUniforms();
       this._refreshUniformsCounter --;
+      
+      // updating the control is necessary in the case of a TrackballControls
+      this._quadViews[3].updateControl();
     }
 
-    // updating the control is necessary in the case of a TrackballControls
-    this._quadViews[3].updateControl();
+    
 
     // call a built-in method for annimation
     requestAnimationFrame( this._animate.bind(this) );
@@ -5941,8 +6000,19 @@ class QuadScene{
       that._planeManager.updateUniforms();
     });
 
+
+    // the description file is successfully loaded
     this._levelManager.onReady(function(){
+      that._initPlaneManager();
+      that._initViews( that._domContainerName );
       var boxSize = that._levelManager.getBoundingBox();
+
+      // safe value, may be changed by what comes next
+      var sizeChunkLvl0 = 0.5;
+      var firstChunkColl = that._levelManager.getChunkCollection(0);
+      if(firstChunkColl){
+        sizeChunkLvl0 = firstChunkColl.getSizeChunkLvl0kWC();
+      }
 
       that._planeManager.setLevelManager( that._levelManager );
       that._levelManager.setResolutionLevel( that._resolutionLevel );

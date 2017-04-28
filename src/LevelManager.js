@@ -133,6 +133,21 @@ class LevelManager{
 
   }
 
+  
+  /**
+  * Get the nth chunk collection
+  * @param {Number} n - The index of the requested chunk collection
+  * @return {ChunkCollection} the collection, or null if asked a bad index
+  */
+  getChunkCollection( n ){
+    if( n>=0 && n<this._chunkCollections.length){
+      return this._chunkCollections[n];
+    }else{
+      console.warn("ChunkCollection at index " + n + " does not exist.");
+      return null;
+    }
+  }
+
 
   /**
   * [PRIVATE]
