@@ -122,7 +122,7 @@ class QuadScene{
 
 
     // init the gui controller
-    this._guiController = new GuiController(this);
+    //this._guiController = new GuiController(this);
 
     //this._testAnnotation();
 
@@ -370,12 +370,12 @@ class QuadScene{
     if( this._refreshUniformsCounter && this._ready){
       this._planeManager.updateUniforms();
       this._refreshUniformsCounter --;
-      
+
       // updating the control is necessary in the case of a TrackballControls
       this._quadViews[3].updateControl();
     }
 
-    
+
 
     // call a built-in method for annimation
     requestAnimationFrame( this._animate.bind(this) );
@@ -490,6 +490,9 @@ class QuadScene{
       that._initPlaneInteraction();
       that._ready = true;
 
+      // init the gui controller
+      that._guiController = new GuiController(that);
+
       if(that._onReadyCallback){
         that._onReadyCallback(that);
       }
@@ -603,7 +606,7 @@ class QuadScene{
   }
 
 
-  
+
 
   /**
   * Specify a callback for when the Quadscene is ready.

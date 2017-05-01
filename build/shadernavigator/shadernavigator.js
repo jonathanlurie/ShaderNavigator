@@ -1,4 +1,4 @@
-// Build date: Fri Apr 28 16:22:18 EDT 2017
+// Build date: Mon  1 May 2017 11:18:37 EDT
 
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -1018,14 +1018,19 @@ var MemoryStorageRecord = {};
 class MemoryStorage {
   
   /**
-  *
+  * Adds or modify a record.
+  * @param {String} name - name or the record, will be unique
+  * @param {Object} value - the value to put in the record 
   */
   static setRecord( name, value ){
     MemoryStorageRecord[ name ] = value;
   }
   
+  
   /**
-  *
+  * Get a record
+  * @param {String} name - name of the record
+  * @return {Object} existing value or null if there is no record with such name
   */
   static getRecord( name ){
     if( name in MemoryStorageRecord){
@@ -5660,7 +5665,7 @@ class QuadScene{
 
 
     // init the gui controller
-    this._guiController = new GuiController(this);
+    //this._guiController = new GuiController(this);
 
     //this._testAnnotation();
 
@@ -5908,12 +5913,12 @@ class QuadScene{
     if( this._refreshUniformsCounter && this._ready){
       this._planeManager.updateUniforms();
       this._refreshUniformsCounter --;
-      
+
       // updating the control is necessary in the case of a TrackballControls
       this._quadViews[3].updateControl();
     }
 
-    
+
 
     // call a built-in method for annimation
     requestAnimationFrame( this._animate.bind(this) );
@@ -6028,6 +6033,9 @@ class QuadScene{
       that._initPlaneInteraction();
       that._ready = true;
 
+      // init the gui controller
+      that._guiController = new GuiController(that);
+
       if(that._onReadyCallback){
         that._onReadyCallback(that);
       }
@@ -6141,7 +6149,7 @@ class QuadScene{
   }
 
 
-  
+
 
   /**
   * Specify a callback for when the Quadscene is ready.
