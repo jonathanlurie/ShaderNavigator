@@ -1,1 +1,0 @@
-../../build/shadernavigator/shadernavigator.js

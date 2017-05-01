@@ -1,4 +1,4 @@
-// Build date: Mon  1 May 2017 11:18:37 EDT
+// Build date: Mon  1 May 2017 11:42:38 EDT
 
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
