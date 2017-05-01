@@ -38,6 +38,8 @@ class LevelManager{
 
     this._levelsInfo = null;
 
+    this._axisInfo = null;
+
     this._onChunksLoadedCallback = null;
     this._onAllChunksLoadedCallback = null;
   }
@@ -119,7 +121,7 @@ class LevelManager{
     this._computeBoundingBox();
 
     // the lowest def size (most likely 128) is used in combination with a chunk size (64)
-    // to define the proportion of thing in a unit space 
+    // to define the proportion of thing in a unit space
     var lowestDefSize = this._levelsInfo[0].size[0];
 
     // add a chunk collection for each level
@@ -127,13 +129,15 @@ class LevelManager{
       that._addChunkCollectionLevel(index, elem.size, datatype, lowestDefSize);
     });
 
+    that._axisInfo = description.axisInfo;
+
     if(this.onReadyCallback){
       this.onReadyCallback();
     }
 
   }
 
-  
+
   /**
   * Get the nth chunk collection
   * @param {Number} n - The index of the requested chunk collection
@@ -291,7 +295,7 @@ class LevelManager{
       this._levelsInfo[0].size[2] / 64.0
     ];
     */
-    
+
     this._boundingBox = [
       1,
       1,
@@ -342,6 +346,28 @@ class LevelManager{
 
       return this._levelsInfo[ levelIndex ][ infoKey ];
     }
+  }
+
+
+  /**
+  * Get a tag from axisInfo in the configuration file.
+  * @param {String} axis - native webGL axis name: "x", "y" or "z"
+  * @param {String} tag - info tag. "name", "originalSize", etc.
+  * @return {Object} String or Number value of the given axis and tag
+  */
+  getAxisInfo(axis, tag){
+    if(axis in this._axisInfo && tag in this._axisInfo[axis]){
+      return this._axisInfo[axis][tag];
+    }
+  }
+
+
+  /**
+  * Get the whole object for axis info
+  * @return {Object}
+  */
+  getAllAxisInfo(){
+    return this._axisInfo;
   }
 
 } /* END CLASS LevelManager */

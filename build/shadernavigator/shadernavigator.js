@@ -1,4 +1,4 @@
-// Build date: Mon  1 May 2017 12:23:35 EDT
+// Build date: Mon  1 May 2017 17:15:02 EDT
 
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -1698,6 +1698,8 @@ class LevelManager{
 
     this._levelsInfo = null;
 
+    this._axisInfo = null;
+
     this._onChunksLoadedCallback = null;
     this._onAllChunksLoadedCallback = null;
   }
@@ -1779,7 +1781,7 @@ class LevelManager{
     this._computeBoundingBox();
 
     // the lowest def size (most likely 128) is used in combination with a chunk size (64)
-    // to define the proportion of thing in a unit space 
+    // to define the proportion of thing in a unit space
     var lowestDefSize = this._levelsInfo[0].size[0];
 
     // add a chunk collection for each level
@@ -1787,13 +1789,15 @@ class LevelManager{
       that._addChunkCollectionLevel(index, elem.size, datatype, lowestDefSize);
     });
 
+    that._axisInfo = description.axisInfo;
+
     if(this.onReadyCallback){
       this.onReadyCallback();
     }
 
   }
 
-  
+
   /**
   * Get the nth chunk collection
   * @param {Number} n - The index of the requested chunk collection
@@ -1951,7 +1955,7 @@ class LevelManager{
       this._levelsInfo[0].size[2] / 64.0
     ];
     */
-    
+
     this._boundingBox = [
       1,
       1,
@@ -2002,6 +2006,28 @@ class LevelManager{
 
       return this._levelsInfo[ levelIndex ][ infoKey ];
     }
+  }
+
+
+  /**
+  * Get a tag from axisInfo in the configuration file.
+  * @param {String} axis - native webGL axis name: "x", "y" or "z"
+  * @param {String} tag - info tag. "name", "originalSize", etc.
+  * @return {Object} String or Number value of the given axis and tag
+  */
+  getAxisInfo(axis, tag){
+    if(axis in this._axisInfo && tag in this._axisInfo[axis]){
+      return this._axisInfo[axis][tag];
+    }
+  }
+
+
+  /**
+  * Get the whole object for axis info
+  * @return {Object}
+  */
+  getAllAxisInfo(){
+    return this._axisInfo;
   }
 
 } /* END CLASS LevelManager */
@@ -4328,6 +4354,7 @@ class GuiController{
     this._mainPanel = QuickSettings.create(panelSpace, 0, document.title);
     this._initMainPanel();
 
+    this._axisInfo = null;
     //this._annotationPanel = QuickSettings.create(panelWidth + panelSpace*2 , 0, "Annotations");
     //this._initAnnotationPanel();
     //this._initAnnotationPanelCallback();
@@ -4390,9 +4417,55 @@ class GuiController{
     document.getElementById('Resolution').readOnly = true;
     document.getElementById("Resolution").parentElement.style["margin-top"] = "0px";
 
-    // multiplane position
+    // multiplane position (unit x, y, z)
     this._mainPanel.addText("Position", "", function(){} );
     this._mainPanel.overrideStyle("Position", "text-align", "center");
+    // when pressing ENTER on this field
+    document.getElementById("Position").addEventListener("keypress", function( e ){
+      if (e.keyCode == 13) {
+        var newPosition = that._mainPanel.getValue("Position")
+          .split(',')
+          .map(function(elem){return parseFloat(elem)});
+
+        that._quadScene.setMultiplanePosition(newPosition[0], newPosition[1], newPosition[2]);
+      }
+    });
+
+    // mutiplane position voxel (to match A3D slices index)
+    this._mainPanel.addText("Position voxel", "", function(){} );
+    this._mainPanel.overrideStyle("Position voxel", "text-align", "center");
+    document.getElementById("Position voxel").parentElement.style["margin-top"] = "0px";
+    // on pressing ENTER on this field
+    document.getElementById("Position voxel").addEventListener("keypress", function( e ){
+      if (e.keyCode == 13) {
+        var axisInfo = that._axisInfo;
+
+        var newPositionVoxel = that._mainPanel.getValue("Position voxel")
+          .split(',')
+          .map(function(elem){return parseFloat(elem)});
+
+        var positionUnitX = newPositionVoxel[0] / axisInfo.x.originalSize;
+        if(axisInfo.x.reversed){
+          positionUnitX = 1 - positionUnitX;
+        }
+        positionUnitX = positionUnitX * (axisInfo.x.originalSize / axisInfo.x.finalSize) + (axisInfo.x.offset / axisInfo.x.finalSize);
+
+        var positionUnitY = newPositionVoxel[1] / axisInfo.y.originalSize;
+        if(axisInfo.y.reversed){
+          positionUnitY = 1 - positionUnitY;
+        }
+        positionUnitY = positionUnitY * (axisInfo.y.originalSize / axisInfo.y.finalSize) + (axisInfo.y.offset / axisInfo.y.finalSize);
+
+        var positionUnitZ = newPositionVoxel[2] / axisInfo.z.originalSize;
+        if(axisInfo.z.reversed){
+          positionUnitZ = 1 - positionUnitZ;
+        }
+        positionUnitZ = positionUnitZ * (axisInfo.z.originalSize / axisInfo.z.finalSize) + (axisInfo.z.offset / axisInfo.z.finalSize);
+
+        that._quadScene.setMultiplanePosition(positionUnitX, positionUnitY, positionUnitZ);
+      }
+    });
+
 
     // multiplane rotation
     this._mainPanel.addText("Rotation", "", function(){} );
@@ -4400,23 +4473,16 @@ class GuiController{
     this._mainPanel.overrideStyle("Rotation", "text-align", "center");
     document.getElementById("Rotation").parentElement.style["margin-top"] = "0px";
 
-    // apply button for multiplane position and rotation
-    this._mainPanel.addButton("Apply", function(){
-      var newPosition = that._mainPanel.getValue("Position")
-        .split(',')
-        .map(function(elem){return parseFloat(elem)});
+    // when pressing ENTER on this field
+    document.getElementById("Rotation").addEventListener("keypress", function( e ){
+      if (e.keyCode == 13) {
+        var newRotation = that._mainPanel.getValue("Rotation")
+          .split(',')
+          .map(function(elem){return parseFloat(elem)});
 
-      var newRotation = that._mainPanel.getValue("Rotation")
-        .split(',')
-        .map(function(elem){return parseFloat(elem)});
-
-      that._quadScene.setMultiplaneRotation(newRotation[0], newRotation[1], newRotation[2]);
-      that._quadScene.setMultiplanePosition(newPosition[0], newPosition[1], newPosition[2]);
-
+        that._quadScene.setMultiplaneRotation(newRotation[0], newRotation[1], newRotation[2]);
+      }
     });
-
-    this._mainPanel.overrideStyle("Apply", "width", "100%");
-    document.getElementById("Apply").parentElement.style["margin-top"] = "0px";
 
     // Button reset rotation
     this._mainPanel.addButton("Reset rotation", function(){
@@ -4473,6 +4539,43 @@ class GuiController{
     rotationString += spaceConfig.rotation.y.toFixed(4) + ' , ';
     rotationString += spaceConfig.rotation.z.toFixed(4);
     this._mainPanel.setValue("Rotation", rotationString);
+
+
+    var axisInfo = spaceConfig.axisInfo;
+    this._axisInfo = axisInfo; // so that we could reuse it later
+
+    var posVoxelX = ( spaceConfig.position.x - (axisInfo.x.offset / axisInfo.x.finalSize) ) / (axisInfo.x.originalSize / axisInfo.x.finalSize);
+    if(axisInfo.x.reversed){
+      posVoxelX = 1 - posVoxelX;
+    }
+
+    var posVoxelY = ( spaceConfig.position.y - (axisInfo.y.offset / axisInfo.y.finalSize) ) / (axisInfo.y.originalSize / axisInfo.y.finalSize);
+    if(axisInfo.y.reversed){
+      posVoxelY = 1 - posVoxelY;
+    }
+
+    var posVoxelZ = ( spaceConfig.position.z - (axisInfo.z.offset / axisInfo.z.finalSize) ) / (axisInfo.z.originalSize / axisInfo.z.finalSize);
+    if(axisInfo.z.reversed){
+      posVoxelZ = 1 - posVoxelZ;
+    }
+
+    posVoxelX *= axisInfo.x.originalSize;
+    posVoxelY *= axisInfo.y.originalSize;
+    posVoxelZ *= axisInfo.z.originalSize;
+
+    var positionVoxelString = Math.round(posVoxelX) + ' , ';
+    positionVoxelString += Math.round(posVoxelY) + ' , ';
+    positionVoxelString += Math.round(posVoxelZ);
+    this._mainPanel.setValue("Position voxel", positionVoxelString);
+
+// ----------------- reverse ----------
+  /*
+    positionVoxelX = positionVoxelX / axisInfo.x.originalSize
+    if(axisInfo.x.reversed){
+      positionVoxelX = 1 - posVoxelX;
+    }
+    positionVoxelX * (axisInfo.x.originalSize / axisInfo.x.finalSize) + (axisInfo.x.offset / axisInfo.x.finalSize)
+    */
   }
 
 
@@ -4534,7 +4637,7 @@ class GuiController{
     this._annotationPanel.addDropDown("Annotations", [],
       function( dropdownObj ){
         var annotation = that._annotationCollection.getAnnotation( dropdownObj.value );
-        
+
         if(annotation){
           that._displayAnnotInfo( annotation );
         }
@@ -4548,11 +4651,11 @@ class GuiController{
       var dropdownObj = that._annotationPanel.getControl("Annotations");
       dropdownObj.addItem(name);
       console.log( dropdownObj );
-      
+
       //dropdownObj.setValue(name);
-      
+
       var annotation = that._annotationCollection.getAnnotation( name );
-      
+
       if(annotation){
         that._displayAnnotInfo( annotation );
       }
@@ -6306,7 +6409,8 @@ class QuadScene{
         x: multiplaneRot.x,
         y: multiplaneRot.y,
         z: multiplaneRot.z
-      }
+      },
+      axisInfo: this._levelManager.getAllAxisInfo()
     };
 
   }

@@ -763,7 +763,8 @@ class QuadScene{
         x: multiplaneRot.x,
         y: multiplaneRot.y,
         z: multiplaneRot.z
-      }
+      },
+      axisInfo: this._levelManager.getAllAxisInfo()
     };
 
   }
