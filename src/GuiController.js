@@ -93,9 +93,13 @@ class GuiController{
     document.getElementById('Resolution').readOnly = true;
     document.getElementById("Resolution").parentElement.style["margin-top"] = "0px";
 
-    // multiplane position
+    // multiplane position (unit x, y, z)
     this._mainPanel.addText("Position", "", function(){} );
     this._mainPanel.overrideStyle("Position", "text-align", "center");
+
+    // mutiplane position voxel (to match A3D slices index)
+    this._mainPanel.addText("Position voxel", "", function(){} );
+    this._mainPanel.overrideStyle("Position voxel", "text-align", "center");
 
     // multiplane rotation
     this._mainPanel.addText("Rotation", "", function(){} );
@@ -237,7 +241,7 @@ class GuiController{
     this._annotationPanel.addDropDown("Annotations", [],
       function( dropdownObj ){
         var annotation = that._annotationCollection.getAnnotation( dropdownObj.value );
-        
+
         if(annotation){
           that._displayAnnotInfo( annotation );
         }
@@ -251,11 +255,11 @@ class GuiController{
       var dropdownObj = that._annotationPanel.getControl("Annotations");
       dropdownObj.addItem(name);
       console.log( dropdownObj );
-      
+
       //dropdownObj.setValue(name);
-      
+
       var annotation = that._annotationCollection.getAnnotation( name );
-      
+
       if(annotation){
         that._displayAnnotInfo( annotation );
       }

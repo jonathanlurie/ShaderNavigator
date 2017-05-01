@@ -643,7 +643,7 @@ class QuadScene{
       }
       that._planeManager.updateUniforms();
       //that._render();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: regular rotation (using R key)
@@ -663,7 +663,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: transverse rotation (using T key)
@@ -688,7 +688,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: arrow down
@@ -710,7 +710,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: arrow up
@@ -732,7 +732,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     this._quadViewInteraction.onDonePlaying(function(){

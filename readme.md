@@ -119,5 +119,40 @@ Setting URL arguments is not mandatory (and can actually be quite cumbersome), m
 # Run
 Run a web server in the root directory and open `ShaderNavigator/index.html`.
 
-# TODO
-...
+# Config file
+## axisInfo
+This group is mandatory and give some important information about the three axis. By default, we consider the original dataset has been enlarged or padded to fit a power of 2 size (required for zooming). The information about the original size, the enlarged size and the offset are essential to build a bridge between multiple visualization platforms, for example from ShaderNavigator to Atelier3D (where data are not enlarged).  
+The three axis **x**, **y** and **z** from the internal 3D space do not necessary respect the **x**, **y** and **z** for the original data and they may even not be called so in the original dataset. Still, having named axes usually matters to the user.
+
+
+```javascript
+"axisInfo": {
+  "x": { // "x" from the webGL environment
+    "name": "sagittal", // name of this axis in the original dataset
+    "originalSize": 6572, // size of the original dataset along this axis, before being extended to a power of 2 size
+    "offset": 810, // offset applied at the beginning of the axis, if extended (can be 0)
+    "finalSize": 8192, // power of 2 size (can be the same as originalSize if already pow of 2)
+    "minName": "left", // name of the min bound of the axis
+    "maxName": "right", // name of the max bound of the axis
+    "reversed": true  // should we count from 0->8191 (false) or from 8191->0 (true)
+  },
+  "y": {
+    "name": "coronal",
+    "originalSize": 7404,
+    "offset": 0,
+    "finalSize": 8192,
+    "minName": "posterior",
+    "maxName": "anterior",
+    "reversed": false
+  },
+  "z": {
+    "name": "axial",
+    "originalSize": 5711,
+    "offset": 1240,
+    "finalSize": 8192,
+    "minName": "inferior",
+    "maxName": "superior",
+    "reversed": true
+  }
+},
+```

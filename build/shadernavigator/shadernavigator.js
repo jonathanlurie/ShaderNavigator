@@ -1,4 +1,4 @@
-// Build date: Mon  1 May 2017 11:42:38 EDT
+// Build date: Mon  1 May 2017 12:23:35 EDT
 
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -6186,7 +6186,7 @@ class QuadScene{
       }
       that._planeManager.updateUniforms();
       //that._render();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: regular rotation (using R key)
@@ -6206,7 +6206,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: transverse rotation (using T key)
@@ -6231,7 +6231,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: arrow down
@@ -6253,7 +6253,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: arrow up
@@ -6275,7 +6275,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     this._quadViewInteraction.onDonePlaying(function(){
