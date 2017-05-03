@@ -361,7 +361,7 @@ class ChunkCollection{
     var validChunksOrigin = [];
     var notValidChunksOrigin = [];
     var that = this;
-
+    
     the8closestIndexes.forEach(function(index){
       var aTextureData = that.getTextureAtIndex3D(index);
 
@@ -469,29 +469,7 @@ class ChunkCollection{
   *
   */
   getInvolvedTextureData(cornerPositions){
-    var that = this;
-
-    /*
-    console.log("this._sizeChunkWC");
-    console.log(this._sizeChunkWC);
-    console.log("cornerPositions");
-    console.log(cornerPositions);
-    */
-    this._sizeChunkWC
-    /*
-    var chunkEdgeCase = cornerPositions[0].x % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].x % this._sizeChunkWC < this._sizeChunkWC/10; ||
-        cornerPositions[0].y % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].y % this._sizeChunkWC < this._sizeChunkWC/10 ||
-        cornerPositions[0].z % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].z % this._sizeChunkWC < this._sizeChunkWC/10;
-*/
-
-
-
-    /*
-    var chunkEdgeCase = cornerPositions[0].x == cornerPositions[1].x ||
-                        cornerPositions[0].y == cornerPositions[1].y ||
-                        cornerPositions[0].z == cornerPositions[1].z;
-    */
-
+  
     var chunkEdgeCaseX = cornerPositions[0].x == cornerPositions[1].x &&
       (cornerPositions[0].x % this._sizeChunkWC < this._sizeChunkWC*0.1 ||   cornerPositions[0].x % this._sizeChunkWC > this._sizeChunkWC*0.9);
 
@@ -504,27 +482,19 @@ class ChunkCollection{
     var chunkEdgeCase = chunkEdgeCaseX || chunkEdgeCaseY || chunkEdgeCaseZ;
 
     if( chunkEdgeCase ){
-      //console.log(">> NEAREST8");
-      //console.log(cornerPositions);
-      //console.log( Math.floor(Date.now()) );
-
 
       var center = [
         (cornerPositions[0].x + cornerPositions[1].x + cornerPositions[2].x + cornerPositions[3].x) / 4,
         (cornerPositions[0].y + cornerPositions[1].y + cornerPositions[2].y + cornerPositions[3].y) / 4,
         (cornerPositions[0].z + cornerPositions[1].z + cornerPositions[2].z + cornerPositions[3].z) / 4
       ];
-
+      //console.log("NEAREST8");
       return this.get8ClosestTextureData( center );
-    }else{
-      //console.log(">> INVOLVED");
-      //console.log(cornerPositions);
-      //console.log( Math.floor(Date.now()) );
     }
-
-
+    
+    //console.log("__ INVOLVED");
+    
     var involvedIndexes = this.getInvolvedTextureIndexes(cornerPositions);
-
 
     var loadedMaps = {};
 
@@ -533,18 +503,17 @@ class ChunkCollection{
     var notValidChunksTexture = [];
     var validChunksOrigin = [];
     var notValidChunksOrigin = [];
-    var that = this;
 
-    involvedIndexes.forEach(function(index){
-      var aTextureData = that._fakeTextureData;
-      var indexKey = that._getKeyFromIndex3D( index );
+    for(var i=0; i<involvedIndexes.length; i++){
+      var aTextureData = this._fakeTextureData;
+      var indexKey = this._getKeyFromIndex3D( involvedIndexes[i] );
 
       // never loaded before
       if(! (indexKey in loadedMaps)){
         loadedMaps[indexKey] = 1;
 
         // load the texture , possibly retrieving a fake one (out)
-        aTextureData = that.getTextureAtIndex3D(index);
+        aTextureData = this.getTextureAtIndex3D( involvedIndexes[i] );
       }
 
       // this texture data is valid
@@ -557,18 +526,9 @@ class ChunkCollection{
         notValidChunksTexture.push( aTextureData.texture );
         notValidChunksOrigin.push( aTextureData.origin );
       }
-
-    });
+    }
 
     validChunksCounter = validChunksTexture.length;
-
-    /*
-    return {
-      textures: validChunksTexture.concat( notValidChunksTexture ),
-      origins: validChunksOrigin.concat( notValidChunksOrigin ),
-      nbValid: validChunksCounter
-    };
-    */
 
     var textureDatas = {
       textures: validChunksTexture.concat( notValidChunksTexture ),

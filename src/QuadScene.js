@@ -392,13 +392,10 @@ class QuadScene{
     // TODO: make somethink better for refresh once per sec!
     if(this._ready){
       //this._planeManager.updateUniforms();
-
-      // refresh each view
-      this._quadViews.forEach(function(view){
-        view.renderView();
-      });
-
-
+      
+      for(var i=0; i<this._quadViews.length; i++){
+        this._quadViews[i].renderView();
+      }
     }
 
   }
@@ -626,7 +623,7 @@ class QuadScene{
 
     // callback def: translation
     this._quadViewInteraction.onGrabViewTranslate( function(distance, viewIndex){
-      var factor = Math.pow(2, that._resolutionLevel);
+      var factor = Math.pow(2, that._resolutionLevel + 1);
 
       switch (viewIndex) {
         case 0:

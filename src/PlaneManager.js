@@ -252,9 +252,9 @@ class PlaneManager{
   * @param {Array} arrayOfPlanes - array of ProjectionPlane instances to which we want to update the uniforms.
   */
   _updateUniformsPlaneArray(arrayOfPlanes){
-    arrayOfPlanes.forEach( function(plane){
-      plane.updateUniforms();
-    });
+    for(var i=0; i<arrayOfPlanes.length; i++){
+      arrayOfPlanes[i].updateUniforms();
+    }
   }
 
 

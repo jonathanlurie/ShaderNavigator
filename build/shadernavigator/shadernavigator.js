@@ -1,4 +1,4 @@
-// Build date: Mon  1 May 2017 17:15:02 EDT
+// Build date: Wed May  3 16:18:58 EDT 2017
 
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -1009,7 +1009,7 @@ var MemoryStorageRecord = {};
 
 
 /**
-* MemoryStorage is a semi-global shared memory space to set values in a reccord.
+* MemoryStorage is a semi-global shared memory space to set values in a record.
 * (not accessible from global scope, just accessible from shaderNavigator's scope)
 * This is helpful to share some data between objects that are unrealated enough
 * to make it irrelevant sending arguments
@@ -1039,6 +1039,21 @@ class MemoryStorage {
       return null;
     }
   }
+  
+  
+  /**
+  * Delete a record from the memory storage. Keep in mind that using "delete" does
+  * NOT free the memory.
+  * @param {String} name - name of the record.
+  */
+  static deleteRecord( name ){
+    if( name in MemoryStorageRecord){
+      delete object[name];
+    }else{
+      console.warn("The record " + name + " does not exist in MemoryStorage.");
+    }
+  }
+  
   
 }
 
@@ -1399,7 +1414,7 @@ class ChunkCollection{
     var validChunksOrigin = [];
     var notValidChunksOrigin = [];
     var that = this;
-
+    
     the8closestIndexes.forEach(function(index){
       var aTextureData = that.getTextureAtIndex3D(index);
 
@@ -1507,29 +1522,7 @@ class ChunkCollection{
   *
   */
   getInvolvedTextureData(cornerPositions){
-    var that = this;
-
-    /*
-    console.log("this._sizeChunkWC");
-    console.log(this._sizeChunkWC);
-    console.log("cornerPositions");
-    console.log(cornerPositions);
-    */
-    this._sizeChunkWC;
-    /*
-    var chunkEdgeCase = cornerPositions[0].x % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].x % this._sizeChunkWC < this._sizeChunkWC/10; ||
-        cornerPositions[0].y % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].y % this._sizeChunkWC < this._sizeChunkWC/10 ||
-        cornerPositions[0].z % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].z % this._sizeChunkWC < this._sizeChunkWC/10;
-*/
-
-
-
-    /*
-    var chunkEdgeCase = cornerPositions[0].x == cornerPositions[1].x ||
-                        cornerPositions[0].y == cornerPositions[1].y ||
-                        cornerPositions[0].z == cornerPositions[1].z;
-    */
-
+  
     var chunkEdgeCaseX = cornerPositions[0].x == cornerPositions[1].x &&
       (cornerPositions[0].x % this._sizeChunkWC < this._sizeChunkWC*0.1 ||   cornerPositions[0].x % this._sizeChunkWC > this._sizeChunkWC*0.9);
 
@@ -1542,27 +1535,19 @@ class ChunkCollection{
     var chunkEdgeCase = chunkEdgeCaseX || chunkEdgeCaseY || chunkEdgeCaseZ;
 
     if( chunkEdgeCase ){
-      //console.log(">> NEAREST8");
-      //console.log(cornerPositions);
-      //console.log( Math.floor(Date.now()) );
-
 
       var center = [
         (cornerPositions[0].x + cornerPositions[1].x + cornerPositions[2].x + cornerPositions[3].x) / 4,
         (cornerPositions[0].y + cornerPositions[1].y + cornerPositions[2].y + cornerPositions[3].y) / 4,
         (cornerPositions[0].z + cornerPositions[1].z + cornerPositions[2].z + cornerPositions[3].z) / 4
       ];
-
+      //console.log("NEAREST8");
       return this.get8ClosestTextureData( center );
-    }else{
-      //console.log(">> INVOLVED");
-      //console.log(cornerPositions);
-      //console.log( Math.floor(Date.now()) );
     }
-
-
+    
+    //console.log("__ INVOLVED");
+    
     var involvedIndexes = this.getInvolvedTextureIndexes(cornerPositions);
-
 
     var loadedMaps = {};
 
@@ -1571,18 +1556,17 @@ class ChunkCollection{
     var notValidChunksTexture = [];
     var validChunksOrigin = [];
     var notValidChunksOrigin = [];
-    var that = this;
 
-    involvedIndexes.forEach(function(index){
-      var aTextureData = that._fakeTextureData;
-      var indexKey = that._getKeyFromIndex3D( index );
+    for(var i=0; i<involvedIndexes.length; i++){
+      var aTextureData = this._fakeTextureData;
+      var indexKey = this._getKeyFromIndex3D( involvedIndexes[i] );
 
       // never loaded before
       if(! (indexKey in loadedMaps)){
         loadedMaps[indexKey] = 1;
 
         // load the texture , possibly retrieving a fake one (out)
-        aTextureData = that.getTextureAtIndex3D(index);
+        aTextureData = this.getTextureAtIndex3D( involvedIndexes[i] );
       }
 
       // this texture data is valid
@@ -1595,18 +1579,9 @@ class ChunkCollection{
         notValidChunksTexture.push( aTextureData.texture );
         notValidChunksOrigin.push( aTextureData.origin );
       }
-
-    });
+    }
 
     validChunksCounter = validChunksTexture.length;
-
-    /*
-    return {
-      textures: validChunksTexture.concat( notValidChunksTexture ),
-      origins: validChunksOrigin.concat( notValidChunksOrigin ),
-      nbValid: validChunksCounter
-    };
-    */
 
     var textureDatas = {
       textures: validChunksTexture.concat( notValidChunksTexture ),
@@ -2869,7 +2844,7 @@ class ColorMapManager{
 
 } /* END class ColorMapManager */
 
-var texture3d_frag = "\nconst int maxNbChunks = 8;\nconst float numberOfImagePerStripY = 64.0;\nconst float numberOfPixelPerSide = 64.0;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying  vec4 worldCoord;\nvarying  vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return  ( chunkPosition.x>=0.0 && chunkPosition.x<1.0 &&\n            chunkPosition.y>=0.0 && chunkPosition.y<1.0 &&\n            chunkPosition.z>=0.0 && chunkPosition.z<1.0 );\n}\nvec4 getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition){\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY ;\n  float stripX = chunkPosition.x;  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  return texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin){\n  return vec3(  (world.x - textureOrigin.x)/chunkSize,\n                 1.0 - (world.y - textureOrigin.y )/chunkSize,\n                 1.0 - (world.z - textureOrigin.z )/chunkSize);\n}\nvoid main( void ) {\n  if(nbChunks == 0){\n    discard;\n    return;\n  }\n  vec2 shaderPos = vUv;\n  if(shaderPos.x < 0.01 || shaderPos.x > 0.99 || shaderPos.y < 0.01 || shaderPos.y > 0.99){\n    gl_FragColor  = vec4(0.0, 0.0 , 0.0, 1.0);\n    return;\n  }\n  vec4 color = vec4(1.0, 0.0 , 0.0, 1.0);\n  vec4 color2 = vec4(1.0, 0.0 , 0.0, 1.0);\n  vec3 chunkPosition;\n  bool hasColorFromChunk = false;\n  int selectedChunk = -1;\n  for(int i=0; i<maxNbChunks; i++)\n  {\n    if( i == nbChunks ){\n      break;\n    }\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[i]);\n    if( isInsideChunk(chunkPosition) ){\n      color = getColorFrom3DTexture(textures[i], chunkPosition);\n      hasColorFromChunk = true;\n      selectedChunk = i;\n      break;\n    }\n  }\n  if( hasColorFromChunk ){\n    gl_FragColor = color;\n  }else{\n    gl_FragColor = vec4(1.0, 0.0 , 1.0, 1.0);\n  }\n  return ;\n  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0]);\n  if( isInsideChunk(chunkPosition) ){\n    color2 = getColorFrom3DTexture(textures[0], chunkPosition);\n    hasColorFromChunk = true;\n  } else if(nbChunks >= 2){\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1]);\n    if( isInsideChunk(chunkPosition) ){\n      color2 = getColorFrom3DTexture(textures[1], chunkPosition);\n      hasColorFromChunk = true;\n    } else if(nbChunks >= 3){\n      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2]);\n      if( isInsideChunk(chunkPosition) ){\n        color2 = getColorFrom3DTexture(textures[2], chunkPosition);\n        hasColorFromChunk = true;\n      } else if(nbChunks >= 4){\n        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3]);\n        if( isInsideChunk(chunkPosition) ){\n          color2 = getColorFrom3DTexture(textures[3], chunkPosition);\n          hasColorFromChunk = true;\n        } else if(nbChunks >= 5){\n          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4]);\n          if( isInsideChunk(chunkPosition) ){\n            color2 = getColorFrom3DTexture(textures[4], chunkPosition);\n            hasColorFromChunk = true;\n          } else if(nbChunks >= 6){\n            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5]);\n            if( isInsideChunk(chunkPosition) ){\n              color2 = getColorFrom3DTexture(textures[5], chunkPosition);\n              hasColorFromChunk = true;\n            } else if(nbChunks >= 7){\n              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6]);\n              if( isInsideChunk(chunkPosition) ){\n                color2 = getColorFrom3DTexture(textures[6], chunkPosition);\n                hasColorFromChunk = true;\n              } else if(nbChunks == 8){\n                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7]);\n                if( isInsideChunk(chunkPosition) ){\n                  color2 = getColorFrom3DTexture(textures[7], chunkPosition);\n                  hasColorFromChunk = true;\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n  if(hasColorFromChunk){\n    if(useColorMap){\n      vec2 colorToPosition = vec2(color.r, 0.5);\n      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);\n      if(colorFromColorMap.a > 0.0){\n        colorFromColorMap.a = 0.85;\n        gl_FragColor = colorFromColorMap;\n      }else{\n        discard;\n      }\n    }else{\n      gl_FragColor = color2;\n    }\n  }else{\n    gl_FragColor = vec4(1.0, 0.0 , 1.0, 1.0);\n  }\n}\n";
+var texture3d_frag = "\nconst int maxNbChunks = 8;\nconst float numberOfImagePerStripY = 64.0;\nconst float numberOfPixelPerSide = 64.0;\nuniform int nbChunks;\nuniform sampler2D textures[maxNbChunks];\nuniform vec3 textureOrigins[maxNbChunks];\nuniform sampler2D colorMap;\nuniform bool useColorMap;\nuniform float chunkSize;\nvarying  vec4 worldCoord;\nvarying  vec2 vUv;\nbool isNan(float val)\n{\n  return (val <= 0.0 || 0.0 <= val) ? false : true;\n}\nbool isInsideChunk(in vec3 chunkPosition){\n  return  ( chunkPosition.x>=0.0 && chunkPosition.x<1.0 &&\n            chunkPosition.y>=0.0 && chunkPosition.y<1.0 &&\n            chunkPosition.z>=0.0 && chunkPosition.z<1.0 );\n}\nvec4 getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition){\n  float yOffsetNormalized = float(int(chunkPosition.z * numberOfImagePerStripY)) / numberOfImagePerStripY ;\n  float stripX = chunkPosition.x;  float stripY = chunkPosition.y / numberOfImagePerStripY + yOffsetNormalized;\n  vec2 posWithinStrip = vec2(stripX, stripY);\n  return texture2D(texture, posWithinStrip);\n}\nvec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin){\n  return vec3(  (world.x - textureOrigin.x)/chunkSize + (1.0 / numberOfPixelPerSide / 2.0),\n                 1.0 - (world.y - textureOrigin.y )/chunkSize + (1.0 / numberOfPixelPerSide / 2.0),\n                 1.0 - (world.z - textureOrigin.z )/chunkSize) + (1.0 / numberOfPixelPerSide / 2.0);\n}\nvoid main( void ) {\n  if(nbChunks == 0){\n    discard;\n    return;\n  }\n  vec2 shaderPos = vUv;\n  if(shaderPos.x < 0.01 || shaderPos.x > 0.99 || shaderPos.y < 0.01 || shaderPos.y > 0.99){\n    gl_FragColor  = vec4(0.0, 0.0 , 0.0, 1.0);\n    return;\n  }\n  vec4 color = vec4(1.0, 0.0 , 0.0, 1.0);\n  vec4 color2 = vec4(1.0, 0.0 , 0.0, 1.0);\n  vec3 chunkPosition;\n  bool hasColorFromChunk = false;\n  for(int i=0; i<maxNbChunks; i++)\n  {\n    if( i == nbChunks ){\n      break;\n    }\n    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[i]);\n    if( isInsideChunk(chunkPosition) ){\n      color = getColorFrom3DTexture(textures[i], chunkPosition);\n      hasColorFromChunk = true;\n      break;\n    }\n  }\n  if( hasColorFromChunk ){\n    gl_FragColor = color;\n  }else{\n    gl_FragColor = vec4(1.0, 0.0 , 1.0, 1.0);\n  }\n  return ;\n}\n";
 
 var texture3d_vert = "\nvarying  vec2 vUv;\nvarying  vec4 worldCoord;\nvoid main()\n{\n  vUv = uv;\n  vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );\n  gl_Position = projectionMatrix * mvPosition;\n  worldCoord = modelMatrix * vec4( position, 1.0 );\n}\n";
 
@@ -2913,7 +2888,7 @@ class ProjectionPlane{
 
     this._subPlaneDim = {row: 7, col: 15}; // OPTIM
     //this._subPlaneDim = {row: 10, col: 20}; // TEST
-    //this._subPlaneDim = {row: 6, col: 13}; // TEST
+    //this._subPlaneDim = {row: 4, col: 8}; // TEST
     //this._subPlaneDim = {row: 1, col: 1};
 
     // to be aggregated
@@ -2942,17 +2917,6 @@ class ProjectionPlane{
     var that = this;
 
     var subPlaneGeometry = new THREE.PlaneBufferGeometry( this._subPlaneSize, this._subPlaneSize, 1 );
-
-    // a fake texture is a texture used instead of a real one, just because
-    // we have to send something to the shader even if we dont have data
-    var fakeTexture = new THREE.DataTexture(
-        new Uint8Array(1),
-        1,
-        1,
-        THREE.LuminanceFormat,  // format, luminance is for 1-band image
-        THREE.UnsignedByteType  // type for our Uint8Array
-      );
-
     var fakeOrigin = new THREE.Vector3(0, 0, 0);
 
     var subPlaneMaterial_original = new THREE.ShaderMaterial( {
@@ -2964,8 +2928,8 @@ class ProjectionPlane{
         },
         textures: {
           type: "t",
-          value: [  fakeTexture, fakeTexture, fakeTexture, fakeTexture,
-                    fakeTexture, fakeTexture, fakeTexture, fakeTexture]
+          value: [  null, null, null, null,
+                    null, null, null, null]
         },
         // the texture origins (in the same order)
         textureOrigins: {
@@ -3032,15 +2996,13 @@ class ProjectionPlane{
   /**
   * fetch each texture info, build a uniform and
   */
-  updateUniforms_NEAREST8(){
-    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+  updateUniforms(){
     var textureData = 0;
 
-    for(var i=0; i<nbSubPlanes; i++){
+    //for(var i=0; i<nbSubPlanes; i++){
+    for(var i=0; i<this._plane.children.length; i++){  
       // center of the sub-plane in world coordinates
       var center = this._plane.children[i].localToWorld(new THREE.Vector3(0, 0, 0));
-
-
 
       textureData = this._levelManager.get8ClosestTextureDataByLvl(
         [center.x, center.y, center.z],
@@ -3049,21 +3011,20 @@ class ProjectionPlane{
 
       this._updateSubPlaneUniform(i, textureData);
     }
-
+    
   }
 
 
+  
+  
   /**
   * Like updateUniforms but instead of using the 8 closest, it uses only the ones
   * that are involved.
   */
-  updateUniforms(){
-    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+  updateUniforms_INVOLVED(){
     var textureData = 0;
 
-    //console.log(this._subPlaneCorners);
-
-    for(var i=0; i<nbSubPlanes; i++){
+    for(var i=0; i<this._plane.children.length; i++){
       // corners of the sub-plane in world coordinates
       var corners = [
         this._plane.children[i].localToWorld( this._subPlaneCorners[0].clone() ), // NW
@@ -3102,16 +3063,13 @@ class ProjectionPlane{
   * @param {Number} i - index of the subplane to update.
   * @param {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
   */
-  _updateSubPlaneUniform(i, textureData){
-    var uniforms = this._shaderMaterials[i].uniforms;
+  _updateSubPlaneUniform(indexSubplane, textureData){
+    //console.log(textureData);
+    var that = this;
+    var uniforms = this._shaderMaterials[indexSubplane].uniforms;
 
     //cube.material.map.needsUpdate = true;
-    this._shaderMaterials[i].needsUpdate = true;
-    this._shaderMaterials[i]._needsUpdate = true;
 
-    // update colormap no  matter what
-    uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
-    uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
 
     var mustUpdate = true;
 
@@ -3129,24 +3087,60 @@ class ProjectionPlane{
     }
 
     if( mustUpdate ){
-      //console.log("UP");
-      var chunkSizeWC = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
-      uniforms.nbChunks.value = textureData.nbValid;
-      uniforms.textures.value = textureData.textures.slice(0, textureData.nbValid);
-      uniforms.textureOrigins.value = textureData.origins;
-      uniforms.chunkSize.value = chunkSizeWC;
+      
+      var diff = false;
+      
+      // update only if all required textures are different
+      for(var i=0; i<textureData.nbValid; i++){
+        
+        if(!uniforms.textures.value[i] || !textureData.textures[i]){
+          diff = true;
+          break;
+        }
+        
+        var oldUuid = uniforms.textures.value[i].uuid;
+        var newUuid = textureData.textures[i].uuid;
+        
+        if( oldUuid.localeCompare( newUuid )){
+          diff = true;
+          break;
+        }
+      } /* END for each texture */
+      
+      if(diff){
+        
+        uniforms.nbChunks.value = textureData.nbValid;
+        uniforms.textures.value = textureData.textures;
+        uniforms.textureOrigins.value = textureData.origins;
+        uniforms.chunkSize.value = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
+        
+        
+        /*
+        this._plane.children[indexSubplane].onBeforeRender = function(renderer, scene, camera, geometry, material, group){
+          //console.log(material);
+          material.uniforms.nbChunks.value = textureData.nbValid;
+          material.uniforms.textures.value = textureData.textures;
+          material.uniforms.textureOrigins.value = textureData.origins;
+          material.uniforms.chunkSize.value = that._levelManager.getChunkSizeWcByLvl( that._resolutionLevel );
+          material.needsUpdate = true;
+          material.uniforms.needsUpdate = true;
+        }
+        */
+        
+      } /* if(diff) */
 
-    }
-
+      // update colormap no  matter what
+      uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
+      uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
+      
+    } /* END if( mustUpdate ) */
+    
     /*
-    // this does not change a damn thing
-    uniforms.nbChunks.needsUpdate = true;
-    uniforms.textures.needsUpdate = true;
-    uniforms.textureOrigins.needsUpdate = true;
-    uniforms.chunkSize.needsUpdate = true;
-    uniforms.useColorMap.needsUpdate = true;
-    uniforms.colorMap.needsUpdate = true;
-    */
+    this._plane.children[0].onBeforeRender = function(renderer, scene, camera, geometry, material, group){
+      console.log(arguments);
+    }
+  */
+
   }
 
 
@@ -3518,9 +3512,9 @@ class PlaneManager{
   * @param {Array} arrayOfPlanes - array of ProjectionPlane instances to which we want to update the uniforms.
   */
   _updateUniformsPlaneArray(arrayOfPlanes){
-    arrayOfPlanes.forEach( function(plane){
-      plane.updateUniforms();
-    });
+    for(var i=0; i<arrayOfPlanes.length; i++){
+      arrayOfPlanes[i].updateUniforms();
+    }
   }
 
 
@@ -6038,13 +6032,10 @@ class QuadScene{
     // TODO: make somethink better for refresh once per sec!
     if(this._ready){
       //this._planeManager.updateUniforms();
-
-      // refresh each view
-      this._quadViews.forEach(function(view){
-        view.renderView();
-      });
-
-
+      
+      for(var i=0; i<this._quadViews.length; i++){
+        this._quadViews[i].renderView();
+      }
     }
 
   }
@@ -6272,7 +6263,7 @@ class QuadScene{
 
     // callback def: translation
     this._quadViewInteraction.onGrabViewTranslate( function(distance, viewIndex){
-      var factor = Math.pow(2, that._resolutionLevel);
+      var factor = Math.pow(2, that._resolutionLevel + 1);
 
       switch (viewIndex) {
         case 0:

@@ -68,9 +68,9 @@ vec4 getColorFrom3DTexture(in sampler2D texture, in vec3 chunkPosition){
 */
 vec3 worldCoord2ChunkCoord(vec4 world, vec3 textureOrigin){
 
-  return vec3(  (world.x - textureOrigin.x)/chunkSize,
-                 1.0 - (world.y - textureOrigin.y )/chunkSize,
-                 1.0 - (world.z - textureOrigin.z )/chunkSize);
+  return vec3(  (world.x - textureOrigin.x)/chunkSize + (1.0 / numberOfPixelPerSide / 2.0),
+                 1.0 - (world.y - textureOrigin.y )/chunkSize + (1.0 / numberOfPixelPerSide / 2.0),
+                 1.0 - (world.z - textureOrigin.z )/chunkSize) + (1.0 / numberOfPixelPerSide / 2.0);
 }
 
 
@@ -98,9 +98,6 @@ void main( void ) {
   vec3 chunkPosition;
   bool hasColorFromChunk = false;
 
-
-  int selectedChunk = -1;
-
   for(int i=0; i<maxNbChunks; i++)
   {
 
@@ -113,7 +110,6 @@ void main( void ) {
     if( isInsideChunk(chunkPosition) ){
       color = getColorFrom3DTexture(textures[i], chunkPosition);
       hasColorFromChunk = true;
-      selectedChunk = i;
       break;
     }
 
@@ -129,90 +125,6 @@ void main( void ) {
 
   return ;
 
-
-
-  chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[0]);
-  if( isInsideChunk(chunkPosition) ){
-    color2 = getColorFrom3DTexture(textures[0], chunkPosition);
-    hasColorFromChunk = true;
-  } else if(nbChunks >= 2){
-    chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[1]);
-    if( isInsideChunk(chunkPosition) ){
-      color2 = getColorFrom3DTexture(textures[1], chunkPosition);
-      hasColorFromChunk = true;
-    } else if(nbChunks >= 3){
-      chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[2]);
-      if( isInsideChunk(chunkPosition) ){
-        color2 = getColorFrom3DTexture(textures[2], chunkPosition);
-        hasColorFromChunk = true;
-      } else if(nbChunks >= 4){
-        chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[3]);
-        if( isInsideChunk(chunkPosition) ){
-          color2 = getColorFrom3DTexture(textures[3], chunkPosition);
-          hasColorFromChunk = true;
-        } else if(nbChunks >= 5){
-          chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[4]);
-          if( isInsideChunk(chunkPosition) ){
-            color2 = getColorFrom3DTexture(textures[4], chunkPosition);
-            hasColorFromChunk = true;
-          } else if(nbChunks >= 6){
-            chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[5]);
-            if( isInsideChunk(chunkPosition) ){
-              color2 = getColorFrom3DTexture(textures[5], chunkPosition);
-              hasColorFromChunk = true;
-            } else if(nbChunks >= 7){
-              chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[6]);
-              if( isInsideChunk(chunkPosition) ){
-                color2 = getColorFrom3DTexture(textures[6], chunkPosition);
-                hasColorFromChunk = true;
-              } else if(nbChunks == 8){
-                chunkPosition = worldCoord2ChunkCoord(worldCoord, textureOrigins[7]);
-                if( isInsideChunk(chunkPosition) ){
-                  color2 = getColorFrom3DTexture(textures[7], chunkPosition);
-                  hasColorFromChunk = true;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-
-
-  // inside the box
-  if(hasColorFromChunk){
-
-    // we are using a colormap
-    if(useColorMap){
-      vec2 colorToPosition = vec2(color.r, 0.5);
-      vec4 colorFromColorMap = texture2D(colorMap, colorToPosition);
-
-      // the color from the colormap is not (fully) transparent
-      if(colorFromColorMap.a > 0.0){
-        colorFromColorMap.a = 0.85;
-        gl_FragColor = colorFromColorMap;
-
-      // the color from the colormap is fully transparent, simply not display it
-      }else{
-        discard;
-      }
-
-    // we are not using a colormap
-    }else{
-      //color.a = 0.85;
-      gl_FragColor = color2;
-      //gl_FragColor = vec4(color.r, 0.0, color2.g, 1.0 );
-    }
-
-
-  // outside the box
-  }else{
-    //discard;
-    //gl_FragColor = vec4(1.0, 1.0 , 1.0, .5);
-    gl_FragColor = vec4(1.0, 0.0 , 1.0, 1.0);
-  }
 
 
 

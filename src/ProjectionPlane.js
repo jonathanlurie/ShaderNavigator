@@ -37,7 +37,7 @@ class ProjectionPlane{
 
     this._subPlaneDim = {row: 7, col: 15}; // OPTIM
     //this._subPlaneDim = {row: 10, col: 20}; // TEST
-    //this._subPlaneDim = {row: 6, col: 13}; // TEST
+    //this._subPlaneDim = {row: 4, col: 8}; // TEST
     //this._subPlaneDim = {row: 1, col: 1};
 
     // to be aggregated
@@ -66,17 +66,6 @@ class ProjectionPlane{
     var that = this;
 
     var subPlaneGeometry = new THREE.PlaneBufferGeometry( this._subPlaneSize, this._subPlaneSize, 1 );
-
-    // a fake texture is a texture used instead of a real one, just because
-    // we have to send something to the shader even if we dont have data
-    var fakeTexture = new THREE.DataTexture(
-        new Uint8Array(1),
-        1,
-        1,
-        THREE.LuminanceFormat,  // format, luminance is for 1-band image
-        THREE.UnsignedByteType  // type for our Uint8Array
-      );
-
     var fakeOrigin = new THREE.Vector3(0, 0, 0);
 
     var subPlaneMaterial_original = new THREE.ShaderMaterial( {
@@ -88,8 +77,8 @@ class ProjectionPlane{
         },
         textures: {
           type: "t",
-          value: [  fakeTexture, fakeTexture, fakeTexture, fakeTexture,
-                    fakeTexture, fakeTexture, fakeTexture, fakeTexture]
+          value: [  null, null, null, null,
+                    null, null, null, null]
         },
         // the texture origins (in the same order)
         textureOrigins: {
@@ -156,15 +145,13 @@ class ProjectionPlane{
   /**
   * fetch each texture info, build a uniform and
   */
-  updateUniforms_NEAREST8(){
-    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+  updateUniforms(){
     var textureData = 0;
 
-    for(var i=0; i<nbSubPlanes; i++){
+    //for(var i=0; i<nbSubPlanes; i++){
+    for(var i=0; i<this._plane.children.length; i++){  
       // center of the sub-plane in world coordinates
       var center = this._plane.children[i].localToWorld(new THREE.Vector3(0, 0, 0));
-
-
 
       textureData = this._levelManager.get8ClosestTextureDataByLvl(
         [center.x, center.y, center.z],
@@ -173,21 +160,20 @@ class ProjectionPlane{
 
       this._updateSubPlaneUniform(i, textureData);
     }
-
+    
   }
 
 
+  
+  
   /**
   * Like updateUniforms but instead of using the 8 closest, it uses only the ones
   * that are involved.
   */
-  updateUniforms(){
-    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+  updateUniforms_INVOLVED(){
     var textureData = 0;
 
-    //console.log(this._subPlaneCorners);
-
-    for(var i=0; i<nbSubPlanes; i++){
+    for(var i=0; i<this._plane.children.length; i++){
       // corners of the sub-plane in world coordinates
       var corners = [
         this._plane.children[i].localToWorld( this._subPlaneCorners[0].clone() ), // NW
@@ -226,16 +212,13 @@ class ProjectionPlane{
   * @param {Number} i - index of the subplane to update.
   * @param {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
   */
-  _updateSubPlaneUniform(i, textureData){
-    var uniforms = this._shaderMaterials[i].uniforms;
+  _updateSubPlaneUniform(indexSubplane, textureData){
+    //console.log(textureData);
+    var that = this;
+    var uniforms = this._shaderMaterials[indexSubplane].uniforms;
 
     //cube.material.map.needsUpdate = true;
-    this._shaderMaterials[i].needsUpdate = true;
-    this._shaderMaterials[i]._needsUpdate = true;
 
-    // update colormap no  matter what
-    uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
-    uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
 
     var mustUpdate = true;
 
@@ -253,24 +236,60 @@ class ProjectionPlane{
     }
 
     if( mustUpdate ){
-      //console.log("UP");
-      var chunkSizeWC = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
-      uniforms.nbChunks.value = textureData.nbValid;
-      uniforms.textures.value = textureData.textures.slice(0, textureData.nbValid);
-      uniforms.textureOrigins.value = textureData.origins;
-      uniforms.chunkSize.value = chunkSizeWC;
+      
+      var diff = false;
+      
+      // update only if all required textures are different
+      for(var i=0; i<textureData.nbValid; i++){
+        
+        if(!uniforms.textures.value[i] || !textureData.textures[i]){
+          diff = true;
+          break;
+        }
+        
+        var oldUuid = uniforms.textures.value[i].uuid;
+        var newUuid = textureData.textures[i].uuid;
+        
+        if( oldUuid.localeCompare( newUuid )){
+          diff = true;
+          break;
+        }
+      } /* END for each texture */
+      
+      if(diff){
+        
+        uniforms.nbChunks.value = textureData.nbValid;
+        uniforms.textures.value = textureData.textures;
+        uniforms.textureOrigins.value = textureData.origins;
+        uniforms.chunkSize.value = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
+        
+        
+        /*
+        this._plane.children[indexSubplane].onBeforeRender = function(renderer, scene, camera, geometry, material, group){
+          //console.log(material);
+          material.uniforms.nbChunks.value = textureData.nbValid;
+          material.uniforms.textures.value = textureData.textures;
+          material.uniforms.textureOrigins.value = textureData.origins;
+          material.uniforms.chunkSize.value = that._levelManager.getChunkSizeWcByLvl( that._resolutionLevel );
+          material.needsUpdate = true;
+          material.uniforms.needsUpdate = true;
+        }
+        */
+        
+      } /* if(diff) */
 
-    }
-
+      // update colormap no  matter what
+      uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
+      uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
+      
+    } /* END if( mustUpdate ) */
+    
     /*
-    // this does not change a damn thing
-    uniforms.nbChunks.needsUpdate = true;
-    uniforms.textures.needsUpdate = true;
-    uniforms.textureOrigins.needsUpdate = true;
-    uniforms.chunkSize.needsUpdate = true;
-    uniforms.useColorMap.needsUpdate = true;
-    uniforms.colorMap.needsUpdate = true;
-    */
+    this._plane.children[0].onBeforeRender = function(renderer, scene, camera, geometry, material, group){
+      console.log(arguments);
+    }
+  */
+
   }
 
 
