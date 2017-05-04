@@ -63,10 +63,12 @@ class QuadScene{
 
     this._boundingBoxHelper = new BoundingBoxHelper( this._scene );
 
+    /*
     var axisHelper = new THREE.AxisHelper( 1 );
     axisHelper.layers.enable(1);
     this._scene.add( axisHelper );
-
+    */
+    
     this._scene.add( new THREE.AmbientLight( 0x444444 ) );
 
     var light1 = new THREE.DirectionalLight( 0xffffff, 0.75 );
@@ -222,7 +224,7 @@ class QuadScene{
   * so we have to do it n times.
   */
   refreshUniforms(){
-    this._refreshUniformsCounter = 100;
+    this._refreshUniformsCounter = 10;
   }
 
 
@@ -361,21 +363,24 @@ class QuadScene{
   */
   _animate(){
 
-    this._render();
+    
 
     if(this._stats){
       this._stats.update();
     }
 
-    if( this._refreshUniformsCounter && this._ready){
-      this._planeManager.updateUniforms();
-      this._refreshUniformsCounter --;
-
+    if( this._ready){
+    
       // updating the control is necessary in the case of a TrackballControls
       this._quadViews[3].updateControl();
+      
+      if(this._refreshUniformsCounter){
+        this._planeManager.updateUniforms();
+        this._refreshUniformsCounter --;
+      }
     }
 
-
+    this._render();
 
     // call a built-in method for annimation
     requestAnimationFrame( this._animate.bind(this) );
@@ -456,7 +461,7 @@ class QuadScene{
     // when tiles are all loaded, we refresh the textures
     this._levelManager.onAllChunksLoaded( function(){
       console.log(">> All required chunks are loaded");
-      that._planeManager.updateUniforms();
+      //that._planeManager.updateUniforms();
     });
 
 
@@ -638,8 +643,8 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
-      that._planeManager.updateUniforms();
-      //that._render();
+      //that._planeManager.updateUniforms();
+      that.refreshUniforms();
       that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 

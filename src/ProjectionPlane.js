@@ -145,7 +145,7 @@ class ProjectionPlane{
   /**
   * fetch each texture info, build a uniform and
   */
-  updateUniforms(){
+  updateUniforms_NEAREST(){
     var textureData = 0;
 
     //for(var i=0; i<nbSubPlanes; i++){
@@ -170,7 +170,7 @@ class ProjectionPlane{
   * Like updateUniforms but instead of using the 8 closest, it uses only the ones
   * that are involved.
   */
-  updateUniforms_INVOLVED(){
+  updateUniforms(){
     var textureData = 0;
 
     for(var i=0; i<this._plane.children.length; i++){

@@ -247,9 +247,21 @@ class QuadViewInteraction{
           this._onArrowUpCallback(this._indexCurrentView);
         }
         break;
+        
+      case "u": // UP
+        console.log("u key");
+        this._quadViews[ this._indexCurrentView ]._camera.rotateX ( 0.0001 );
+        break;
+        
+      case "d": // UP
+        console.log("u key");
+        this._quadViews[ this._indexCurrentView ]._camera.rotateX ( -0.0001 );
+        break;
 
       default:;
     }
+    
+    console.log(this._quadViews[ this._indexCurrentView ]._camera.quaternion);
   }
 
 
