@@ -132,14 +132,14 @@ class QuadScene{
 
     this._refreshUniformsCounter = 0;
 
-
+    /*
     // refresh uniform every half sec
     setInterval(function(){
       if(that._ready){
         that._planeManager.updateUniforms();
       }
     }, 1000);
-
+    */
 
     /*
     setInterval(function(){
@@ -377,10 +377,16 @@ class QuadScene{
       if(this._refreshUniformsCounter){
         this._planeManager.updateUniforms();
         this._refreshUniformsCounter --;
+        
+        // render only when uniforms where updated
+        this._render();
       }
+      
+      // render no matter what
+      //this._render();
     }
 
-    this._render();
+    
 
     // call a built-in method for annimation
     requestAnimationFrame( this._animate.bind(this) );
@@ -394,7 +400,6 @@ class QuadScene{
   _render(){
     let that = this;
 
-    // TODO: make somethink better for refresh once per sec!
     if(this._ready){
       //this._planeManager.updateUniforms();
       
@@ -462,6 +467,8 @@ class QuadScene{
     this._levelManager.onAllChunksLoaded( function(){
       console.log(">> All required chunks are loaded");
       //that._planeManager.updateUniforms();
+      
+      that.refreshUniforms();
     });
 
 

@@ -119,6 +119,8 @@ class TextureChunk{
   * @param {Array} index3D - The index position in the octree. Each members [x, y, z] are interger.
   */
   buildFromIndex3D(index3D){
+    
+    
     /**
     * The index position in the octree. Each members are interger.
     */
@@ -129,7 +131,6 @@ class TextureChunk{
     // try to load only if never tried
     if( !this._triedToLoad){
       this._textureLoader.loadTexture();
-      //this._loadTextureDecode();
     }
 
     this._isBuilt = true;
@@ -184,84 +185,6 @@ class TextureChunk{
       this._onTextureLoadErrorCallback( this._chunkID );
     }
   }
-
-
-  /**
-  * Alternative to _loadTexture but decode the jpeg strip in JS using a JS lib.
-  * It's pretty slow and should maybe be put in a webworker -- to be tested!
-  */
-  _loadTextureDecode(){
-    var that = this;
-
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', this._filepath);
-    xhr.responseType = 'arraybuffer';
-
-    xhr.onload = function () {
-
-      var encoded = new Uint8Array(xhr.response);
-      var numComponents, width, height, decoded, parser;
-
-      parser = new JpegDecoder();
-      parser.parse(encoded);
-      width = parser.width;
-      height = parser.height;
-      numComponents = parser.numComponents;
-      decoded = parser.getData(width, height);
-
-      that._threeJsTexture = new THREE.DataTexture(
-        decoded,
-        width,
-        height,
-        //THREE.RGBFormat
-        THREE.LuminanceFormat
-        //THREE.UnsignedByteType
-      );
-
-      that._threeJsTexture.magFilter = THREE.NearestFilter;
-      that._threeJsTexture.minFilter = THREE.NearestFilter;
-      that._threeJsTexture.flipY = true;
-      that._threeJsTexture.needsUpdate = true;
-
-      //console.log('SUCCESS LOAD: ' + that._filepath );
-      that._textureLoadingError = false;
-      that._triedToLoad = true;
-
-      // calling the success callback if defined
-      if( that._onTextureLoadedCallback ){
-        //console.log("call the callback");
-        that._onTextureLoadedCallback( that._chunkID );
-      }
-
-    };
-
-    xhr.onerror = function(){
-      //console.log('ERROR LOAD: ' + that._filepath );
-      that._threeJsTexture = null;
-      that._textureLoadingError = true;
-      that._triedToLoad = true;
-
-      // call the fallure callback if exists
-      if( that._onTextureLoadErrorCallback ){
-        that._onTextureLoadErrorCallback( that._chunkID );
-      }
-    }
-
-    xhr.send();
-
-
-
-
-
-
-
-
-
-
-
-
-  }
-
 
 
   /**

@@ -261,7 +261,6 @@ class QuadViewInteraction{
       default:;
     }
     
-    console.log(this._quadViews[ this._indexCurrentView ]._camera.quaternion);
   }
 
 
