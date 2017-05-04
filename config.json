@@ -1,0 +1,218 @@
+{
+  "data_type":"uint8",
+  "num_channels":1,
+  "type":"image",
+  "axisInfo": {
+    "x": {
+      "name": "sagittal",
+      "originalSize": 6572,
+      "offset": 810,
+      "finalSize": 8192,
+      "minName": "left",
+      "maxName": "right",
+      "reversed": true
+    },
+    "y": {
+      "name": "coronal",
+      "originalSize": 7404,
+      "offset": 0,
+      "finalSize": 8192,
+      "minName": "posterior",
+      "maxName": "anterior",
+      "reversed": false
+    },
+    "z": {
+      "name": "axial",
+      "originalSize": 5711,
+      "offset": 1240,
+      "finalSize": 8192,
+      "minName": "inferior",
+      "maxName": "superior",
+      "reversed": true
+    }
+  },
+  "scales":[
+    {
+      "encoding":"jpeg",
+      "chunk_sizes":[
+        [
+          64,
+          64,
+          64
+        ]
+      ],
+      "key":"20um",
+      "resolution":[
+        20000,
+        20000,
+        20000
+      ],
+      "size":[
+        8192,
+        8192,
+        8192
+      ],
+      "voxel_offset":[
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "encoding":"jpeg",
+      "chunk_sizes":[
+        [
+          64,
+          64,
+          64
+        ]
+      ],
+      "key":"40um",
+      "resolution":[
+        40000,
+        40000,
+        40000
+      ],
+      "size":[
+        4096,
+        4096,
+        4096
+      ],
+      "voxel_offset":[
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "encoding":"jpeg",
+      "chunk_sizes":[
+        [
+          64,
+          64,
+          64
+        ]
+      ],
+      "key":"80um",
+      "resolution":[
+        80000,
+        80000,
+        80000
+      ],
+      "size":[
+        2048,
+        2048,
+        2048
+      ],
+      "voxel_offset":[
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "encoding":"jpeg",
+      "chunk_sizes":[
+        [
+          64,
+          64,
+          64
+        ]
+      ],
+      "key":"160um",
+      "resolution":[
+        160000,
+        160000,
+        160000
+      ],
+      "size":[
+        1024,
+        1024,
+        1024
+      ],
+      "voxel_offset":[
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "encoding":"jpeg",
+      "chunk_sizes":[
+        [
+          64,
+          64,
+          64
+        ]
+      ],
+      "key":"320um",
+      "resolution":[
+        320000,
+        320000,
+        320000
+      ],
+      "size":[
+        512,
+        512,
+        512
+      ],
+      "voxel_offset":[
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "encoding":"jpeg",
+      "chunk_sizes":[
+        [
+          64,
+          64,
+          64
+        ]
+      ],
+      "key":"640um",
+      "resolution":[
+        640000,
+        640000,
+        640000
+      ],
+      "size":[
+        256,
+        256,
+        256
+      ],
+      "voxel_offset":[
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "encoding":"jpeg",
+      "chunk_sizes":[
+        [
+          64,
+          64,
+          64
+        ]
+      ],
+      "key":"1280um",
+      "resolution":[
+        1280000,
+        1280000,
+        1280000
+      ],
+      "size":[
+        128,
+        128,
+        128
+      ],
+      "voxel_offset":[
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}
