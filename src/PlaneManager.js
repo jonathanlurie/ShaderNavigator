@@ -1,5 +1,6 @@
 'use strict'
 
+import { MemoryStorage } from './MemoryStorage.js';
 import { ProjectionPlane } from './ProjectionPlane.js';
 
 /**
@@ -30,6 +31,7 @@ class PlaneManager{
     this._onMultiplaneMoveCallback = null;
     this._onMultiplaneRotateCallback = null;
 
+    // the low-rez planes (bottom right) uses the regular zoom level minus this one (-2)
     this._resolutionLevelLoRezDelta = 2;
 
     this._isLowRezPlaneVisible = true;
@@ -99,17 +101,19 @@ class PlaneManager{
   * @param {Array} arrayToAdd - array to push the 3 ProjectionPlane instances that are about to be created.
   */
   _addOrthoPlanes( arrayToAdd ){
-    var pn = new ProjectionPlane(1, this._colormapManager);
+    var sizeChunkLvl0kWC = MemoryStorage.getRecord("sizeChunkLvl0kWC");
+    
+    var pn = new ProjectionPlane(sizeChunkLvl0kWC, this._colormapManager);
     pn.setMeshColor(new THREE.Color(0x000099) );
     arrayToAdd.push( pn );
     this._multiplaneContainer.add( pn.getPlane() );
 
-    var pu = new ProjectionPlane(1, this._colormapManager);
+    var pu = new ProjectionPlane(sizeChunkLvl0kWC, this._colormapManager);
     arrayToAdd.push( pu );
     pu.getPlane().rotateX( Math.PI / 2);
     this._multiplaneContainer.add( pu.getPlane() );
 
-    var pv = new ProjectionPlane(1, this._colormapManager);
+    var pv = new ProjectionPlane(sizeChunkLvl0kWC, this._colormapManager);
     pv.setMeshColor(new THREE.Color(0x990000) );
     arrayToAdd.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
@@ -248,9 +252,9 @@ class PlaneManager{
   * @param {Array} arrayOfPlanes - array of ProjectionPlane instances to which we want to update the uniforms.
   */
   _updateUniformsPlaneArray(arrayOfPlanes){
-    arrayOfPlanes.forEach( function(plane){
-      plane.updateUniforms();
-    });
+    for(var i=0; i<arrayOfPlanes.length; i++){
+      arrayOfPlanes[i].updateUniforms();
+    }
   }
 
 

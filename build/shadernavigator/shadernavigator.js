@@ -1,4 +1,4 @@
-// Build date: Mon Apr  3 11:32:39 EDT 2017
+// Build date: Thu May  4 17:18:41 EDT 2017
 
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
@@ -161,7 +161,12 @@ class QuadView{
       width: 0.5,
       height: 0.5,
       position: [ -this._objectSize, 0, 0 ],
-      up: [ -1, 0, 0 ]
+      up: [ -1, 0, 0 ],
+      // init with a given angle to correct issues
+      initAngle: {
+        axis: new THREE.Vector3( 1, 0, 0 ),
+        angle: -0.0001
+      }
     };
     this._viewName = "top_left";
     this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
@@ -178,7 +183,12 @@ class QuadView{
       width: 0.5,
       height: 0.5,
       position: [ 0, -this._objectSize, 0 ],
-      up: [ 0, -1, 0 ]
+      up: [ 0, -1, 0 ],
+      // init with a given angle to correct issues
+      initAngle: {
+        axis: new THREE.Vector3( 1, 0, 0 ),
+        angle: -0.0001
+      }
     };
     this._viewName = "top_right";
     this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
@@ -194,7 +204,12 @@ class QuadView{
       width: 0.5,
       height: 0.5,
       position: [ 0, 0, -this._objectSize ],
-      up: [ 0, 1, 0 ]
+      up: [ 0, 1, 0 ],
+      // init with a given angle to correct issues
+      initAngle: {
+        axis: new THREE.Vector3( 1, 0, 0 ),
+        angle: 0
+      }
     };
     this._viewName = "bottom_left";
     this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
@@ -211,7 +226,12 @@ class QuadView{
       width: 0.5,
       height: 0.5,
       position: [ -this._objectSize/10, this._objectSize/10, -this._objectSize/15 ],
-      up: [ 0, 0, -1 ]
+      up: [ 0, 0, -1 ],
+      // init with a given angle to correct issues
+      initAngle: {
+        axis: new THREE.Vector3( 1, 0, 0 ),
+        angle: 0
+      }
     };
     this._viewName = "bottom_right";
     this._backgroundColor = new THREE.Color().setRGB( 0.97, 0.97, 0.97 );
@@ -224,7 +244,7 @@ class QuadView{
   initOrthoCamera(){
     this._isPerspective = false;
 
-    let orthographicCameraFovFactor = 360; // default: 360
+    let orthographicCameraFovFactor = 720; // default: 360
 
     this._camera = new THREE.OrthographicCamera(
       window.innerWidth / - orthographicCameraFovFactor,  // left
@@ -282,6 +302,7 @@ class QuadView{
     this._camera.up.z = this._config.up[ 2 ];
     this._camera.fov = this._defaultFov;
     this._camera.lookAt( this._originToLookAt );
+    this._camera.rotateOnAxis( this._config.initAngle.axis, this._config.initAngle.angle );
   }
 
 
@@ -683,12 +704,16 @@ class TextureLoaderOctreeTiles extends TextureLoaderInterface{
         that._textureChunk.setTexture(threeJsTexture);
         that._textureChunk.onTextureSuccessToLoad();
       }, // on load
-      function(){}, // on progress, do nothing
+      function(){
+
+      }, // on progress, do nothing
 
       function(){ // on error
         that._textureChunk.onTextureFailedToLoad();
       }
     );
+
+    
 
   }
 
@@ -812,6 +837,8 @@ class TextureChunk{
   * @param {Array} index3D - The index position in the octree. Each members [x, y, z] are interger.
   */
   buildFromIndex3D(index3D){
+    
+    
     /**
     * The index position in the octree. Each members are interger.
     */
@@ -822,7 +849,6 @@ class TextureChunk{
     // try to load only if never tried
     if( !this._triedToLoad){
       this._textureLoader.loadTexture();
-      //this._loadTextureDecode();
     }
 
     this._isBuilt = true;
@@ -880,84 +906,6 @@ class TextureChunk{
 
 
   /**
-  * Alternative to _loadTexture but decode the jpeg strip in JS using a JS lib.
-  * It's pretty slow and should maybe be put in a webworker -- to be tested!
-  */
-  _loadTextureDecode(){
-    var that = this;
-
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', this._filepath);
-    xhr.responseType = 'arraybuffer';
-
-    xhr.onload = function () {
-
-      var encoded = new Uint8Array(xhr.response);
-      var numComponents, width, height, decoded, parser;
-
-      parser = new JpegDecoder();
-      parser.parse(encoded);
-      width = parser.width;
-      height = parser.height;
-      numComponents = parser.numComponents;
-      decoded = parser.getData(width, height);
-
-      that._threeJsTexture = new THREE.DataTexture(
-        decoded,
-        width,
-        height,
-        //THREE.RGBFormat
-        THREE.LuminanceFormat
-        //THREE.UnsignedByteType
-      );
-
-      that._threeJsTexture.magFilter = THREE.NearestFilter;
-      that._threeJsTexture.minFilter = THREE.NearestFilter;
-      that._threeJsTexture.flipY = true;
-      that._threeJsTexture.needsUpdate = true;
-
-      //console.log('SUCCESS LOAD: ' + that._filepath );
-      that._textureLoadingError = false;
-      that._triedToLoad = true;
-
-      // calling the success callback if defined
-      if( that._onTextureLoadedCallback ){
-        //console.log("call the callback");
-        that._onTextureLoadedCallback( that._chunkID );
-      }
-
-    };
-
-    xhr.onerror = function(){
-      //console.log('ERROR LOAD: ' + that._filepath );
-      that._threeJsTexture = null;
-      that._textureLoadingError = true;
-      that._triedToLoad = true;
-
-      // call the fallure callback if exists
-      if( that._onTextureLoadErrorCallback ){
-        that._onTextureLoadErrorCallback( that._chunkID );
-      }
-    };
-
-    xhr.send();
-
-
-
-
-
-
-
-
-
-
-
-
-  }
-
-
-
-  /**
   * Returns an object contain the THREE.Texture, the origin as an array [x, y, z]
   * and a boolean specifying the validity.
   * @return {Object}
@@ -1005,9 +953,57 @@ class TextureChunk{
 
 } /* END CLASS TextureChunk */
 
-/*
-  TODO: replace all var by let
+var MemoryStorageRecord = {};
+
+
+/**
+* MemoryStorage is a semi-global shared memory space to set values in a record.
+* (not accessible from global scope, just accessible from shaderNavigator's scope)
+* This is helpful to share some data between objects that are unrealated enough
+* to make it irrelevant sending arguments
+*
 */
+class MemoryStorage {
+  
+  /**
+  * Adds or modify a record.
+  * @param {String} name - name or the record, will be unique
+  * @param {Object} value - the value to put in the record 
+  */
+  static setRecord( name, value ){
+    MemoryStorageRecord[ name ] = value;
+  }
+  
+  
+  /**
+  * Get a record
+  * @param {String} name - name of the record
+  * @return {Object} existing value or null if there is no record with such name
+  */
+  static getRecord( name ){
+    if( name in MemoryStorageRecord){
+      return MemoryStorageRecord[name];
+    }else{
+      return null;
+    }
+  }
+  
+  
+  /**
+  * Delete a record from the memory storage. Keep in mind that using "delete" does
+  * NOT free the memory.
+  * @param {String} name - name of the record.
+  */
+  static deleteRecord( name ){
+    if( name in MemoryStorageRecord){
+      delete object[name];
+    }else{
+      console.warn("The record " + name + " does not exist in MemoryStorage.");
+    }
+  }
+  
+  
+}
 
 /**
 * The Chunk Collection is the container for all the chunks at a given resolution level.
@@ -1019,11 +1015,12 @@ class ChunkCollection{
   /**
   * Constructor
   * @param {number} resolutionLevel - The level of resolution, the lower the level, the lower the resolution. Level n has a metric resolution per voxel twice lower/poorer than level n+1, as a result, level n has 8 time less chunks than level n+1, remember we are in 3D!.
+  * @param {Number} lowestDefSize - Size of the lowest rez level (most likely 128)
   * @param {Array} matrix3DSize - Number of chunks in each dimension [x, y, z] that are supposedly available.
   * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder
   * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok.
   */
-  constructor(resolutionLevel, matrix3DSize, workingDir, datatype){
+  constructor(resolutionLevel, lowestDefSize, matrix3DSize, workingDir, datatype){
     /**
     * The chunks of the same level. A map is used instead of an array because the chunks are loaded as they need to display, so we prefer to use an key (string built from the index3D) rather than a 1D array index.
     */
@@ -1040,14 +1037,16 @@ class ChunkCollection{
     /** Level from 0 to 6, possibly more in the future. */
     this._resolutionLevel = resolutionLevel;
 
-    /** Word size of a chunk at level 0. Used as a constant. */
-    this._chunkSizeLvlZero = 1;
-
     /** Number of voxel per side of the chunk (suposedly cube shaped). Used as a constant.*/
     this._voxelPerSide = 64;
+    
+    /** World size of a chunk at level 0. Used as a constant. */
+    this._sizeChunkLvl0kWC = this._voxelPerSide / lowestDefSize;
+
+    MemoryStorage.setRecord("sizeChunkLvl0kWC", this._sizeChunkLvl0kWC);
 
     /** Size of a chunk in 3D space (aka. in world coordinates) */
-    this._sizeChunkWC = this._chunkSizeLvlZero / Math.pow(2, this._resolutionLevel);
+    this._sizeChunkWC = this._sizeChunkLvl0kWC / Math.pow(2, this._resolutionLevel);
 
     // Creates a fake texture and fake texture data to be sent to the shader in case it's not possible to fetch a real data (out of bound, unable to load texture file)
     this._createFakeTexture();
@@ -1111,6 +1110,15 @@ class ChunkCollection{
   */
   getSizeChunkWc(){
     return this._sizeChunkWC;
+  }
+
+
+  /**
+  * Get the size of a chunk of lvl0 in world coordinate unit space
+  * @return {Number} the size (most likely 0.5)
+  */
+  getSizeChunkLvl0kWC(){
+    return this._sizeChunkLvl0kWC;
   }
 
   /**
@@ -1354,7 +1362,7 @@ class ChunkCollection{
     var validChunksOrigin = [];
     var notValidChunksOrigin = [];
     var that = this;
-
+    
     the8closestIndexes.forEach(function(index){
       var aTextureData = that.getTextureAtIndex3D(index);
 
@@ -1462,29 +1470,7 @@ class ChunkCollection{
   *
   */
   getInvolvedTextureData(cornerPositions){
-    var that = this;
-
-    /*
-    console.log("this._sizeChunkWC");
-    console.log(this._sizeChunkWC);
-    console.log("cornerPositions");
-    console.log(cornerPositions);
-    */
-    this._sizeChunkWC;
-    /*
-    var chunkEdgeCase = cornerPositions[0].x % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].x % this._sizeChunkWC < this._sizeChunkWC/10; ||
-        cornerPositions[0].y % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].y % this._sizeChunkWC < this._sizeChunkWC/10 ||
-        cornerPositions[0].z % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].z % this._sizeChunkWC < this._sizeChunkWC/10;
-*/
-
-
-
-    /*
-    var chunkEdgeCase = cornerPositions[0].x == cornerPositions[1].x ||
-                        cornerPositions[0].y == cornerPositions[1].y ||
-                        cornerPositions[0].z == cornerPositions[1].z;
-    */
-
+  
     var chunkEdgeCaseX = cornerPositions[0].x == cornerPositions[1].x &&
       (cornerPositions[0].x % this._sizeChunkWC < this._sizeChunkWC*0.1 ||   cornerPositions[0].x % this._sizeChunkWC > this._sizeChunkWC*0.9);
 
@@ -1497,27 +1483,19 @@ class ChunkCollection{
     var chunkEdgeCase = chunkEdgeCaseX || chunkEdgeCaseY || chunkEdgeCaseZ;
 
     if( chunkEdgeCase ){
-      //console.log(">> NEAREST8");
-      //console.log(cornerPositions);
-      //console.log( Math.floor(Date.now()) );
-
 
       var center = [
         (cornerPositions[0].x + cornerPositions[1].x + cornerPositions[2].x + cornerPositions[3].x) / 4,
         (cornerPositions[0].y + cornerPositions[1].y + cornerPositions[2].y + cornerPositions[3].y) / 4,
         (cornerPositions[0].z + cornerPositions[1].z + cornerPositions[2].z + cornerPositions[3].z) / 4
       ];
-
+      //console.log("NEAREST8");
       return this.get8ClosestTextureData( center );
-    }else{
-      //console.log(">> INVOLVED");
-      //console.log(cornerPositions);
-      //console.log( Math.floor(Date.now()) );
     }
-
-
+    
+    //console.log("__ INVOLVED");
+    
     var involvedIndexes = this.getInvolvedTextureIndexes(cornerPositions);
-
 
     var loadedMaps = {};
 
@@ -1526,18 +1504,17 @@ class ChunkCollection{
     var notValidChunksTexture = [];
     var validChunksOrigin = [];
     var notValidChunksOrigin = [];
-    var that = this;
 
-    involvedIndexes.forEach(function(index){
-      var aTextureData = that._fakeTextureData;
-      var indexKey = that._getKeyFromIndex3D( index );
+    for(var i=0; i<involvedIndexes.length; i++){
+      var aTextureData = this._fakeTextureData;
+      var indexKey = this._getKeyFromIndex3D( involvedIndexes[i] );
 
       // never loaded before
       if(! (indexKey in loadedMaps)){
         loadedMaps[indexKey] = 1;
 
         // load the texture , possibly retrieving a fake one (out)
-        aTextureData = that.getTextureAtIndex3D(index);
+        aTextureData = this.getTextureAtIndex3D( involvedIndexes[i] );
       }
 
       // this texture data is valid
@@ -1550,18 +1527,9 @@ class ChunkCollection{
         notValidChunksTexture.push( aTextureData.texture );
         notValidChunksOrigin.push( aTextureData.origin );
       }
-
-    });
+    }
 
     validChunksCounter = validChunksTexture.length;
-
-    /*
-    return {
-      textures: validChunksTexture.concat( notValidChunksTexture ),
-      origins: validChunksOrigin.concat( notValidChunksOrigin ),
-      nbValid: validChunksCounter
-    };
-    */
 
     var textureDatas = {
       textures: validChunksTexture.concat( notValidChunksTexture ),
@@ -1653,6 +1621,8 @@ class LevelManager{
 
     this._levelsInfo = null;
 
+    this._axisInfo = null;
+
     this._onChunksLoadedCallback = null;
     this._onAllChunksLoadedCallback = null;
   }
@@ -1733,15 +1703,36 @@ class LevelManager{
     // Compute the cube _boundingBox, that will give some sense of boundaries to the dataset
     this._computeBoundingBox();
 
+    // the lowest def size (most likely 128) is used in combination with a chunk size (64)
+    // to define the proportion of thing in a unit space
+    var lowestDefSize = this._levelsInfo[0].size[0];
+
     // add a chunk collection for each level
     this._levelsInfo.forEach(function(elem, index){
-      that._addChunkCollectionLevel(index, elem.size, datatype);
+      that._addChunkCollectionLevel(index, elem.size, datatype, lowestDefSize);
     });
+
+    that._axisInfo = description.axisInfo;
 
     if(this.onReadyCallback){
       this.onReadyCallback();
     }
 
+  }
+
+
+  /**
+  * Get the nth chunk collection
+  * @param {Number} n - The index of the requested chunk collection
+  * @return {ChunkCollection} the collection, or null if asked a bad index
+  */
+  getChunkCollection( n ){
+    if( n>=0 && n<this._chunkCollections.length){
+      return this._chunkCollections[n];
+    }else{
+      console.warn("ChunkCollection at index " + n + " does not exist.");
+      return null;
+    }
   }
 
 
@@ -1752,8 +1743,9 @@ class LevelManager{
   * @param {Number} resolutionLevel - positive integer (or zero)
   * @param {Array} voxelSize - Entire number of voxel to form the whole 3D dataset at this level of resolution. This will be translated into the size of the 3D matrix of chunk (basically divided by 64 and rounded to ceil).
   * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok.
+  * @param {Number} lowestDefSize - the size of the lowest resolution level
   */
-  _addChunkCollectionLevel(resolutionLevel, voxelSize, datatype){
+  _addChunkCollectionLevel(resolutionLevel, voxelSize, datatype, lowestDefSize){
     // translating voxelSize into matrix3DSize
     // aka number of chunks (64x64x64) in each dimension
     var matrix3DSize = [
@@ -1765,6 +1757,7 @@ class LevelManager{
     // creating a new chunk collection for this specific level
     var chunkCollection = new ChunkCollection(
       resolutionLevel,
+      lowestDefSize,
       matrix3DSize,
       this._workingDir,
       datatype
@@ -1878,10 +1871,18 @@ class LevelManager{
   * @param {Object} levels - config data
   */
   _computeBoundingBox(){
+    /*
     this._boundingBox = [
       this._levelsInfo[0].size[0] / 64.0,
       this._levelsInfo[0].size[1] / 64.0,
       this._levelsInfo[0].size[2] / 64.0
+    ];
+    */
+
+    this._boundingBox = [
+      1,
+      1,
+      1
     ];
   }
 
@@ -1930,6 +1931,28 @@ class LevelManager{
     }
   }
 
+
+  /**
+  * Get a tag from axisInfo in the configuration file.
+  * @param {String} axis - native webGL axis name: "x", "y" or "z"
+  * @param {String} tag - info tag. "name", "originalSize", etc.
+  * @return {Object} String or Number value of the given axis and tag
+  */
+  getAxisInfo(axis, tag){
+    if(axis in this._axisInfo && tag in this._axisInfo[axis]){
+      return this._axisInfo[axis][tag];
+    }
+  }
+
+
+  /**
+  * Get the whole object for axis info
+  * @return {Object}
+  */
+  getAllAxisInfo(){
+    return this._axisInfo;
+  }
+
 } /* END CLASS LevelManager */
 
 /**
@@ -1948,11 +1971,11 @@ class OrientationHelper{
     var yColor = 0x00EB4E;
     var zColor = 0x0088ff;
 
-    this._initRadius = initRadius;
+    this._initRadius = initRadius / 25;
 
-    var geometryX = new THREE.CircleGeometry( initRadius, 64 );
-    var geometryY = new THREE.CircleGeometry( initRadius, 64 );
-    var geometryZ = new THREE.CircleGeometry( initRadius, 64 );
+    var geometryX = new THREE.CircleGeometry( this._initRadius, 64 );
+    var geometryY = new THREE.CircleGeometry( this._initRadius, 64 );
+    var geometryZ = new THREE.CircleGeometry( this._initRadius, 64 );
     var materialX = new THREE.LineBasicMaterial( { color: xColor, linewidth:1.5 } );
     var materialY = new THREE.LineBasicMaterial( { color: yColor, linewidth:1.5 } );
     var materialZ = new THREE.LineBasicMaterial( { color: zColor, linewidth:1.5 } );
@@ -1982,8 +2005,8 @@ class OrientationHelper{
     // adding central lines
     var xLineGeometry = new THREE.Geometry();
     xLineGeometry.vertices.push(
-    	new THREE.Vector3( -initRadius, 0, 0 ),
-    	new THREE.Vector3( initRadius, 0, 0 )
+    	new THREE.Vector3( -this._initRadius, 0, 0 ),
+    	new THREE.Vector3( this._initRadius, 0, 0 )
     );
 
     var xLine = new THREE.Line(
@@ -1993,8 +2016,8 @@ class OrientationHelper{
 
     var yLineGeometry = new THREE.Geometry();
     yLineGeometry.vertices.push(
-    	new THREE.Vector3(0, -initRadius, 0 ),
-    	new THREE.Vector3(0,  initRadius, 0 )
+    	new THREE.Vector3(0, -this._initRadius, 0 ),
+    	new THREE.Vector3(0,  this._initRadius, 0 )
     );
 
     var yLine = new THREE.Line(
@@ -2004,8 +2027,8 @@ class OrientationHelper{
 
     var zLineGeometry = new THREE.Geometry();
     zLineGeometry.vertices.push(
-    	new THREE.Vector3(0, 0, -initRadius ),
-    	new THREE.Vector3(0, 0,  initRadius )
+    	new THREE.Vector3(0, 0, -this._initRadius ),
+    	new THREE.Vector3(0, 0,  this._initRadius )
     );
 
     var zLine = new THREE.Line(
@@ -2034,8 +2057,16 @@ class OrientationHelper{
     var supSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: supTex} ) );
     var infSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: infTex} ) );
 
-    var distanceFromCenter = initRadius * 1.4;
-
+    var distanceFromCenter = this._initRadius * 1.4;
+    
+    var spriteScale = 0.5;
+    leftSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    rightSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    antSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    postSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    supSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    infSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    
     leftSprite.position.set( distanceFromCenter, 0, 0 );
     rightSprite.position.set( -distanceFromCenter, 0, 0 );
     antSprite.position.set(0, distanceFromCenter, 0 );
@@ -2373,9 +2404,20 @@ class QuadViewInteraction{
           this._onArrowUpCallback(this._indexCurrentView);
         }
         break;
+        
+      case "u": // UP
+        console.log("u key");
+        this._quadViews[ this._indexCurrentView ]._camera.rotateX ( 0.0001 );
+        break;
+        
+      case "d": // UP
+        console.log("u key");
+        this._quadViews[ this._indexCurrentView ]._camera.rotateX ( -0.0001 );
+        break;
 
       default:;
     }
+    
   }
 
 
@@ -2805,7 +2847,7 @@ class ProjectionPlane{
 
     this._subPlaneDim = {row: 7, col: 15}; // OPTIM
     //this._subPlaneDim = {row: 10, col: 20}; // TEST
-    //this._subPlaneDim = {row: 6, col: 13}; // TEST
+    //this._subPlaneDim = {row: 4, col: 8}; // TEST
     //this._subPlaneDim = {row: 1, col: 1};
 
     // to be aggregated
@@ -2834,17 +2876,6 @@ class ProjectionPlane{
     var that = this;
 
     var subPlaneGeometry = new THREE.PlaneBufferGeometry( this._subPlaneSize, this._subPlaneSize, 1 );
-
-    // a fake texture is a texture used instead of a real one, just because
-    // we have to send something to the shader even if we dont have data
-    var fakeTexture = new THREE.DataTexture(
-        new Uint8Array(1),
-        1,
-        1,
-        THREE.LuminanceFormat,  // format, luminance is for 1-band image
-        THREE.UnsignedByteType  // type for our Uint8Array
-      );
-
     var fakeOrigin = new THREE.Vector3(0, 0, 0);
 
     var subPlaneMaterial_original = new THREE.ShaderMaterial( {
@@ -2856,8 +2887,8 @@ class ProjectionPlane{
         },
         textures: {
           type: "t",
-          value: [  fakeTexture, fakeTexture, fakeTexture, fakeTexture,
-                    fakeTexture, fakeTexture, fakeTexture, fakeTexture]
+          value: [  null, null, null, null,
+                    null, null, null, null]
         },
         // the texture origins (in the same order)
         textureOrigins: {
@@ -2924,15 +2955,13 @@ class ProjectionPlane{
   /**
   * fetch each texture info, build a uniform and
   */
-  updateUniforms_NEAREST8(){
-    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
+  updateUniforms_NEAREST(){
     var textureData = 0;
 
-    for(var i=0; i<nbSubPlanes; i++){
+    //for(var i=0; i<nbSubPlanes; i++){
+    for(var i=0; i<this._plane.children.length; i++){  
       // center of the sub-plane in world coordinates
       var center = this._plane.children[i].localToWorld(new THREE.Vector3(0, 0, 0));
-
-
 
       textureData = this._levelManager.get8ClosestTextureDataByLvl(
         [center.x, center.y, center.z],
@@ -2941,21 +2970,20 @@ class ProjectionPlane{
 
       this._updateSubPlaneUniform(i, textureData);
     }
-
+    
   }
 
 
+  
+  
   /**
   * Like updateUniforms but instead of using the 8 closest, it uses only the ones
   * that are involved.
   */
   updateUniforms(){
-    var nbSubPlanes = this._subPlaneDim.row * this._subPlaneDim.col;
     var textureData = 0;
 
-    //console.log(this._subPlaneCorners);
-
-    for(var i=0; i<nbSubPlanes; i++){
+    for(var i=0; i<this._plane.children.length; i++){
       // corners of the sub-plane in world coordinates
       var corners = [
         this._plane.children[i].localToWorld( this._subPlaneCorners[0].clone() ), // NW
@@ -2994,16 +3022,13 @@ class ProjectionPlane{
   * @param {Number} i - index of the subplane to update.
   * @param {Object} textureData - texture data as created by LevelManager.get8ClosestTextureData()
   */
-  _updateSubPlaneUniform(i, textureData){
-    var uniforms = this._shaderMaterials[i].uniforms;
+  _updateSubPlaneUniform(indexSubplane, textureData){
+    //console.log(textureData);
+    var that = this;
+    var uniforms = this._shaderMaterials[indexSubplane].uniforms;
 
     //cube.material.map.needsUpdate = true;
-    this._shaderMaterials[i].needsUpdate = true;
-    this._shaderMaterials[i]._needsUpdate = true;
 
-    // update colormap no  matter what
-    uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
-    uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
 
     var mustUpdate = true;
 
@@ -3021,24 +3046,60 @@ class ProjectionPlane{
     }
 
     if( mustUpdate ){
-      //console.log("UP");
-      var chunkSizeWC = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
-      uniforms.nbChunks.value = textureData.nbValid;
-      uniforms.textures.value = textureData.textures.slice(0, textureData.nbValid);
-      uniforms.textureOrigins.value = textureData.origins;
-      uniforms.chunkSize.value = chunkSizeWC;
+      
+      var diff = false;
+      
+      // update only if all required textures are different
+      for(var i=0; i<textureData.nbValid; i++){
+        
+        if(!uniforms.textures.value[i] || !textureData.textures[i]){
+          diff = true;
+          break;
+        }
+        
+        var oldUuid = uniforms.textures.value[i].uuid;
+        var newUuid = textureData.textures[i].uuid;
+        
+        if( oldUuid.localeCompare( newUuid )){
+          diff = true;
+          break;
+        }
+      } /* END for each texture */
+      
+      if(diff){
+        
+        uniforms.nbChunks.value = textureData.nbValid;
+        uniforms.textures.value = textureData.textures;
+        uniforms.textureOrigins.value = textureData.origins;
+        uniforms.chunkSize.value = this._levelManager.getChunkSizeWcByLvl( this._resolutionLevel );
+        
+        
+        /*
+        this._plane.children[indexSubplane].onBeforeRender = function(renderer, scene, camera, geometry, material, group){
+          //console.log(material);
+          material.uniforms.nbChunks.value = textureData.nbValid;
+          material.uniforms.textures.value = textureData.textures;
+          material.uniforms.textureOrigins.value = textureData.origins;
+          material.uniforms.chunkSize.value = that._levelManager.getChunkSizeWcByLvl( that._resolutionLevel );
+          material.needsUpdate = true;
+          material.uniforms.needsUpdate = true;
+        }
+        */
+        
+      } /* if(diff) */
 
-    }
-
+      // update colormap no  matter what
+      uniforms.useColorMap.value = this._colormapManager.isColormappingEnabled();
+      uniforms.colorMap.value = this._colormapManager.getCurrentColorMap().colormap;
+      
+    } /* END if( mustUpdate ) */
+    
     /*
-    // this does not change a damn thing
-    uniforms.nbChunks.needsUpdate = true;
-    uniforms.textures.needsUpdate = true;
-    uniforms.textureOrigins.needsUpdate = true;
-    uniforms.chunkSize.needsUpdate = true;
-    uniforms.useColorMap.needsUpdate = true;
-    uniforms.colorMap.needsUpdate = true;
-    */
+    this._plane.children[0].onBeforeRender = function(renderer, scene, camera, geometry, material, group){
+      console.log(arguments);
+    }
+  */
+
   }
 
 
@@ -3189,6 +3250,7 @@ class PlaneManager{
     this._onMultiplaneMoveCallback = null;
     this._onMultiplaneRotateCallback = null;
 
+    // the low-rez planes (bottom right) uses the regular zoom level minus this one (-2)
     this._resolutionLevelLoRezDelta = 2;
 
     this._isLowRezPlaneVisible = true;
@@ -3258,17 +3320,19 @@ class PlaneManager{
   * @param {Array} arrayToAdd - array to push the 3 ProjectionPlane instances that are about to be created.
   */
   _addOrthoPlanes( arrayToAdd ){
-    var pn = new ProjectionPlane(1, this._colormapManager);
+    var sizeChunkLvl0kWC = MemoryStorage.getRecord("sizeChunkLvl0kWC");
+    
+    var pn = new ProjectionPlane(sizeChunkLvl0kWC, this._colormapManager);
     pn.setMeshColor(new THREE.Color(0x000099) );
     arrayToAdd.push( pn );
     this._multiplaneContainer.add( pn.getPlane() );
 
-    var pu = new ProjectionPlane(1, this._colormapManager);
+    var pu = new ProjectionPlane(sizeChunkLvl0kWC, this._colormapManager);
     arrayToAdd.push( pu );
     pu.getPlane().rotateX( Math.PI / 2);
     this._multiplaneContainer.add( pu.getPlane() );
 
-    var pv = new ProjectionPlane(1, this._colormapManager);
+    var pv = new ProjectionPlane(sizeChunkLvl0kWC, this._colormapManager);
     pv.setMeshColor(new THREE.Color(0x990000) );
     arrayToAdd.push( pv );
     pv.getPlane().rotateY( Math.PI / 2);
@@ -3407,9 +3471,9 @@ class PlaneManager{
   * @param {Array} arrayOfPlanes - array of ProjectionPlane instances to which we want to update the uniforms.
   */
   _updateUniformsPlaneArray(arrayOfPlanes){
-    arrayOfPlanes.forEach( function(plane){
-      plane.updateUniforms();
-    });
+    for(var i=0; i<arrayOfPlanes.length; i++){
+      arrayOfPlanes[i].updateUniforms();
+    }
   }
 
 
@@ -4243,6 +4307,7 @@ class GuiController{
     this._mainPanel = QuickSettings.create(panelSpace, 0, document.title);
     this._initMainPanel();
 
+    this._axisInfo = null;
     //this._annotationPanel = QuickSettings.create(panelWidth + panelSpace*2 , 0, "Annotations");
     //this._initAnnotationPanel();
     //this._initAnnotationPanelCallback();
@@ -4305,9 +4370,55 @@ class GuiController{
     document.getElementById('Resolution').readOnly = true;
     document.getElementById("Resolution").parentElement.style["margin-top"] = "0px";
 
-    // multiplane position
+    // multiplane position (unit x, y, z)
     this._mainPanel.addText("Position", "", function(){} );
     this._mainPanel.overrideStyle("Position", "text-align", "center");
+    // when pressing ENTER on this field
+    document.getElementById("Position").addEventListener("keypress", function( e ){
+      if (e.keyCode == 13) {
+        var newPosition = that._mainPanel.getValue("Position")
+          .split(',')
+          .map(function(elem){return parseFloat(elem)});
+
+        that._quadScene.setMultiplanePosition(newPosition[0], newPosition[1], newPosition[2]);
+      }
+    });
+
+    // mutiplane position voxel (to match A3D slices index)
+    this._mainPanel.addText("Position voxel", "", function(){} );
+    this._mainPanel.overrideStyle("Position voxel", "text-align", "center");
+    document.getElementById("Position voxel").parentElement.style["margin-top"] = "0px";
+    // on pressing ENTER on this field
+    document.getElementById("Position voxel").addEventListener("keypress", function( e ){
+      if (e.keyCode == 13) {
+        var axisInfo = that._axisInfo;
+
+        var newPositionVoxel = that._mainPanel.getValue("Position voxel")
+          .split(',')
+          .map(function(elem){return parseFloat(elem)});
+
+        var positionUnitX = newPositionVoxel[0] / axisInfo.x.originalSize;
+        if(axisInfo.x.reversed){
+          positionUnitX = 1 - positionUnitX;
+        }
+        positionUnitX = positionUnitX * (axisInfo.x.originalSize / axisInfo.x.finalSize) + (axisInfo.x.offset / axisInfo.x.finalSize);
+
+        var positionUnitY = newPositionVoxel[1] / axisInfo.y.originalSize;
+        if(axisInfo.y.reversed){
+          positionUnitY = 1 - positionUnitY;
+        }
+        positionUnitY = positionUnitY * (axisInfo.y.originalSize / axisInfo.y.finalSize) + (axisInfo.y.offset / axisInfo.y.finalSize);
+
+        var positionUnitZ = newPositionVoxel[2] / axisInfo.z.originalSize;
+        if(axisInfo.z.reversed){
+          positionUnitZ = 1 - positionUnitZ;
+        }
+        positionUnitZ = positionUnitZ * (axisInfo.z.originalSize / axisInfo.z.finalSize) + (axisInfo.z.offset / axisInfo.z.finalSize);
+
+        that._quadScene.setMultiplanePosition(positionUnitX, positionUnitY, positionUnitZ);
+      }
+    });
+
 
     // multiplane rotation
     this._mainPanel.addText("Rotation", "", function(){} );
@@ -4315,23 +4426,16 @@ class GuiController{
     this._mainPanel.overrideStyle("Rotation", "text-align", "center");
     document.getElementById("Rotation").parentElement.style["margin-top"] = "0px";
 
-    // apply button for multiplane position and rotation
-    this._mainPanel.addButton("Apply", function(){
-      var newPosition = that._mainPanel.getValue("Position")
-        .split(',')
-        .map(function(elem){return parseFloat(elem)});
+    // when pressing ENTER on this field
+    document.getElementById("Rotation").addEventListener("keypress", function( e ){
+      if (e.keyCode == 13) {
+        var newRotation = that._mainPanel.getValue("Rotation")
+          .split(',')
+          .map(function(elem){return parseFloat(elem)});
 
-      var newRotation = that._mainPanel.getValue("Rotation")
-        .split(',')
-        .map(function(elem){return parseFloat(elem)});
-
-      that._quadScene.setMultiplaneRotation(newRotation[0], newRotation[1], newRotation[2]);
-      that._quadScene.setMultiplanePosition(newPosition[0], newPosition[1], newPosition[2]);
-
+        that._quadScene.setMultiplaneRotation(newRotation[0], newRotation[1], newRotation[2]);
+      }
     });
-
-    this._mainPanel.overrideStyle("Apply", "width", "100%");
-    document.getElementById("Apply").parentElement.style["margin-top"] = "0px";
 
     // Button reset rotation
     this._mainPanel.addButton("Reset rotation", function(){
@@ -4388,6 +4492,43 @@ class GuiController{
     rotationString += spaceConfig.rotation.y.toFixed(4) + ' , ';
     rotationString += spaceConfig.rotation.z.toFixed(4);
     this._mainPanel.setValue("Rotation", rotationString);
+
+
+    var axisInfo = spaceConfig.axisInfo;
+    this._axisInfo = axisInfo; // so that we could reuse it later
+
+    var posVoxelX = ( spaceConfig.position.x - (axisInfo.x.offset / axisInfo.x.finalSize) ) / (axisInfo.x.originalSize / axisInfo.x.finalSize);
+    if(axisInfo.x.reversed){
+      posVoxelX = 1 - posVoxelX;
+    }
+
+    var posVoxelY = ( spaceConfig.position.y - (axisInfo.y.offset / axisInfo.y.finalSize) ) / (axisInfo.y.originalSize / axisInfo.y.finalSize);
+    if(axisInfo.y.reversed){
+      posVoxelY = 1 - posVoxelY;
+    }
+
+    var posVoxelZ = ( spaceConfig.position.z - (axisInfo.z.offset / axisInfo.z.finalSize) ) / (axisInfo.z.originalSize / axisInfo.z.finalSize);
+    if(axisInfo.z.reversed){
+      posVoxelZ = 1 - posVoxelZ;
+    }
+
+    posVoxelX *= axisInfo.x.originalSize;
+    posVoxelY *= axisInfo.y.originalSize;
+    posVoxelZ *= axisInfo.z.originalSize;
+
+    var positionVoxelString = Math.round(posVoxelX) + ' , ';
+    positionVoxelString += Math.round(posVoxelY) + ' , ';
+    positionVoxelString += Math.round(posVoxelZ);
+    this._mainPanel.setValue("Position voxel", positionVoxelString);
+
+// ----------------- reverse ----------
+  /*
+    positionVoxelX = positionVoxelX / axisInfo.x.originalSize
+    if(axisInfo.x.reversed){
+      positionVoxelX = 1 - posVoxelX;
+    }
+    positionVoxelX * (axisInfo.x.originalSize / axisInfo.x.finalSize) + (axisInfo.x.offset / axisInfo.x.finalSize)
+    */
   }
 
 
@@ -4448,7 +4589,11 @@ class GuiController{
     // dropdown menu
     this._annotationPanel.addDropDown("Annotations", [],
       function( dropdownObj ){
-        console.log( dropdownObj.value );
+        var annotation = that._annotationCollection.getAnnotation( dropdownObj.value );
+
+        if(annotation){
+          that._displayAnnotInfo( annotation );
+        }
       }
     );
 
@@ -4456,8 +4601,17 @@ class GuiController{
 
     // callback when a new annot is added in the core, a new item shows on the menu
     that._annotationCollection.onAddingAnnotation( function(name){
-      that._annotationPanel.getControl("Annotations").addItem(name);
-      console.log( name );
+      var dropdownObj = that._annotationPanel.getControl("Annotations");
+      dropdownObj.addItem(name);
+      console.log( dropdownObj );
+
+      //dropdownObj.setValue(name);
+
+      var annotation = that._annotationCollection.getAnnotation( name );
+
+      if(annotation){
+        that._displayAnnotInfo( annotation );
+      }
     });
 
     /*
@@ -5228,6 +5382,21 @@ class AnnotationCollection {
 
 
   /**
+  * Get an annotation from the collection
+  * @param {String} name - name/ID of the annotation within the collection
+  * @return {Annotation} the requested annotation object
+  */
+  getAnnotation( name ){
+    if(! (name in this._collection)){
+      console.warn("No annotation named " + name + " in the collection.");
+      return null;
+    }
+    
+    return this._collection[ name ];
+    
+  }
+
+  /**
   * Add to collection the temporary annotation that is currently being created.
   */
   addTemporaryAnnotation(){
@@ -5485,6 +5654,7 @@ class QuadScene{
     this._colormapManager = new ColorMapManager();
 
     // Container on the DOM tree, most likely a div
+    this._domContainerName = DomContainer;
     this._domContainer = document.getElementById( DomContainer );
 
     // scene, where everything goes
@@ -5492,10 +5662,12 @@ class QuadScene{
 
     this._boundingBoxHelper = new BoundingBoxHelper( this._scene );
 
-    //var axisHelper = new THREE.AxisHelper( 1 );
-    //axisHelper.layers.enable(1);
-    //this._scene.add( axisHelper );
-
+    /*
+    var axisHelper = new THREE.AxisHelper( 1 );
+    axisHelper.layers.enable(1);
+    this._scene.add( axisHelper );
+    */
+    
     this._scene.add( new THREE.AmbientLight( 0x444444 ) );
 
     var light1 = new THREE.DirectionalLight( 0xffffff, 0.75 );
@@ -5545,13 +5717,13 @@ class QuadScene{
     this._meshCollection = null;
 
     this._stats = null;
-    this._initPlaneManager();
-    this._initViews( DomContainer );
+    //this._initPlaneManager();
+    //this._initViews( DomContainer );
     this._levelManager = new LevelManager();
 
 
     // init the gui controller
-    this._guiController = new GuiController(this);
+    //this._guiController = new GuiController(this);
 
     //this._testAnnotation();
 
@@ -5559,14 +5731,14 @@ class QuadScene{
 
     this._refreshUniformsCounter = 0;
 
-
+    /*
     // refresh uniform every half sec
     setInterval(function(){
       if(that._ready){
         that._planeManager.updateUniforms();
       }
     }, 1000);
-
+    */
 
     /*
     setInterval(function(){
@@ -5651,7 +5823,7 @@ class QuadScene{
   * so we have to do it n times.
   */
   refreshUniforms(){
-    this._refreshUniformsCounter = 100;
+    this._refreshUniformsCounter = 10;
   }
 
 
@@ -5790,19 +5962,30 @@ class QuadScene{
   */
   _animate(){
 
-    this._render();
+    
 
     if(this._stats){
       this._stats.update();
     }
 
-    if( this._refreshUniformsCounter && this._ready){
-      this._planeManager.updateUniforms();
-      this._refreshUniformsCounter --;
+    if( this._ready){
+    
+      // updating the control is necessary in the case of a TrackballControls
+      this._quadViews[3].updateControl();
+      
+      if(this._refreshUniformsCounter){
+        this._planeManager.updateUniforms();
+        this._refreshUniformsCounter --;
+        
+        // render only when uniforms where updated
+        this._render();
+      }
+      
+      // render no matter what
+      //this._render();
     }
 
-    // updating the control is necessary in the case of a TrackballControls
-    this._quadViews[3].updateControl();
+    
 
     // call a built-in method for annimation
     requestAnimationFrame( this._animate.bind(this) );
@@ -5816,16 +5999,12 @@ class QuadScene{
   _render(){
     let that = this;
 
-    // TODO: make somethink better for refresh once per sec!
     if(this._ready){
       //this._planeManager.updateUniforms();
-
-      // refresh each view
-      this._quadViews.forEach(function(view){
-        view.renderView();
-      });
-
-
+      
+      for(var i=0; i<this._quadViews.length; i++){
+        this._quadViews[i].renderView();
+      }
     }
 
   }
@@ -5886,11 +6065,24 @@ class QuadScene{
     // when tiles are all loaded, we refresh the textures
     this._levelManager.onAllChunksLoaded( function(){
       console.log(">> All required chunks are loaded");
-      that._planeManager.updateUniforms();
+      //that._planeManager.updateUniforms();
+      
+      that.refreshUniforms();
     });
 
+
+    // the description file is successfully loaded
     this._levelManager.onReady(function(){
+      that._initPlaneManager();
+      that._initViews( that._domContainerName );
       var boxSize = that._levelManager.getBoundingBox();
+
+      // safe value, may be changed by what comes next
+      var sizeChunkLvl0 = 0.5;
+      var firstChunkColl = that._levelManager.getChunkCollection(0);
+      if(firstChunkColl){
+        sizeChunkLvl0 = firstChunkColl.getSizeChunkLvl0kWC();
+      }
 
       that._planeManager.setLevelManager( that._levelManager );
       that._levelManager.setResolutionLevel( that._resolutionLevel );
@@ -5905,6 +6097,9 @@ class QuadScene{
       that._initOrientationHelper( new THREE.Vector3(boxSize[0] / 2, boxSize[1] / 2, boxSize[2] / 2) );
       that._initPlaneInteraction();
       that._ready = true;
+
+      // init the gui controller
+      that._guiController = new GuiController(that);
 
       if(that._onReadyCallback){
         that._onReadyCallback(that);
@@ -5993,7 +6188,7 @@ class QuadScene{
   */
   _initOrientationHelper( position ){
     this._orientationHelper = new OrientationHelper(
-      this._planeManager.getWorldDiagonalHiRez() / 13
+      this._planeManager.getWorldDiagonalHiRez()
     );
 
     this._orientationHelper.addTo( this._scene );
@@ -6019,6 +6214,8 @@ class QuadScene{
   }
 
 
+
+
   /**
   * Specify a callback for when the Quadscene is ready.
   * @param {Callback} cb - a function to be call with the object _this_ in param (the current QuadScene instance).
@@ -6037,7 +6234,7 @@ class QuadScene{
 
     // callback def: translation
     this._quadViewInteraction.onGrabViewTranslate( function(distance, viewIndex){
-      var factor = Math.pow(2, that._resolutionLevel);
+      var factor = Math.pow(2, that._resolutionLevel + 1);
 
       switch (viewIndex) {
         case 0:
@@ -6052,9 +6249,9 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
-      that._planeManager.updateUniforms();
-      //that._render();
-
+      //that._planeManager.updateUniforms();
+      that.refreshUniforms();
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: regular rotation (using R key)
@@ -6074,7 +6271,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: transverse rotation (using T key)
@@ -6099,7 +6296,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: arrow down
@@ -6121,7 +6318,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: arrow up
@@ -6143,7 +6340,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     this._quadViewInteraction.onDonePlaying(function(){
@@ -6174,7 +6371,8 @@ class QuadScene{
         x: multiplaneRot.x,
         y: multiplaneRot.y,
         z: multiplaneRot.z
-      }
+      },
+      axisInfo: this._levelManager.getAllAxisInfo()
     };
 
   }

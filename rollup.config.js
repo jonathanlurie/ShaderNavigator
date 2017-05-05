@@ -1,5 +1,6 @@
 var config = require('./package.json');
 
+
 // being able to import glsl file as varialbes.
 // Taken from Three.js
 function glsl () {

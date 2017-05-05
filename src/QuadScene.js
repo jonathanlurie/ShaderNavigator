@@ -55,6 +55,7 @@ class QuadScene{
     this._colormapManager = new ColorMapManager();
 
     // Container on the DOM tree, most likely a div
+    this._domContainerName = DomContainer;
     this._domContainer = document.getElementById( DomContainer );
 
     // scene, where everything goes
@@ -62,10 +63,12 @@ class QuadScene{
 
     this._boundingBoxHelper = new BoundingBoxHelper( this._scene );
 
-    //var axisHelper = new THREE.AxisHelper( 1 );
-    //axisHelper.layers.enable(1);
-    //this._scene.add( axisHelper );
-
+    /*
+    var axisHelper = new THREE.AxisHelper( 1 );
+    axisHelper.layers.enable(1);
+    this._scene.add( axisHelper );
+    */
+    
     this._scene.add( new THREE.AmbientLight( 0x444444 ) );
 
     var light1 = new THREE.DirectionalLight( 0xffffff, 0.75 );
@@ -115,13 +118,13 @@ class QuadScene{
     this._meshCollection = null;
 
     this._stats = null;
-    this._initPlaneManager();
-    this._initViews( DomContainer );
+    //this._initPlaneManager();
+    //this._initViews( DomContainer );
     this._levelManager = new LevelManager();
 
 
     // init the gui controller
-    this._guiController = new GuiController(this);
+    //this._guiController = new GuiController(this);
 
     //this._testAnnotation();
 
@@ -129,14 +132,14 @@ class QuadScene{
 
     this._refreshUniformsCounter = 0;
 
-
+    /*
     // refresh uniform every half sec
     setInterval(function(){
       if(that._ready){
         that._planeManager.updateUniforms();
       }
     }, 1000);
-
+    */
 
     /*
     setInterval(function(){
@@ -221,7 +224,7 @@ class QuadScene{
   * so we have to do it n times.
   */
   refreshUniforms(){
-    this._refreshUniformsCounter = 100;
+    this._refreshUniformsCounter = 10;
   }
 
 
@@ -360,19 +363,30 @@ class QuadScene{
   */
   _animate(){
 
-    this._render();
+    
 
     if(this._stats){
       this._stats.update();
     }
 
-    if( this._refreshUniformsCounter && this._ready){
-      this._planeManager.updateUniforms();
-      this._refreshUniformsCounter --;
+    if( this._ready){
+    
+      // updating the control is necessary in the case of a TrackballControls
+      this._quadViews[3].updateControl();
+      
+      if(this._refreshUniformsCounter){
+        this._planeManager.updateUniforms();
+        this._refreshUniformsCounter --;
+        
+        // render only when uniforms where updated
+        this._render();
+      }
+      
+      // render no matter what
+      //this._render();
     }
 
-    // updating the control is necessary in the case of a TrackballControls
-    this._quadViews[3].updateControl();
+    
 
     // call a built-in method for annimation
     requestAnimationFrame( this._animate.bind(this) );
@@ -386,16 +400,12 @@ class QuadScene{
   _render(){
     let that = this;
 
-    // TODO: make somethink better for refresh once per sec!
     if(this._ready){
       //this._planeManager.updateUniforms();
-
-      // refresh each view
-      this._quadViews.forEach(function(view){
-        view.renderView();
-      });
-
-
+      
+      for(var i=0; i<this._quadViews.length; i++){
+        this._quadViews[i].renderView();
+      }
     }
 
   }
@@ -456,11 +466,24 @@ class QuadScene{
     // when tiles are all loaded, we refresh the textures
     this._levelManager.onAllChunksLoaded( function(){
       console.log(">> All required chunks are loaded");
-      that._planeManager.updateUniforms();
+      //that._planeManager.updateUniforms();
+      
+      that.refreshUniforms();
     });
 
+
+    // the description file is successfully loaded
     this._levelManager.onReady(function(){
+      that._initPlaneManager();
+      that._initViews( that._domContainerName );
       var boxSize = that._levelManager.getBoundingBox();
+
+      // safe value, may be changed by what comes next
+      var sizeChunkLvl0 = 0.5;
+      var firstChunkColl = that._levelManager.getChunkCollection(0);
+      if(firstChunkColl){
+        sizeChunkLvl0 = firstChunkColl.getSizeChunkLvl0kWC();
+      }
 
       that._planeManager.setLevelManager( that._levelManager );
       that._levelManager.setResolutionLevel( that._resolutionLevel );
@@ -475,6 +498,9 @@ class QuadScene{
       that._initOrientationHelper( new THREE.Vector3(boxSize[0] / 2, boxSize[1] / 2, boxSize[2] / 2) );
       that._initPlaneInteraction();
       that._ready = true;
+
+      // init the gui controller
+      that._guiController = new GuiController(that);
 
       if(that._onReadyCallback){
         that._onReadyCallback(that);
@@ -563,7 +589,7 @@ class QuadScene{
   */
   _initOrientationHelper( position ){
     this._orientationHelper = new OrientationHelper(
-      this._planeManager.getWorldDiagonalHiRez() / 13
+      this._planeManager.getWorldDiagonalHiRez()
     );
 
     this._orientationHelper.addTo( this._scene );
@@ -589,6 +615,8 @@ class QuadScene{
   }
 
 
+
+
   /**
   * Specify a callback for when the Quadscene is ready.
   * @param {Callback} cb - a function to be call with the object _this_ in param (the current QuadScene instance).
@@ -607,7 +635,7 @@ class QuadScene{
 
     // callback def: translation
     this._quadViewInteraction.onGrabViewTranslate( function(distance, viewIndex){
-      var factor = Math.pow(2, that._resolutionLevel);
+      var factor = Math.pow(2, that._resolutionLevel + 1);
 
       switch (viewIndex) {
         case 0:
@@ -622,9 +650,9 @@ class QuadScene{
         default:  // if last view, we dont do anything
           return;
       }
-      that._planeManager.updateUniforms();
-      //that._render();
-
+      //that._planeManager.updateUniforms();
+      that.refreshUniforms();
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: regular rotation (using R key)
@@ -644,7 +672,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: transverse rotation (using T key)
@@ -669,7 +697,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: arrow down
@@ -691,7 +719,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     // callback def: arrow up
@@ -713,7 +741,7 @@ class QuadScene{
       }
       //that._planeManager.updateUniforms();
       that.refreshUniforms();
-
+      that._guiController.updateMultiplaneUI( that.getMultiplaneContainerInfo() );
     });
 
     this._quadViewInteraction.onDonePlaying(function(){
@@ -744,7 +772,8 @@ class QuadScene{
         x: multiplaneRot.x,
         y: multiplaneRot.y,
         z: multiplaneRot.z
-      }
+      },
+      axisInfo: this._levelManager.getAllAxisInfo()
     };
 
   }

@@ -19,6 +19,6 @@
     "documentation": "^4.0.0-beta11",
     "gulp": "^3.9.1",
     "gulp-rollup": "^2.5.1",
-    "rollup": "^0.36.3"
+    "rollup": "^0.41.6"
   }
 }

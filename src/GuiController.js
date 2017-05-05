@@ -31,6 +31,7 @@ class GuiController{
     this._mainPanel = QuickSettings.create(panelSpace, 0, document.title);
     this._initMainPanel();
 
+    this._axisInfo = null;
     //this._annotationPanel = QuickSettings.create(panelWidth + panelSpace*2 , 0, "Annotations");
     //this._initAnnotationPanel();
     //this._initAnnotationPanelCallback();
@@ -93,9 +94,55 @@ class GuiController{
     document.getElementById('Resolution').readOnly = true;
     document.getElementById("Resolution").parentElement.style["margin-top"] = "0px";
 
-    // multiplane position
+    // multiplane position (unit x, y, z)
     this._mainPanel.addText("Position", "", function(){} );
     this._mainPanel.overrideStyle("Position", "text-align", "center");
+    // when pressing ENTER on this field
+    document.getElementById("Position").addEventListener("keypress", function( e ){
+      if (e.keyCode == 13) {
+        var newPosition = that._mainPanel.getValue("Position")
+          .split(',')
+          .map(function(elem){return parseFloat(elem)});
+
+        that._quadScene.setMultiplanePosition(newPosition[0], newPosition[1], newPosition[2]);
+      }
+    });
+
+    // mutiplane position voxel (to match A3D slices index)
+    this._mainPanel.addText("Position voxel", "", function(){} );
+    this._mainPanel.overrideStyle("Position voxel", "text-align", "center");
+    document.getElementById("Position voxel").parentElement.style["margin-top"] = "0px";
+    // on pressing ENTER on this field
+    document.getElementById("Position voxel").addEventListener("keypress", function( e ){
+      if (e.keyCode == 13) {
+        var axisInfo = that._axisInfo;
+
+        var newPositionVoxel = that._mainPanel.getValue("Position voxel")
+          .split(',')
+          .map(function(elem){return parseFloat(elem)});
+
+        var positionUnitX = newPositionVoxel[0] / axisInfo.x.originalSize
+        if(axisInfo.x.reversed){
+          positionUnitX = 1 - positionUnitX;
+        }
+        positionUnitX = positionUnitX * (axisInfo.x.originalSize / axisInfo.x.finalSize) + (axisInfo.x.offset / axisInfo.x.finalSize)
+
+        var positionUnitY = newPositionVoxel[1] / axisInfo.y.originalSize
+        if(axisInfo.y.reversed){
+          positionUnitY = 1 - positionUnitY;
+        }
+        positionUnitY = positionUnitY * (axisInfo.y.originalSize / axisInfo.y.finalSize) + (axisInfo.y.offset / axisInfo.y.finalSize)
+
+        var positionUnitZ = newPositionVoxel[2] / axisInfo.z.originalSize
+        if(axisInfo.z.reversed){
+          positionUnitZ = 1 - positionUnitZ;
+        }
+        positionUnitZ = positionUnitZ * (axisInfo.z.originalSize / axisInfo.z.finalSize) + (axisInfo.z.offset / axisInfo.z.finalSize)
+
+        that._quadScene.setMultiplanePosition(positionUnitX, positionUnitY, positionUnitZ);
+      }
+    });
+
 
     // multiplane rotation
     this._mainPanel.addText("Rotation", "", function(){} );
@@ -103,23 +150,16 @@ class GuiController{
     this._mainPanel.overrideStyle("Rotation", "text-align", "center");
     document.getElementById("Rotation").parentElement.style["margin-top"] = "0px";
 
-    // apply button for multiplane position and rotation
-    this._mainPanel.addButton("Apply", function(){
-      var newPosition = that._mainPanel.getValue("Position")
-        .split(',')
-        .map(function(elem){return parseFloat(elem)});
+    // when pressing ENTER on this field
+    document.getElementById("Rotation").addEventListener("keypress", function( e ){
+      if (e.keyCode == 13) {
+        var newRotation = that._mainPanel.getValue("Rotation")
+          .split(',')
+          .map(function(elem){return parseFloat(elem)});
 
-      var newRotation = that._mainPanel.getValue("Rotation")
-        .split(',')
-        .map(function(elem){return parseFloat(elem)});
-
-      that._quadScene.setMultiplaneRotation(newRotation[0], newRotation[1], newRotation[2]);
-      that._quadScene.setMultiplanePosition(newPosition[0], newPosition[1], newPosition[2]);
-
+        that._quadScene.setMultiplaneRotation(newRotation[0], newRotation[1], newRotation[2]);
+      }
     });
-
-    this._mainPanel.overrideStyle("Apply", "width", "100%");
-    document.getElementById("Apply").parentElement.style["margin-top"] = "0px";
 
     // Button reset rotation
     this._mainPanel.addButton("Reset rotation", function(){
@@ -176,6 +216,43 @@ class GuiController{
     rotationString += spaceConfig.rotation.y.toFixed(4) + ' , ';
     rotationString += spaceConfig.rotation.z.toFixed(4)
     this._mainPanel.setValue("Rotation", rotationString);
+
+
+    var axisInfo = spaceConfig.axisInfo;
+    this._axisInfo = axisInfo; // so that we could reuse it later
+
+    var posVoxelX = ( spaceConfig.position.x - (axisInfo.x.offset / axisInfo.x.finalSize) ) / (axisInfo.x.originalSize / axisInfo.x.finalSize)
+    if(axisInfo.x.reversed){
+      posVoxelX = 1 - posVoxelX;
+    }
+
+    var posVoxelY = ( spaceConfig.position.y - (axisInfo.y.offset / axisInfo.y.finalSize) ) / (axisInfo.y.originalSize / axisInfo.y.finalSize)
+    if(axisInfo.y.reversed){
+      posVoxelY = 1 - posVoxelY;
+    }
+
+    var posVoxelZ = ( spaceConfig.position.z - (axisInfo.z.offset / axisInfo.z.finalSize) ) / (axisInfo.z.originalSize / axisInfo.z.finalSize)
+    if(axisInfo.z.reversed){
+      posVoxelZ = 1 - posVoxelZ;
+    }
+
+    posVoxelX *= axisInfo.x.originalSize;
+    posVoxelY *= axisInfo.y.originalSize;
+    posVoxelZ *= axisInfo.z.originalSize;
+
+    var positionVoxelString = Math.round(posVoxelX) + ' , ';
+    positionVoxelString += Math.round(posVoxelY) + ' , ';
+    positionVoxelString += Math.round(posVoxelZ)
+    this._mainPanel.setValue("Position voxel", positionVoxelString);
+
+// ----------------- reverse ----------
+  /*
+    positionVoxelX = positionVoxelX / axisInfo.x.originalSize
+    if(axisInfo.x.reversed){
+      positionVoxelX = 1 - posVoxelX;
+    }
+    positionVoxelX * (axisInfo.x.originalSize / axisInfo.x.finalSize) + (axisInfo.x.offset / axisInfo.x.finalSize)
+    */
   }
 
 
@@ -236,7 +313,11 @@ class GuiController{
     // dropdown menu
     this._annotationPanel.addDropDown("Annotations", [],
       function( dropdownObj ){
-        console.log( dropdownObj.value );
+        var annotation = that._annotationCollection.getAnnotation( dropdownObj.value );
+
+        if(annotation){
+          that._displayAnnotInfo( annotation );
+        }
       }
     );
 
@@ -244,8 +325,17 @@ class GuiController{
 
     // callback when a new annot is added in the core, a new item shows on the menu
     that._annotationCollection.onAddingAnnotation( function(name){
-      that._annotationPanel.getControl("Annotations").addItem(name);
-      console.log( name );
+      var dropdownObj = that._annotationPanel.getControl("Annotations");
+      dropdownObj.addItem(name);
+      console.log( dropdownObj );
+
+      //dropdownObj.setValue(name);
+
+      var annotation = that._annotationCollection.getAnnotation( name );
+
+      if(annotation){
+        that._displayAnnotInfo( annotation );
+      }
     })
 
     /*

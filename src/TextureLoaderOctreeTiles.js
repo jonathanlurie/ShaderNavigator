@@ -58,12 +58,16 @@ class TextureLoaderOctreeTiles extends TextureLoaderInterface{
         that._textureChunk.setTexture(threeJsTexture);
         that._textureChunk.onTextureSuccessToLoad();
       }, // on load
-      function(){}, // on progress, do nothing
+      function(){
+
+      }, // on progress, do nothing
 
       function(){ // on error
         that._textureChunk.onTextureFailedToLoad();
       }
     );
+
+    
 
   }
 

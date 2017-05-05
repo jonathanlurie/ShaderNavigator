@@ -38,6 +38,8 @@ class LevelManager{
 
     this._levelsInfo = null;
 
+    this._axisInfo = null;
+
     this._onChunksLoadedCallback = null;
     this._onAllChunksLoadedCallback = null;
   }
@@ -118,15 +120,36 @@ class LevelManager{
     // Compute the cube _boundingBox, that will give some sense of boundaries to the dataset
     this._computeBoundingBox();
 
+    // the lowest def size (most likely 128) is used in combination with a chunk size (64)
+    // to define the proportion of thing in a unit space
+    var lowestDefSize = this._levelsInfo[0].size[0];
+
     // add a chunk collection for each level
     this._levelsInfo.forEach(function(elem, index){
-      that._addChunkCollectionLevel(index, elem.size, datatype);
+      that._addChunkCollectionLevel(index, elem.size, datatype, lowestDefSize);
     });
+
+    that._axisInfo = description.axisInfo;
 
     if(this.onReadyCallback){
       this.onReadyCallback();
     }
 
+  }
+
+
+  /**
+  * Get the nth chunk collection
+  * @param {Number} n - The index of the requested chunk collection
+  * @return {ChunkCollection} the collection, or null if asked a bad index
+  */
+  getChunkCollection( n ){
+    if( n>=0 && n<this._chunkCollections.length){
+      return this._chunkCollections[n];
+    }else{
+      console.warn("ChunkCollection at index " + n + " does not exist.");
+      return null;
+    }
   }
 
 
@@ -137,8 +160,9 @@ class LevelManager{
   * @param {Number} resolutionLevel - positive integer (or zero)
   * @param {Array} voxelSize - Entire number of voxel to form the whole 3D dataset at this level of resolution. This will be translated into the size of the 3D matrix of chunk (basically divided by 64 and rounded to ceil).
   * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok.
+  * @param {Number} lowestDefSize - the size of the lowest resolution level
   */
-  _addChunkCollectionLevel(resolutionLevel, voxelSize, datatype){
+  _addChunkCollectionLevel(resolutionLevel, voxelSize, datatype, lowestDefSize){
     // translating voxelSize into matrix3DSize
     // aka number of chunks (64x64x64) in each dimension
     var matrix3DSize = [
@@ -150,6 +174,7 @@ class LevelManager{
     // creating a new chunk collection for this specific level
     var chunkCollection = new ChunkCollection(
       resolutionLevel,
+      lowestDefSize,
       matrix3DSize,
       this._workingDir,
       datatype
@@ -263,10 +288,18 @@ class LevelManager{
   * @param {Object} levels - config data
   */
   _computeBoundingBox(){
+    /*
     this._boundingBox = [
       this._levelsInfo[0].size[0] / 64.0,
       this._levelsInfo[0].size[1] / 64.0,
       this._levelsInfo[0].size[2] / 64.0
+    ];
+    */
+
+    this._boundingBox = [
+      1,
+      1,
+      1
     ];
   }
 
@@ -313,6 +346,28 @@ class LevelManager{
 
       return this._levelsInfo[ levelIndex ][ infoKey ];
     }
+  }
+
+
+  /**
+  * Get a tag from axisInfo in the configuration file.
+  * @param {String} axis - native webGL axis name: "x", "y" or "z"
+  * @param {String} tag - info tag. "name", "originalSize", etc.
+  * @return {Object} String or Number value of the given axis and tag
+  */
+  getAxisInfo(axis, tag){
+    if(axis in this._axisInfo && tag in this._axisInfo[axis]){
+      return this._axisInfo[axis][tag];
+    }
+  }
+
+
+  /**
+  * Get the whole object for axis info
+  * @return {Object}
+  */
+  getAllAxisInfo(){
+    return this._axisInfo;
   }
 
 } /* END CLASS LevelManager */

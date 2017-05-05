@@ -74,6 +74,21 @@ class AnnotationCollection {
 
 
   /**
+  * Get an annotation from the collection
+  * @param {String} name - name/ID of the annotation within the collection
+  * @return {Annotation} the requested annotation object
+  */
+  getAnnotation( name ){
+    if(! (name in this._collection)){
+      console.warn("No annotation named " + name + " in the collection.");
+      return null;
+    }
+    
+    return this._collection[ name ];
+    
+  }
+
+  /**
   * Add to collection the temporary annotation that is currently being created.
   */
   addTemporaryAnnotation(){

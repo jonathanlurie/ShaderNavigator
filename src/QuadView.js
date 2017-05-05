@@ -69,7 +69,12 @@ class QuadView{
       width: 0.5,
       height: 0.5,
       position: [ -this._objectSize, 0, 0 ],
-      up: [ -1, 0, 0 ]
+      up: [ -1, 0, 0 ],
+      // init with a given angle to correct issues
+      initAngle: {
+        axis: new THREE.Vector3( 1, 0, 0 ),
+        angle: -0.0001
+      }
     }
     this._viewName = "top_left";
     this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
@@ -86,7 +91,12 @@ class QuadView{
       width: 0.5,
       height: 0.5,
       position: [ 0, -this._objectSize, 0 ],
-      up: [ 0, -1, 0 ]
+      up: [ 0, -1, 0 ],
+      // init with a given angle to correct issues
+      initAngle: {
+        axis: new THREE.Vector3( 1, 0, 0 ),
+        angle: -0.0001
+      }
     }
     this._viewName = "top_right";
     this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
@@ -102,7 +112,12 @@ class QuadView{
       width: 0.5,
       height: 0.5,
       position: [ 0, 0, -this._objectSize ],
-      up: [ 0, 1, 0 ]
+      up: [ 0, 1, 0 ],
+      // init with a given angle to correct issues
+      initAngle: {
+        axis: new THREE.Vector3( 1, 0, 0 ),
+        angle: 0
+      }
     }
     this._viewName = "bottom_left";
     this._backgroundColor = new THREE.Color().setRGB( 1, 1, 1 );
@@ -119,7 +134,12 @@ class QuadView{
       width: 0.5,
       height: 0.5,
       position: [ -this._objectSize/10, this._objectSize/10, -this._objectSize/15 ],
-      up: [ 0, 0, -1 ]
+      up: [ 0, 0, -1 ],
+      // init with a given angle to correct issues
+      initAngle: {
+        axis: new THREE.Vector3( 1, 0, 0 ),
+        angle: 0
+      }
     }
     this._viewName = "bottom_right";
     this._backgroundColor = new THREE.Color().setRGB( 0.97, 0.97, 0.97 );
@@ -132,7 +152,7 @@ class QuadView{
   initOrthoCamera(){
     this._isPerspective = false;
 
-    let orthographicCameraFovFactor = 360; // default: 360
+    let orthographicCameraFovFactor = 720; // default: 360
 
     this._camera = new THREE.OrthographicCamera(
       window.innerWidth / - orthographicCameraFovFactor,  // left
@@ -190,6 +210,7 @@ class QuadView{
     this._camera.up.z = this._config.up[ 2 ];
     this._camera.fov = this._defaultFov;
     this._camera.lookAt( this._originToLookAt );
+    this._camera.rotateOnAxis( this._config.initAngle.axis, this._config.initAngle.angle );
   }
 
 

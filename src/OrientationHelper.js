@@ -18,11 +18,11 @@ class OrientationHelper{
     var yColor = 0x00EB4E;
     var zColor = 0x0088ff;
 
-    this._initRadius = initRadius;
+    this._initRadius = initRadius / 25;
 
-    var geometryX = new THREE.CircleGeometry( initRadius, 64 );
-    var geometryY = new THREE.CircleGeometry( initRadius, 64 );
-    var geometryZ = new THREE.CircleGeometry( initRadius, 64 );
+    var geometryX = new THREE.CircleGeometry( this._initRadius, 64 );
+    var geometryY = new THREE.CircleGeometry( this._initRadius, 64 );
+    var geometryZ = new THREE.CircleGeometry( this._initRadius, 64 );
     var materialX = new THREE.LineBasicMaterial( { color: xColor, linewidth:1.5 } );
     var materialY = new THREE.LineBasicMaterial( { color: yColor, linewidth:1.5 } );
     var materialZ = new THREE.LineBasicMaterial( { color: zColor, linewidth:1.5 } );
@@ -52,8 +52,8 @@ class OrientationHelper{
     // adding central lines
     var xLineGeometry = new THREE.Geometry();
     xLineGeometry.vertices.push(
-    	new THREE.Vector3( -initRadius, 0, 0 ),
-    	new THREE.Vector3( initRadius, 0, 0 )
+    	new THREE.Vector3( -this._initRadius, 0, 0 ),
+    	new THREE.Vector3( this._initRadius, 0, 0 )
     );
 
     var xLine = new THREE.Line(
@@ -63,8 +63,8 @@ class OrientationHelper{
 
     var yLineGeometry = new THREE.Geometry();
     yLineGeometry.vertices.push(
-    	new THREE.Vector3(0, -initRadius, 0 ),
-    	new THREE.Vector3(0,  initRadius, 0 )
+    	new THREE.Vector3(0, -this._initRadius, 0 ),
+    	new THREE.Vector3(0,  this._initRadius, 0 )
     );
 
     var yLine = new THREE.Line(
@@ -74,8 +74,8 @@ class OrientationHelper{
 
     var zLineGeometry = new THREE.Geometry();
     zLineGeometry.vertices.push(
-    	new THREE.Vector3(0, 0, -initRadius ),
-    	new THREE.Vector3(0, 0,  initRadius )
+    	new THREE.Vector3(0, 0, -this._initRadius ),
+    	new THREE.Vector3(0, 0,  this._initRadius )
     );
 
     var zLine = new THREE.Line(
@@ -104,8 +104,16 @@ class OrientationHelper{
     var supSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: supTex} ) );
     var infSprite = new THREE.Sprite( new THREE.SpriteMaterial( { map: infTex} ) );
 
-    var distanceFromCenter = initRadius * 1.4;
-
+    var distanceFromCenter = this._initRadius * 1.4;
+    
+    var spriteScale = 0.5;
+    leftSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    rightSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    antSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    postSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    supSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    infSprite.scale.set(spriteScale, spriteScale, spriteScale);
+    
     leftSprite.position.set( distanceFromCenter, 0, 0 );
     rightSprite.position.set( -distanceFromCenter, 0, 0 );
     antSprite.position.set(0, distanceFromCenter, 0 );

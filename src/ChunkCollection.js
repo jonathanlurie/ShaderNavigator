@@ -1,10 +1,8 @@
 'use strict';
 
-/*
-  TODO: replace all var by let
-*/
-
 import { TextureChunk } from './TextureChunk.js';
+import { MemoryStorage } from './MemoryStorage.js';
+
 
 /**
 * The Chunk Collection is the container for all the chunks at a given resolution level.
@@ -16,11 +14,12 @@ class ChunkCollection{
   /**
   * Constructor
   * @param {number} resolutionLevel - The level of resolution, the lower the level, the lower the resolution. Level n has a metric resolution per voxel twice lower/poorer than level n+1, as a result, level n has 8 time less chunks than level n+1, remember we are in 3D!.
+  * @param {Number} lowestDefSize - Size of the lowest rez level (most likely 128)
   * @param {Array} matrix3DSize - Number of chunks in each dimension [x, y, z] that are supposedly available.
   * @param {String} workingDir - The folder containing the config file (JSON) and the resolution level folder
   * @param {String} datatype - Type of data, but for now only "octree_tiles" is ok.
   */
-  constructor(resolutionLevel, matrix3DSize, workingDir, datatype){
+  constructor(resolutionLevel, lowestDefSize, matrix3DSize, workingDir, datatype){
     /**
     * The chunks of the same level. A map is used instead of an array because the chunks are loaded as they need to display, so we prefer to use an key (string built from the index3D) rather than a 1D array index.
     */
@@ -37,14 +36,16 @@ class ChunkCollection{
     /** Level from 0 to 6, possibly more in the future. */
     this._resolutionLevel = resolutionLevel;
 
-    /** Word size of a chunk at level 0. Used as a constant. */
-    this._chunkSizeLvlZero = 1;
-
     /** Number of voxel per side of the chunk (suposedly cube shaped). Used as a constant.*/
     this._voxelPerSide = 64;
+    
+    /** World size of a chunk at level 0. Used as a constant. */
+    this._sizeChunkLvl0kWC = this._voxelPerSide / lowestDefSize;
+
+    MemoryStorage.setRecord("sizeChunkLvl0kWC", this._sizeChunkLvl0kWC);
 
     /** Size of a chunk in 3D space (aka. in world coordinates) */
-    this._sizeChunkWC = this._chunkSizeLvlZero / Math.pow(2, this._resolutionLevel);
+    this._sizeChunkWC = this._sizeChunkLvl0kWC / Math.pow(2, this._resolutionLevel);
 
     // Creates a fake texture and fake texture data to be sent to the shader in case it's not possible to fetch a real data (out of bound, unable to load texture file)
     this._createFakeTexture();
@@ -108,6 +109,15 @@ class ChunkCollection{
   */
   getSizeChunkWc(){
     return this._sizeChunkWC;
+  }
+
+
+  /**
+  * Get the size of a chunk of lvl0 in world coordinate unit space
+  * @return {Number} the size (most likely 0.5)
+  */
+  getSizeChunkLvl0kWC(){
+    return this._sizeChunkLvl0kWC;
   }
 
   /**
@@ -351,7 +361,7 @@ class ChunkCollection{
     var validChunksOrigin = [];
     var notValidChunksOrigin = [];
     var that = this;
-
+    
     the8closestIndexes.forEach(function(index){
       var aTextureData = that.getTextureAtIndex3D(index);
 
@@ -459,29 +469,7 @@ class ChunkCollection{
   *
   */
   getInvolvedTextureData(cornerPositions){
-    var that = this;
-
-    /*
-    console.log("this._sizeChunkWC");
-    console.log(this._sizeChunkWC);
-    console.log("cornerPositions");
-    console.log(cornerPositions);
-    */
-    this._sizeChunkWC
-    /*
-    var chunkEdgeCase = cornerPositions[0].x % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].x % this._sizeChunkWC < this._sizeChunkWC/10; ||
-        cornerPositions[0].y % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].y % this._sizeChunkWC < this._sizeChunkWC/10 ||
-        cornerPositions[0].z % this._sizeChunkWC < this._sizeChunkWC/10 && cornerPositions[1].z % this._sizeChunkWC < this._sizeChunkWC/10;
-*/
-
-
-
-    /*
-    var chunkEdgeCase = cornerPositions[0].x == cornerPositions[1].x ||
-                        cornerPositions[0].y == cornerPositions[1].y ||
-                        cornerPositions[0].z == cornerPositions[1].z;
-    */
-
+  
     var chunkEdgeCaseX = cornerPositions[0].x == cornerPositions[1].x &&
       (cornerPositions[0].x % this._sizeChunkWC < this._sizeChunkWC*0.1 ||   cornerPositions[0].x % this._sizeChunkWC > this._sizeChunkWC*0.9);
 
@@ -494,27 +482,19 @@ class ChunkCollection{
     var chunkEdgeCase = chunkEdgeCaseX || chunkEdgeCaseY || chunkEdgeCaseZ;
 
     if( chunkEdgeCase ){
-      //console.log(">> NEAREST8");
-      //console.log(cornerPositions);
-      //console.log( Math.floor(Date.now()) );
-
 
       var center = [
         (cornerPositions[0].x + cornerPositions[1].x + cornerPositions[2].x + cornerPositions[3].x) / 4,
         (cornerPositions[0].y + cornerPositions[1].y + cornerPositions[2].y + cornerPositions[3].y) / 4,
         (cornerPositions[0].z + cornerPositions[1].z + cornerPositions[2].z + cornerPositions[3].z) / 4
       ];
-
+      //console.log("NEAREST8");
       return this.get8ClosestTextureData( center );
-    }else{
-      //console.log(">> INVOLVED");
-      //console.log(cornerPositions);
-      //console.log( Math.floor(Date.now()) );
     }
-
-
+    
+    //console.log("__ INVOLVED");
+    
     var involvedIndexes = this.getInvolvedTextureIndexes(cornerPositions);
-
 
     var loadedMaps = {};
 
@@ -523,18 +503,17 @@ class ChunkCollection{
     var notValidChunksTexture = [];
     var validChunksOrigin = [];
     var notValidChunksOrigin = [];
-    var that = this;
 
-    involvedIndexes.forEach(function(index){
-      var aTextureData = that._fakeTextureData;
-      var indexKey = that._getKeyFromIndex3D( index );
+    for(var i=0; i<involvedIndexes.length; i++){
+      var aTextureData = this._fakeTextureData;
+      var indexKey = this._getKeyFromIndex3D( involvedIndexes[i] );
 
       // never loaded before
       if(! (indexKey in loadedMaps)){
         loadedMaps[indexKey] = 1;
 
         // load the texture , possibly retrieving a fake one (out)
-        aTextureData = that.getTextureAtIndex3D(index);
+        aTextureData = this.getTextureAtIndex3D( involvedIndexes[i] );
       }
 
       // this texture data is valid
@@ -547,18 +526,9 @@ class ChunkCollection{
         notValidChunksTexture.push( aTextureData.texture );
         notValidChunksOrigin.push( aTextureData.origin );
       }
-
-    });
+    }
 
     validChunksCounter = validChunksTexture.length;
-
-    /*
-    return {
-      textures: validChunksTexture.concat( notValidChunksTexture ),
-      origins: validChunksOrigin.concat( notValidChunksOrigin ),
-      nbValid: validChunksCounter
-    };
-    */
 
     var textureDatas = {
       textures: validChunksTexture.concat( notValidChunksTexture ),
